@@ -1,0 +1,362 @@
+import SwiftUI
+
+struct ReceiptView: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var isAnimating: Bool = false
+    @State private var showContent: Bool = false
+    @State private var showButton: Bool = false
+    @Binding var hideTabBar: Bool
+    
+    let amount: String
+    let merchantName: String = String(localized: "enter_amount.merchant")
+    let merchantPhone: String = String(localized: "common.phone_number")
+    let transactionID: String = "#TXN101025SBI"
+    
+    var cashback: String {
+        "\((Int(amount) ?? 0) * 10 / 100)"
+    }
+    
+    var body: some View {
+        ZStack {
+            // Background
+            LinearGradient(
+                colors: [Color(hex: "F8F9FD"), Color.white],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 0) {
+                    // ✅ Success Animation
+                    VStack(spacing: 24) {
+                        successAnimationView.frame(height: 200)
+                        successTextView
+                    }
+                    .padding(.top, 40)
+                    .padding(.bottom, 32)
+                    
+                    // ✅ Cards
+                    amountCardView
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 20)
+                    
+                    merchantCardView
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 20)
+                    
+                    transactionDetailsCardView
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 24)
+                    
+                    actionButtonsView
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 32)
+                }
+            }
+        }
+        .navigationBarHidden(true)
+        .onAppear {
+            withAnimation { isAnimating = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                withAnimation(.easeOut(duration: 0.6)) { showContent = true }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                withAnimation { showButton = true }
+            }
+        }
+    }
+    
+    // MARK: - Success Animation
+    private var successAnimationView: some View {
+        ZStack {
+            ForEach(0..<3) { index in
+                Circle()
+                    .stroke(Color(hex: "4B548D").opacity(0.2), lineWidth: 2)
+                    .frame(width: 120 + CGFloat(index * 30), height: 120 + CGFloat(index * 30))
+                    .scaleEffect(isAnimating ? 1.3 : 0.8)
+                    .opacity(isAnimating ? 0 : 0.6)
+                    .animation(
+                        Animation.easeOut(duration: 1.8)
+                            .repeatForever(autoreverses: false)
+                            .delay(Double(index) * 0.2),
+                        value: isAnimating
+                    )
+            }
+            
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color(hex: "4B548D"), Color(hex: "5E68A6")],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 120, height: 120)
+                    .shadow(color: Color(hex: "4B548D").opacity(0.3), radius: 20, x: 0, y: 10)
+                
+                Image(systemName: "checkmark")
+                    .font(.system(size: 50, weight: .bold))
+                    .foregroundColor(.white)
+            }
+            .scaleEffect(isAnimating ? 1.0 : 0)
+            .animation(.spring(response: 0.6, dampingFraction: 0.6), value: isAnimating)
+        }
+    }
+    
+    // MARK: - Success Text
+    private var successTextView: some View {
+        VStack(spacing: 8) {
+            Text(String(localized: "receipt.payment_successful"))
+                .font(.system(size: 28, weight: .bold))
+                .foregroundColor(.primary)
+            
+            Text(String(localized: "receipt.transaction_completed"))
+                .font(.system(size: 15))
+                .foregroundColor(.secondary)
+        }
+        .opacity(showContent ? 1 : 0)
+        .offset(y: showContent ? 0 : 20)
+        .animation(.easeOut(duration: 0.5).delay(0.2), value: showContent)
+    }
+    
+    // MARK: - Amount Card
+    private var amountCardView: some View {
+        VStack(spacing: 16) {
+            Text(String(localized: "receipt.amount_paid"))
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+            
+            Text("\(String(localized: "common.currency_symbol"))\(amount)")
+                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .foregroundColor(.primary)
+            
+            HStack(spacing: 6) {
+                Image(systemName: String(localized: "icon.gift_fill"))
+                    .font(.system(size: 12))
+                Text(String(format: String(localized: "receipt.cashback_earned"), cashback))
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .foregroundColor(Color(hex: "4CAF50"))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(Color(hex: "4CAF50").opacity(0.12))
+            .clipShape(Capsule())
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 32)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.white)
+                .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 6)
+        )
+        .opacity(showContent ? 1 : 0)
+        .offset(y: showContent ? 0 : 30)
+        .animation(.easeOut(duration: 0.5).delay(0.3), value: showContent)
+    }
+    
+    // MARK: - Merchant Card
+    private var merchantCardView: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Color(hex: "F0F1F5"))
+                    .frame(width: 64, height: 64)
+                
+                Image("merchant_photo")
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 58, height: 58)
+                    .clipShape(Circle())
+            }
+            
+            VStack(alignment: .leading, spacing: 6) {
+                Text(merchantName)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                HStack(spacing: 4) {
+                    Image(systemName: String(localized: "icon.phone_fill"))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Text(merchantPhone)
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            Button {
+                // Pay again
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text(String(localized: "receipt.pay_again"))
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .foregroundColor(Color(hex: "4B548D"))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(Color(hex: "4B548D").opacity(0.1))
+                .clipShape(Capsule())
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 2)
+        )
+        .opacity(showContent ? 1 : 0)
+        .offset(y: showContent ? 0 : 20)
+        .animation(.easeOut(duration: 0.5).delay(0.4), value: showContent)
+    }
+    
+    // MARK: - Transaction Details Card
+    private var transactionDetailsCardView: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 10) {
+                Image(systemName: String(localized: "icon.doc_text_fill"))
+                    .font(.system(size: 14))
+                    .foregroundColor(Color(hex: "4B548D"))
+                Text(String(localized: "receipt.transaction_details"))
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.primary)
+            }
+            
+            VStack(spacing: 14) {
+                txnDetailRow(
+                    icon: String(localized: "icon.calendar"),
+                    label: String(localized: "receipt.date_time"),
+                    value: formattedDateTime,
+                    delay: 0.5
+                )
+                
+                Divider().padding(.vertical, 2)
+                
+                txnDetailRow(
+                    icon: "number",
+                    label: String(localized: "receipt.transaction_id"),
+                    value: transactionID,
+                    delay: 0.6,
+                    isMonospaced: true
+                )
+                
+                Divider().padding(.vertical, 2)
+                
+                txnDetailRow(
+                    icon: String(localized: "icon.creditcard_fill"),
+                    label: String(localized: "receipt.payment_method"),
+                    value: String(localized: "upi_app.google_pay"),
+                    delay: 0.7
+                )
+                
+                Divider().padding(.vertical, 2)
+                
+                txnDetailRow(
+                    icon: "checkmark.shield.fill",
+                    label: String(localized: "receipt.status"),
+                    value: String(localized: "receipt.status_completed"),
+                    valueColor: Color(hex: "4CAF50"),
+                    delay: 0.8
+                )
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 2)
+        )
+        .opacity(showContent ? 1 : 0)
+        .offset(y: showContent ? 0 : 20)
+        .animation(.easeOut(duration: 0.5).delay(0.5), value: showContent)
+    }
+    
+    // MARK: - Buttons
+    private var actionButtonsView: some View {
+        VStack(spacing: 12) {
+            Button(action: { }) {
+                HStack(spacing: 10) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text(String(localized: "receipt.share_receipt"))
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .foregroundColor(Color(hex: "4B548D"))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.white)
+                        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+                )
+            }
+            
+            Button(action: {
+                dismiss()
+                hideTabBar = false
+            }) {
+                Text(String(localized: "receipt.back_to_home"))
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(hex: "4B548D"), Color(hex: "5E68A6")],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(12)
+                    .shadow(color: Color(hex: "4B548D").opacity(0.3), radius: 12, x: 0, y: 6)
+            }
+        }
+        .opacity(showButton ? 1 : 0)
+        .offset(y: showButton ? 0 : 20)
+        .animation(.easeOut(duration: 0.5).delay(0.8), value: showButton)
+    }
+    
+    // MARK: - Transaction Row
+    private func txnDetailRow(
+        icon: String,
+        label: String,
+        value: String,
+        valueColor: Color = .primary,
+        delay: Double,
+        isMonospaced: Bool = false
+    ) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+                .frame(width: 18)
+            
+            Text(label)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+            
+            Spacer()
+            
+            Text(value)
+                .font(isMonospaced ?
+                      .system(size: 13, weight: .semibold, design: .monospaced) :
+                      .system(size: 14, weight: .semibold))
+                .foregroundColor(valueColor)
+        }
+    }
+    
+    private var formattedDateTime: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = String(localized: "date.format.full")
+        return formatter.string(from: Date())
+    }
+}
+
+#Preview {
+    ReceiptView(hideTabBar: .constant(false), amount: "450")
+}

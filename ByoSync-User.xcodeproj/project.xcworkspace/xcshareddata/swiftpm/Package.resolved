@@ -1,0 +1,24 @@
+{
+  "originHash" : "a584b63d7ac7af9bb28c7c58db7d1519a35d5fef9d147dc1787a8647c10410c5",
+  "pins" : [
+    {
+      "identity" : "alamofire",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Alamofire/Alamofire.git",
+      "state" : {
+        "revision" : "513364f870f6bfc468f9d2ff0a95caccc10044c5",
+        "version" : "5.10.2"
+      }
+    },
+    {
+      "identity" : "cloudinary_ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/cloudinary/cloudinary_ios.git",
+      "state" : {
+        "revision" : "11f859b417364210e4e8fd9462109febf49c5bc5",
+        "version" : "5.2.3"
+      }
+    }
+  ],
+  "version" : 3
+}
