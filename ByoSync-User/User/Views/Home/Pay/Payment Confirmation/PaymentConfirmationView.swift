@@ -3,15 +3,15 @@ import SwiftUI
 struct PaymentConfirmationView: View {
     @State private var isProcessing = false
     @State private var navigateToRecieptView = false
+    @State private var showErrorAlert = false
+    @State private var errorMessage = ""
     @Environment(\.dismiss) var dismiss
     @Binding var hideTabBar: Bool
-    @Binding var selectedUser: UserData?
+    @Binding var selectedUser: UserData
 
     @StateObject private var createOrderVM = CreateOrderViewModel()
 
     let amount: String
-    let merchantName: String = String(localized: "enter_amount.merchant")
-    let upiID: String = String(localized: "common.receiver_upi")
 
     var body: some View {
         ZStack {
@@ -33,9 +33,6 @@ struct PaymentConfirmationView: View {
 
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 28) {
-                            biometricPromptSection
-                                .padding(.top, 40)
-
                             paymentDetailsSection
                             termsSection
                             actionButtonsSection
@@ -43,6 +40,7 @@ struct PaymentConfirmationView: View {
                                 .padding(.bottom, 20)
                         }
                         .padding(.horizontal, 24)
+                        .padding(.top, 40)
                     }
                 }
             }
@@ -53,16 +51,35 @@ struct PaymentConfirmationView: View {
         .navigationDestination(isPresented: $navigateToRecieptView) {
             ReceiptView(
                 hideTabBar: $hideTabBar,
-                selectedUser: $selectedUser, amount: Int(amount) ?? 0
+                selectedUser: $selectedUser,
+                orderId: $createOrderVM.orderId,
+                amount: Int(amount) ?? 0
             )
         }
-        .onAppear { hideTabBar = true }
+        .alert("Payment Failed", isPresented: $showErrorAlert) {
+            Button("Retry") {
+                handleConfirmPayment()
+            }
+            Button("Cancel", role: .cancel) {
+                dismiss()
+                hideTabBar = false
+            }
+        } message: {
+            Text(errorMessage)
+        }
+        .onAppear {
+            hideTabBar = true
+            print("DEBUG: PaymentConfirmationView appeared")
+            print("DEBUG: Selected user - \(selectedUser.firstName) \(selectedUser.lastName)")
+            print("DEBUG: Amount - \(amount)")
+        }
     }
 
     // MARK: - Header
     private var headerSection: some View {
         HStack {
             Button(action: {
+                print("DEBUG: Dismiss payment confirmation")
                 dismiss()
                 hideTabBar = false
             }) {
@@ -73,44 +90,19 @@ struct PaymentConfirmationView: View {
                     .background(Color.white.opacity(0.15))
                     .clipShape(Circle())
             }
-
+            
             Spacer()
-
+            
             Text(String(localized: "payment_confirmation.title"))
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(.white)
-
+            
             Spacer()
             Color.clear.frame(width: 44, height: 44)
         }
         .padding(.horizontal, 16)
         .padding(.top, 16)
         .padding(.bottom, 24)
-    }
-
-    // MARK: - Biometric Prompt
-    private var biometricPromptSection: some View {
-        VStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(Color(hex: "4B548D").opacity(0.1))
-                    .frame(width: 100, height: 100)
-                Image(systemName: String(localized: "icon.faceid"))
-                    .font(.system(size: 50))
-                    .foregroundColor(Color(hex: "4B548D"))
-            }
-
-            VStack(spacing: 8) {
-                Text(String(localized: "payment_confirmation.verify_faceid"))
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.primary)
-
-                Text(String(localized: "payment_confirmation.authenticate_message"))
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-        }
     }
 
     // MARK: - Payment Details
@@ -135,13 +127,13 @@ struct PaymentConfirmationView: View {
             VStack(spacing: 16) {
                 detailRow(
                     label: String(localized: "payment_confirmation.pay_to"),
-                    value: merchantName,
+                    value: "\(selectedUser.firstName) \(selectedUser.lastName)",
                     icon: String(localized: "icon.person_fill")
                 )
                 Divider().padding(.vertical, 4)
                 detailRow(
                     label: String(localized: "payment_confirmation.upi_id"),
-                    value: upiID,
+                    value: selectedUser.email,
                     icon: "at"
                 )
                 Divider().padding(.vertical, 4)
@@ -240,29 +232,65 @@ struct PaymentConfirmationView: View {
 
     // MARK: - Confirm Action
     private func handleConfirmPayment() {
-        guard let receiverId = selectedUser?.id else {
-            print("❌ Missing receiver ID")
-            return
-        }
-
+        print("DEBUG: Confirm payment button pressed")
+        print("DEBUG: Receiver ID - \(selectedUser.id)")
+        
         let senderId = UserDefaults.standard.string(forKey: "user_id") ?? ""
         let senderDeviceId = UserDefaults.standard.string(forKey: "device_id") ?? ""
+        
+        print("DEBUG: Sender ID - \(senderId)")
+        print("DEBUG: Sender Device ID - \(senderDeviceId)")
+        print("DEBUG: Amount - \(amount)")
 
         isProcessing = true
         Task {
             do {
                 let order = try await createOrderVM.createOrder(
-                    receiverId: receiverId,
-                    senderDeviceId: senderDeviceId,
-                    amount: Int(amount) ?? 0,
-                    senderId:senderId
+                    receiverId: selectedUser.id,
+                    amount: Int(amount) ?? 0
                 )
-               // print("✅ Order Created: \(order.orderId)")
-                withAnimation(.easeInOut(duration: 0.3)) { isProcessing = false }
-                navigateToRecieptView = true
+                
+              //  print("✅ Order Created Successfully: \(order.orderId)")
+                
+                // Only navigate on success
+                await MainActor.run {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        isProcessing = false
+                    }
+                    // Small delay for smooth transition
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        navigateToRecieptView = true
+                    }
+                }
             } catch {
-                print("❌ Failed: \(error.localizedDescription)")
-                withAnimation(.easeInOut(duration: 0.3)) { isProcessing = false }
+                print("❌ Order Creation Failed: \(error.localizedDescription)")
+                
+                // Handle different error types
+                await MainActor.run {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        isProcessing = false
+                    }
+                    
+                    // Set appropriate error message based on error type
+                    if let urlError = error as? URLError {
+                        switch urlError.code {
+                        case .notConnectedToInternet:
+                            errorMessage = "No internet connection. Please check your network and try again."
+                        case .timedOut:
+                            errorMessage = "Request timed out. Please try again."
+                        default:
+                            errorMessage = "Network error occurred. Please try again."
+                        }
+                    } else if error.localizedDescription.contains("insufficient") {
+                        errorMessage = "Insufficient balance. Please add funds to your account."
+                    } else if error.localizedDescription.contains("Invalid") {
+                        errorMessage = "Invalid payment details. Please check and try again."
+                    } else {
+                        errorMessage = "Payment failed: \(error.localizedDescription)"
+                    }
+                    
+                    showErrorAlert = true
+                }
             }
         }
     }
@@ -289,8 +317,10 @@ extension PaymentConfirmationView {
                     .cornerRadius(14)
                     .shadow(color: Color(hex: "4B548D").opacity(0.3), radius: 12, x: 0, y: 6)
             }
+            .disabled(isProcessing)
 
             Button(action: {
+                print("DEBUG: Cancel payment button pressed")
                 dismiss()
                 hideTabBar = false
             }) {
@@ -307,6 +337,7 @@ extension PaymentConfirmationView {
                             .stroke(Color.red.opacity(0.3), lineWidth: 1.5)
                     )
             }
+            .disabled(isProcessing)
         }
     }
 }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var languageManager: LanguageManager
+    @StateObject private var leaderboardViewModel = GetUserRankViewModel()
     @State var paytoPerson: String = ""
     @State var openProfileView: Bool = false
     @State var openWalletView: Bool = false
@@ -10,28 +11,62 @@ struct HomeView: View {
     @Binding var hideTabBar: Bool
     @State var profilePic: URL?
     @AppStorage("creditAvailable") private var creditAvailable: Double = 0.0
+    
+    // Animation states
+    @State private var isAnimating = false
+    @State private var promotionOffset: CGFloat = 0
+
+    // Top 3 users computed property
+    private var top3Users: [UserData] {
+        let sorted = leaderboardViewModel.users.sorted { $0.noOfTransactions > $1.noOfTransactions }
+        return Array(sorted.prefix(3))
+    }
 
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background
+                // Enhanced Background with subtle animation
                 LinearGradient(
-                    colors: [Color(hex: "4B548D")],
+                    colors: [
+                        Color(hex: "4B548D"),
+                        Color(hex: "3D4475"),
+                        Color(hex: "2F3560")
+                    ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
                 .ignoresSafeArea()
+                .overlay(
+                    GeometryReader { geometry in
+                        Circle()
+                            .fill(Color.white.opacity(0.05))
+                            .frame(width: 300, height: 300)
+                            .blur(radius: 50)
+                            .offset(x: -100, y: -100)
+                        
+                        Circle()
+                            .fill(Color.white.opacity(0.03))
+                            .frame(width: 250, height: 250)
+                            .blur(radius: 40)
+                            .offset(x: geometry.size.width - 100, y: geometry.size.height - 400)
+                    }
+                )
 
-                VStack(spacing: 20) {
+                VStack(spacing: 0) {
+                    // Header with profile
+                    headerSection
+                        .padding(.top, 8)
+                        .padding(.bottom, 16)
 
-                    avaialableCreditandWallet
-                        .padding(.bottom, 12)
-                        .padding(.top,8)
+                    // Credit and Wallet Cards
+                    availableCreditAndWallet
+                        .padding(.bottom, 20)
 
+                    // Main Content
                     payFeaturesSection
                 }
             }
-            .fullScreenCover(isPresented: $openProfileView){
+            .navigationDestination(isPresented: $openProfileView) {
                 ProfileView()
             }
             .navigationDestination(isPresented: $openWalletView) {
@@ -45,8 +80,13 @@ struct HomeView: View {
             }
         }
         .onAppear {
+            print("🏠 HomeView appeared")
             loadProfilePicture()
+            loadLeaderboardData()
             hideTabBar = false
+            withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+                isAnimating = true
+            }
         }
         .environment(\.locale, .init(identifier: languageManager.currentLanguageCode))
     }
@@ -55,85 +95,158 @@ struct HomeView: View {
         if let url = URL(string: UserSession.shared.userProfilePicture),
            !UserSession.shared.userProfilePicture.isEmpty {
             profilePic = url
+            print("✅ Profile picture loaded: \(UserSession.shared.userProfilePicture)")
         } else {
             profilePic = nil
             print("⚠️ No valid profile picture URL found on HOME")
         }
     }
+    
+    private func loadLeaderboardData() {
+        print("📊 Loading leaderboard data for home preview")
+        leaderboardViewModel.fetchAllUsers()
+    }
 
-    // MARK: - Credit + Wallet
-    private var avaialableCreditandWallet: some View {
-        HStack(spacing: 12) {
-            VStack(spacing: 2) {
-                HStack {
-                    Image(systemName: "creditcard.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(Color(hex: "4B548D"))
-                    Spacer()
-                }
-                Spacer()
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack{
-                        Text("\(String(format: "%.2f", UserSession.shared.wallet))")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.black)
-                    }
-                    Text(L("available_credit"))
-                        .font(.system(size: 12))
-                        .foregroundColor(.gray)
+    // MARK: - Header Section
+    private var headerSection: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Welcome")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
+                
+                Text((UserSession.shared.currentUser == nil ? "User" : UserSession.shared.currentUser?.firstName) ?? "Nil")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.white)
+            }
+            
+            Spacer()
+            
+            Button {
+                print("🔔 Notification button tapped")
+                // Add notification action
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.15))
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: "bell.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.white)
+                    
+                    // Notification badge
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 10, height: 10)
+                        .offset(x: 12, y: -12)
                 }
             }
-            .padding(18)
-            .frame(width: 140, height: 110)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.white)
-                    .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 5)
-            )
-
+            
             Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                print("👤 Profile button tapped")
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                    openProfileView.toggle()
+                }
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.3), Color.white.opacity(0.1)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 44, height: 44)
+                    
+                    if let profilePic = profilePic {
+                        AsyncImage(url: profilePic) { image in
+                            image
+                                .resizable()
+                                .scaledToFill()
+                        } placeholder: {
+                            Image(systemName: "person.fill")
+                                .foregroundColor(.white)
+                        }
+                        .frame(width: 40, height: 40)
+                        .clipShape(Circle())
+                    } else {
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(.white)
+                    }
+                }
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.3), lineWidth: 2)
+                        .frame(width: 44, height: 44)
+                )
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+
+    // MARK: - Credit + Wallet (Enhanced)
+    private var availableCreditAndWallet: some View {
+        HStack(spacing: 14) {
+            // Wallet Button
+            Button {
+                print("💰 Wallet button tapped")
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                     openWalletView.toggle()
                 }
             } label: {
                 HStack(spacing: 12) {
                     ZStack {
                         Circle()
-                            .fill(Color.white.opacity(0.20))
-                            .frame(width: 44, height: 44)
+                            .fill(Color.white.opacity(0.25))
+                            .frame(width: 50, height: 50)
+                        
                         if #available(iOS 18.0, *) {
-                            Image(systemName: "wallet.bifold")
+                            Image(systemName: "wallet.bifold.fill")
+                                .font(.system(size: 22))
                                 .foregroundStyle(.white)
                         } else {
                             Image(systemName: "creditcard.fill")
+                                .font(.system(size: 22))
                                 .foregroundStyle(.white)
                         }
-
                     }
-
-                    VStack(alignment: .leading, spacing: 2) {
+                    
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(L("my_wallet"))
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 18, weight: .bold))
                             .foregroundColor(.white)
                     }
-
-                    Spacer(minLength: 0)
+                    Spacer()
                 }
-                .padding(.horizontal, 18)
-                .frame(height: 110)
+                .padding(18)
                 .frame(maxWidth: .infinity)
+                .frame(height: 130)
                 .background(
-                    RoundedRectangle(cornerRadius: 20)
+                    RoundedRectangle(cornerRadius: 24)
                         .fill(
                             LinearGradient(
-                                colors: [Color.white.opacity(0.25), Color.white.opacity(0.15)],
+                                colors: [
+                                    Color.white.opacity(0.3),
+                                    Color.white.opacity(0.15),
+                                    Color.white.opacity(0.1)
+                                ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 24)
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [Color.white.opacity(0.4), Color.white.opacity(0.2)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1.5
+                                )
                         )
                 )
             }
@@ -144,85 +257,44 @@ struct HomeView: View {
     // MARK: - Main Features Section
     private var payFeaturesSection: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 28)
+            RoundedRectangle(cornerRadius: 32)
                 .fill(Color.white)
                 .ignoresSafeArea(edges: .bottom)
-                .shadow(color: Color.black.opacity(0.06), radius: 20, x: 0, y: -5)
+                .shadow(color: Color.black.opacity(0.08), radius: 25, x: 0, y: -8)
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
+                    // Promotions
+                    promotionsSection
+                        .padding(.horizontal, 20)
                     
                     // Leaderboard Card
                     leaderboardCard
-                        .padding(.top, 28)
                         .padding(.horizontal, 20)
-
+                    
                     // Transaction History Button
                     transactionHistoryButton
                         .padding(.horizontal, 20)
+                        .padding(.bottom, 50)
 
-                    // Promotions
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text(L("promotions"))
-                                .font(.system(size: 22, weight: .bold, design: .rounded))
-                                .foregroundColor(.black)
-                            
-                            Spacer()
-                            
-                            Text("Limited Time")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.orange)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(
-                                    Capsule()
-                                        .fill(Color.orange.opacity(0.15))
-                                )
-                        }
-
-                        ScrollView(.horizontal, showsIndicators: false){
-                            HStack(spacing: 16){
-                                PromotionCard(
-                                    Promotiontitle: "Weekend Offers",
-                                    promotionDescription: "Pay to new users to earn more discounts",
-                                    icon: "gift.fill",
-                                    iconColor: Color.orange
-                                )
-                                
-                                PromotionCard(
-                                    Promotiontitle: "Transaction Offers",
-                                    promotionDescription: "Do more transaction instead of higher transactions",
-                                    icon: "chart.line.uptrend.xyaxis",
-                                    iconColor: Color.indigo
-                                )
-                                
-                                PromotionCard(
-                                    Promotiontitle: "Refer & Earn",
-                                    promotionDescription: "Share with your friends and earn 200 Coins",
-                                    icon: "person.2.fill",
-                                    iconColor: Color.green
-                                )
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 40)
                 }
+                .padding(.top,32)
+                .padding(.bottom,56)
             }
         }
     }
     
-    // MARK: - Leaderboard Card
+    // MARK: - Leaderboard Card (Enhanced with Real Data)
     private var leaderboardCard: some View {
         Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            print("🏆 Leaderboard card tapped")
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                 openLeaderboardView.toggle()
             }
         } label: {
-            VStack(spacing: 16) {
+            VStack(spacing: 18) {
                 HStack {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 12) {
                         ZStack {
                             Circle()
                                 .fill(
@@ -232,10 +304,10 @@ struct HomeView: View {
                                         endPoint: .bottomTrailing
                                     )
                                 )
-                                .frame(width: 44, height: 44)
+                                .frame(width: 48, height: 48)
                             
                             Image(systemName: "trophy.fill")
-                                .font(.system(size: 20, weight: .semibold))
+                                .font(.system(size: 22, weight: .semibold))
                                 .foregroundStyle(
                                     LinearGradient(
                                         colors: [Color.yellow, Color.orange],
@@ -245,116 +317,221 @@ struct HomeView: View {
                                 )
                         }
                         
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: 3) {
                             Text("Leaderboard")
-                                .font(.system(size: 18, weight: .bold))
+                                .font(.system(size: 19, weight: .bold))
                                 .foregroundColor(.black)
-                            Text("user rankings")
-                                .font(.system(size: 10))
-                                .foregroundColor(.gray)
+                            Text("Tap to expand")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.gray.opacity(0.6))
                         }
                     }
                     
                     Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.gray.opacity(0.5))
                 }
                 
                 Divider()
                 
-                // Top 3 Preview
-                HStack(spacing: 12) {
-                    // 2nd Place
-                    LeaderboardPreviewItem(
-                        rank: "2",
-                        name: "Sarah",
-                        score: "2,450",
-                        rankColor: .gray
-                    )
-                    
-                    // 1st Place
-                    LeaderboardPreviewItem(
-                        rank: "1",
-                        name: "You",
-                        score: "3,180",
-                        rankColor: .yellow,
-                        isHighlighted: true
-                    )
-                    
-                    // 3rd Place
-                    LeaderboardPreviewItem(
-                        rank: "3",
-                        name: "Mike",
-                        score: "1,890",
-                        rankColor: Color(hex: "CD7F32")
-                    )
+                // Top 3 Preview with Real Data
+                if leaderboardViewModel.isLoading {
+                    // Loading State
+                    HStack(spacing: 14) {
+                        ForEach(0..<3) { index in
+                            VStack(spacing: 10) {
+                                Circle()
+                                    .fill(Color.gray.opacity(0.2))
+                                    .frame(width: 48, height: 48)
+                                
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.gray.opacity(0.2))
+                                    .frame(width: 60, height: 30)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .shimmer()
+                } else if top3Users.count >= 3 {
+                    // Display actual top 3 users
+                    HStack(spacing: 14) {
+                        // 2nd Place
+                        LeaderboardPreviewItem(
+                            rank: "2",
+                            name: top3Users[1].firstName,
+                            score: "\(top3Users[1].noOfTransactions)",
+                            rankColor: Color(hex: "C0C0C0"),
+                            isHighlighted: top3Users[1].id == UserSession.shared.currentUser?.userId
+                        )
+                        
+                        // 1st Place
+                        LeaderboardPreviewItem(
+                            rank: "1",
+                            name: top3Users[0].id == UserSession.shared.currentUser?.userId ? "You" : top3Users[0].firstName,
+                            score: "\(top3Users[0].noOfTransactions)",
+                            rankColor: Color(hex: "FFD700"),
+                            isHighlighted: true
+                        )
+                        
+                        // 3rd Place
+                        LeaderboardPreviewItem(
+                            rank: "3",
+                            name: top3Users[2].firstName,
+                            score: "\(top3Users[2].noOfTransactions)",
+                            rankColor: Color(hex: "CD7F32"),
+                            isHighlighted: top3Users[2].id == UserSession.shared.currentUser?.userId
+                        )
+                    }
+                } else if !top3Users.isEmpty {
+                    // Display available users (less than 3)
+                    HStack(spacing: 14) {
+                        ForEach(Array(top3Users.enumerated()), id: \.element.id) { index, user in
+                            LeaderboardPreviewItem(
+                                rank: "\(index + 1)",
+                                name: user.id == UserSession.shared.currentUser?.userId ? "You" : user.firstName,
+                                score: "\(user.noOfTransactions)",
+                                rankColor: getRankColor(for: index + 1),
+                                isHighlighted: index == 0
+                            )
+                        }
+                    }
+                } else {
+                   Text("Sadly! No data in Leaderboard")
                 }
             }
-            .padding(20)
+            .padding(22)
             .background(
-                RoundedRectangle(cornerRadius: 20)
+                RoundedRectangle(cornerRadius: 24)
                     .fill(Color.white)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 20)
+                        RoundedRectangle(cornerRadius: 24)
                             .stroke(
                                 LinearGradient(
-                                    colors: [Color.yellow.opacity(0.3), Color.orange.opacity(0.3)],
+                                    colors: [Color.yellow.opacity(0.4), Color.orange.opacity(0.3)],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
-                                lineWidth: 1.5
+                                lineWidth: 2
                             )
                     )
-                    .shadow(color: Color.yellow.opacity(0.1), radius: 12, x: 0, y: 6)
+                    .shadow(color: Color.yellow.opacity(0.15), radius: 15, x: 0, y: 8)
             )
         }
     }
     
-    // MARK: - Transaction History Button
+    // Helper function to get rank colors
+    private func getRankColor(for rank: Int) -> Color {
+        switch rank {
+        case 1: return Color(hex: "FFD700") // Gold
+        case 2: return Color(hex: "C0C0C0") // Silver
+        case 3: return Color(hex: "CD7F32") // Bronze
+        default: return Color.gray
+        }
+    }
+    
+    // MARK: - Transaction History Button (Enhanced)
     private var transactionHistoryButton: some View {
         Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            print("📊 Transaction history tapped")
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                 openTransactionView.toggle()
                 hideTabBar.toggle()
             }
         } label: {
-            HStack(spacing: 14) {
-                Image(systemName: "arrow.left.arrow.right")
-                    .font(.system(size: 10,weight: .semibold))
-                    .foregroundStyle(.gray)
-                    Text("Transaction History")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.black)
-                Spacer()
+            HStack(spacing: 16) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(hex: "4B548D").opacity(0.05)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: "arrow.left.arrow.right")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color(hex: "4B548D")],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
                 
-                Text("view all")
-                    .font(.system(size: 12))
-                    .foregroundColor(.blue)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Transaction History")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.black)
+                    
+                    Text("View all transactions")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.gray)
+                }
+                
+                Spacer()
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 18)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.white)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [Color.purple.opacity(0.2), Color.blue.opacity(0.2)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
+        }
+    }
+    
+    // MARK: - Promotions Section (Enhanced)
+    private var promotionsSection: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                Spacer()
+                
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(Color.orange)
+                        .frame(width: 6, height: 6)
+                    
+                    Text("Limited Time")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.orange)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(
+                    Capsule()
+                        .fill(Color.orange.opacity(0.12))
+                )
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    PromotionCard(
+                        promotionTitle: "Weekend Offers",
+                        promotionDescription: "Pay to new users and earn exclusive discounts",
+                        icon: "gift.fill",
+                        iconColor: Color.orange,
+                        accentColor: Color.orange
                     )
-                    .shadow(color: Color.purple.opacity(0.08), radius: 8, x: 0, y: 4)
-            )
+                    
+                    PromotionCard(
+                        promotionTitle: "Transaction Bonus",
+                        promotionDescription: "Complete more transactions to unlock rewards",
+                        icon: "chart.line.uptrend.xyaxis",
+                        iconColor: Color.indigo,
+                        accentColor: Color.indigo
+                    )
+                    
+                    PromotionCard(
+                        promotionTitle: "Refer & Earn",
+                        promotionDescription: "Invite friends and earn 200 coins instantly",
+                        icon: "person.2.fill",
+                        iconColor: Color.green,
+                        accentColor: Color.green
+                    )
+                }
+                .padding(.vertical, 2)
+            }
         }
     }
 }
-// MARK: - Leaderboard Preview Item
+
+// MARK: - Leaderboard Preview Item (Enhanced)
 private struct LeaderboardPreviewItem: View {
     let rank: String
     let name: String
@@ -363,97 +540,134 @@ private struct LeaderboardPreviewItem: View {
     var isHighlighted: Bool = false
     
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             ZStack {
                 Circle()
-                    .fill(rankColor.opacity(0.2))
-                    .frame(width: isHighlighted ? 54 : 44, height: isHighlighted ? 54 : 44)
+                    .fill(rankColor.opacity(0.18))
+                    .frame(width: isHighlighted ? 58 : 48, height: isHighlighted ? 58 : 48)
+                
+                Circle()
+                    .stroke(rankColor.opacity(0.4), lineWidth: 2)
+                    .frame(width: isHighlighted ? 58 : 48, height: isHighlighted ? 58 : 48)
                 
                 Text(rank)
-                    .font(.system(size: isHighlighted ? 20 : 16, weight: .bold))
+                    .font(.system(size: isHighlighted ? 22 : 18, weight: .bold))
                     .foregroundColor(rankColor)
             }
             
-            VStack(spacing: 2) {
+            VStack(spacing: 3) {
                 Text(name)
-                    .font(.system(size: 12, weight: isHighlighted ? .bold : .semibold))
+                    .font(.system(size: 13, weight: isHighlighted ? .bold : .semibold))
                     .foregroundColor(.black)
+                    .lineLimit(1)
                 
                 Text(score)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.gray)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(isHighlighted ? rankColor.opacity(0.1) : Color.clear)
+            RoundedRectangle(cornerRadius: 14)
+                .fill(isHighlighted ? rankColor.opacity(0.2) : Color.clear)
         )
+        .scaleEffect(isHighlighted ? 1.05 : 1.0)
     }
 }
 
-// MARK: - Promotion Card
+// MARK: - Promotion Card (Enhanced)
 private struct PromotionCard: View {
-    var Promotiontitle:String
-    var promotionDescription:String
+    var promotionTitle: String
+    var promotionDescription: String
     var icon: String
     var iconColor: Color
+    var accentColor: Color
+    
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 16) {
             ZStack {
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 16)
                     .fill(
                         LinearGradient(
-                            colors: [iconColor.opacity(0.2), iconColor.opacity(0.2)],
+                            colors: [iconColor.opacity(0.2), iconColor.opacity(0.15)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 60, height: 60)
+                    .frame(width: 64, height: 64)
 
                 Image(systemName: icon)
-                    .font(.system(size: 26))
-                    .foregroundColor(iconColor)
-                
-                
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundColor(.white)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("\(Promotiontitle)")
-                    .font(.system(size: 16, weight: .semibold))
+            VStack(alignment: .leading, spacing: 6) {
+                Text(promotionTitle)
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.black)
 
-                Text("\(promotionDescription)")
-                    .font(.system(size: 13))
+                Text(promotionDescription)
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.gray)
                     .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
-            Spacer()
+            Spacer(minLength: 0)
         }
-        .padding(16)
-        .frame(width: 320)
+        .padding(18)
+        .frame(width: 330)
         .background(
-            RoundedRectangle(cornerRadius: 18)
+            RoundedRectangle(cornerRadius: 20)
                 .fill(Color.white)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 18)
-                        .stroke(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(
                             LinearGradient(
-                                colors: [iconColor.opacity(0.3), iconColor.opacity(0.3)],
+                                colors: [accentColor.opacity(0.19), accentColor.opacity(0.15)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1.5
+                            )
                         )
                 )
-                .shadow(color: iconColor.opacity(0.1), radius: 12, x: 0, y: 6)
+                .shadow(color: accentColor.opacity(0.12), radius: 14, x: 0, y: 7)
         )
     }
 }
 
+// MARK: - Shimmer Effect for Loading
+extension View {
+    func shimmer() -> some View {
+        self.modifier(ShimmerModifier())
+    }
+}
 
+struct ShimmerModifier: ViewModifier {
+    @State private var phase: CGFloat = 0
+    
+    func body(content: Content) -> some View {
+        content
+            .overlay(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        .clear,
+                        Color.white.opacity(0.3),
+                        .clear
+                    ]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .offset(x: phase)
+                .mask(content)
+            )
+            .onAppear {
+                withAnimation(Animation.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                    phase = 400
+                }
+            }
+    }
+}
 
 #Preview {
     HomeView(hideTabBar: .constant(false))

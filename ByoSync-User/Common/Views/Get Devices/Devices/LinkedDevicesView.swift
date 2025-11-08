@@ -3,132 +3,69 @@ import SwiftUI
 struct LinkedDevicesView: View {
     @StateObject private var viewModel = GetDevicesViewModel()
     @ObservedObject private var userSession = UserSession.shared
-
+    @Namespace private var animation
+    
     // Alert states
     @State private var showAlert = false
     @State private var alertTitle = ""
     @State private var alertMessage = ""
-
-    // Confirmation state
     @State private var showUnlinkConfirm = false
-    @State private var unlinkAction: (() -> Void)?
-    @State private var deviceToUnlink: DeviceData?
-
-    private let debugMode = false
+    @State private var deviceToUnlink: GetDeviceData?
     
-    // MARK: - Session Abstraction
     private var sessionProvider: SessionProvider {
         SessionProvider(userSession: userSession)
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
-                Color(.systemGroupedBackground).ignoresSafeArea()
+                // Background
+                Color(.systemGroupedBackground)
+                    .ignoresSafeArea()
+                
+                if viewModel.isLoading && viewModel.devices.isEmpty {
+                    ProgressView()
 
-                Group {
-                    // MARK: - Loading State
-                    if viewModel.isLoading && viewModel.devices.isEmpty {
-                        LoadingStateView()
-                    } else if viewModel.devices.isEmpty && !viewModel.isLoading {
-                        EmptyDevicesView()
-                    } else {
-                        // MARK: - Device List
-                        ScrollView {
-                            VStack(spacing: 16) {
-                                // Info banner
-                                ModernInfoBanner()
-                                    .padding(.horizontal, 16)
-                                    .padding(.top, 8)
-
-                                // Device cards
-                                LazyVStack(spacing: 12) {
-                                    ForEach(viewModel.devices) { device in
-                                        ModernDeviceCard(
-                                            device: device,
-                                            isCurrentDevice: sessionProvider.isCurrentDevice(device),
-                                            isThisDevicePrimary: sessionProvider.isThisDevicePrimary(),
-                                            onMakePrimary: {
-                                                HapticManager.impact(style: .medium)
-                                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                                    viewModel.changePrimaryDevice(to: device.id)
-                                                }
-                                            },
-                                            onUnlinkDevice: {
-                                                HapticManager.impact(style: .light)
-                                                deviceToUnlink = device
-                                                unlinkAction = {
-                                                    viewModel.unlinkOtherDevice(deviceId: device.id)
-                                                }
-                                                showUnlinkConfirm = true
-                                            }
-                                        )
-                                        .transition(.asymmetric(
-                                            insertion: .scale.combined(with: .opacity),
-                                            removal: .scale.combined(with: .opacity)
-                                        ))
-                                    }
-                                }
-                                .padding(.horizontal, 16)
-                            }
-                            .padding(.vertical, 8)
-                        }
-                        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.devices.count)
-                    }
+                } else if viewModel.devices.isEmpty && !viewModel.isLoading {
+                    emptyStateView
+                } else {
+                    deviceListView
                 }
-
+                
+                // Floating refresh indicator
                 if viewModel.isLoading && !viewModel.devices.isEmpty {
-                    VStack {
-                        HStack(spacing: 12) {
-                            ProgressView()
-                                .tint(.white)
-                            Text("Updating...")
-                                .font(.subheadline)
-                                .foregroundStyle(.white)
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Capsule())
-                        .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
-                        Spacer()
-                    }
-                    .padding(.top, 16)
+                    floatingLoadingIndicator
                 }
             }
-            .navigationTitle("Linked Devices")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle("Devices")
+            .navigationBarTitleDisplayMode(.inline)
             .onAppear {
-                withAnimation {
-                    viewModel.fetchUserDevices()
-                }
+                viewModel.fetchUserDevices()
             }
             .refreshable {
                 HapticManager.impact(style: .light)
                 await viewModel.fetchUserDevices()
             }
-
-            // Alerts
             .alert(alertTitle, isPresented: $showAlert) {
-                Button("OK", role: .cancel) {
-                    HapticManager.impact(style: .light)
-                }
+                Button("OK", role: .cancel) {}
             } message: {
                 Text(alertMessage)
             }
-            .alert("Unlink Device", isPresented: $showUnlinkConfirm) {
+            .alert("Unlink Device?", isPresented: $showUnlinkConfirm) {
                 Button("Cancel", role: .cancel) {
                     HapticManager.impact(style: .light)
                 }
                 Button("Unlink", role: .destructive) {
-                    HapticManager.impact(style: .medium)
-                    unlinkAction?()
+                    HapticManager.notification(type: .warning)
+                    if let device = deviceToUnlink {
+                        viewModel.unlinkOtherDevice(deviceId: device.id)
+                    }
                 }
             } message: {
-                Text(getUnlinkMessage())
+                if let device = deviceToUnlink {
+                    Text("'\(device.deviceName)' will be removed. You'll need to sign in again on that device.")
+                }
             }
-
-            // Alert triggers
             .onChange(of: viewModel.successMessage) { oldValue, newValue in
                 if let message = newValue {
                     HapticManager.notification(type: .success)
@@ -145,18 +82,177 @@ struct LinkedDevicesView: View {
             }
         }
     }
-
-    // MARK: - Helper Methods
-    private func getUnlinkMessage() -> String {
-        if let device = deviceToUnlink {
-            return "Are you sure you want to unlink '\(device.deviceName)'? You'll need to sign in again on that device."
-        } else if sessionProvider.isThisDevicePrimary() {
-            return "This will unlink all other devices linked to your account."
-        } else {
-            return "This will unlink this device from your account. You'll need to sign in again."
+    
+    // MARK: - Device List View
+    private var deviceListView: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Current Device Hero Section
+                if let currentDevice = viewModel.devices.first(where: { sessionProvider.isCurrentDevice($0) }) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("This Device")
+                                .font(.title3)
+                                .fontWeight(.bold)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 20)
+                        
+                        CurrentDeviceHeroCard(
+                            device: currentDevice,
+                            isPrimary: currentDevice.isPrimary
+                        )
+                        .padding(.horizontal, 20)
+                    }
+                }
+                
+                // Other Devices Section
+                let otherDevices = viewModel.devices.filter { !sessionProvider.isCurrentDevice($0) }
+                if !otherDevices.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Other Devices")
+                                .font(.title3)
+                                .fontWeight(.bold)
+                            
+                            Spacer()
+                            
+                            Text("\(otherDevices.count)")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .frame(minWidth: 28, minHeight: 28)
+                                .background(
+                                    Circle()
+                                        .fill(Color.blue)
+                                )
+                        }
+                        .padding(.horizontal, 20)
+                        
+                        VStack(spacing: 12) {
+                            ForEach(otherDevices) { device in
+                                OtherDeviceCard(
+                                    device: device,
+                                    isThisDevicePrimary: sessionProvider.isThisDevicePrimary(),
+                                    onMakePrimary: {
+                                        HapticManager.impact(style: .medium)
+                                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                                            viewModel.changePrimaryDevice(to: device.id)
+                                        }
+                                    },
+                                    onUnlink: {
+                                        HapticManager.impact(style: .light)
+                                        deviceToUnlink = device
+                                        showUnlinkConfirm = true
+                                    }
+                                )
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                }
+                
+                // Info Card
+                SecurityInfoCard()
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+            }
+            .padding(.vertical, 20)
         }
     }
-
+    
+    
+    // MARK: - Empty State View
+    private var emptyStateView: some View {
+        VStack(spacing: 32) {
+            Spacer()
+            
+            ZStack {
+                // Animated circles
+                ForEach(0..<3) { index in
+                    Circle()
+                        .stroke(
+                            LinearGradient(
+                                colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 2
+                        )
+                        .frame(width: 140 + CGFloat(index * 40), height: 140 + CGFloat(index * 40))
+                        .opacity(0.3 - Double(index) * 0.1)
+                }
+                
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.blue, Color.purple],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 140, height: 140)
+                    
+                    Image(systemName: "iphone.and.ipad")
+                        .font(.system(size: 60))
+                        .foregroundColor(.white)
+                }
+            }
+            .frame(height: 220)
+            
+            VStack(spacing: 12) {
+                Text("No Devices Yet")
+                    .font(.title)
+                    .fontWeight(.bold)
+                
+                Text("Sign in on other devices to see them here.\nManage and secure all your devices from one place.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+            }
+            
+            Spacer()
+        }
+    }
+    
+    // MARK: - Floating Loading Indicator
+    private var floatingLoadingIndicator: some View {
+        VStack {
+            HStack(spacing: 12) {
+                ProgressView()
+                    .tint(.white)
+                Text("Updating...")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.white)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(
+                Capsule()
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.blue, Color.purple],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                    )
+            )
+            .shadow(color: .black.opacity(0.2), radius: 15, y: 8)
+            
+            Spacer()
+        }
+        .padding(.top, 16)
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+    
+    // MARK: - Helper Methods
     private func showMessageAlert(title: String, message: String) {
         alertTitle = title
         alertMessage = message
@@ -164,246 +260,106 @@ struct LinkedDevicesView: View {
     }
 }
 
-// MARK: - Session Provider (Abstraction Layer)
-struct SessionProvider {
-    private let userSession: UserSession
-    
-    init(userSession: UserSession) {
-        self.userSession = userSession
-    }
-    
-    
-    /// Get the current device ID from the appropriate session
-    private var currentDeviceID: String {
-            return userSession.currentUserDeviceID
-        }
-    
-    /// Check if the current device is primary
-    func isThisDevicePrimary() -> Bool {
-            return userSession.thisDeviceIsPrimary
-        }
-    
-    /// Check if a given device is the current device
-    func isCurrentDevice(_ device: DeviceData) -> Bool {
-        return device.id == currentDeviceID
-    }
-}
-
-
-// MARK: - Loading State View
-struct LoadingStateView: View {
-    var body: some View {
-        VStack(spacing: 20) {
-                ProgressView()
-                    .scaleEffect(1.3)
-            
-            
-            VStack(spacing: 8) {
-                Text("Loading Devices")
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                
-                Text("Please wait while we fetch your devices")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-        }
-        .padding()
-    }
-}
-
-// MARK: - Empty Devices View
-struct EmptyDevicesView: View {
-    var body: some View {
-        VStack(spacing: 24) {
-            // Icon with background
-            ZStack {
-                Circle()
-                    .fill(Color.blue.opacity(0.1))
-                    .frame(width: 120, height: 120)
-                
-                Image(systemName: "laptopcomputer.and.iphone")
-                    .font(.system(size: 50))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.blue, .blue.opacity(0.7)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-            
-            VStack(spacing: 12) {
-                Text("No Linked Devices")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                
-                Text("Your devices will appear here once you sign in on other devices")
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-            }
-        }
-        .padding()
-    }
-}
-
-// MARK: - Modern Info Banner
-struct ModernInfoBanner: View {
-    var body: some View {
-        HStack(spacing: 14) {
-            // Icon with gradient background
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.blue.opacity(0.2), Color.blue.opacity(0.1)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 44, height: 44)
-                
-                Image(systemName: "info.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(.blue)
-            }
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Primary Device")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                
-                Text("Only the primary device can manage other devices")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            
-            Spacer(minLength: 0)
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.blue.opacity(0.08))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.blue.opacity(0.2), lineWidth: 1)
-                )
-        )
-    }
-}
-
-// MARK: - Modern Device Card
-struct ModernDeviceCard: View {
-    let device: DeviceData
-    let isCurrentDevice: Bool
-    let isThisDevicePrimary: Bool
-    let onMakePrimary: () -> Void
-    let onUnlinkDevice: () -> Void
-    
-    @State private var isPressed = false
+// MARK: - Current Device Hero Card
+struct CurrentDeviceHeroCard: View {
+    let device: GetDeviceData
+    let isPrimary: Bool
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header section with device info
-            HStack(spacing: 14) {
-                // Device icon with gradient
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    deviceIconColor.opacity(0.2),
-                                    deviceIconColor.opacity(0.1)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 56, height: 56)
-                    
-                    Image(systemName: deviceIcon)
-                        .font(.system(size: 26))
-                        .foregroundStyle(deviceIconColor)
-                }
+            // Top gradient section
+            ZStack(alignment: .topTrailing) {
+                LinearGradient(
+                    colors: [Color(hex: "4B548D"),Color(hex: "4B548D")],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
                 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(device.deviceName)
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    
-                    // Status badges
-                    HStack(spacing: 8) {
-                        if device.isPrimary {
-                            StatusBadge(
-                                text: "Primary",
-                                icon: "star.fill",
-                                color: .blue
-                            )
-                        }
+                // Decorative circles
+                Circle()
+                    .fill(Color.white.opacity(0.1))
+                    .frame(width: 120, height: 120)
+                    .offset(x: 40, y: -30)
+                
+                Circle()
+                    .fill(Color.white.opacity(0.05))
+                    .frame(width: 80, height: 80)
+                    .offset(x: -20, y: 50)
+                
+                // Content
+                HStack(spacing: 16) {
+                    // Device icon
+                    ZStack {
+                        Circle()
+                            .fill(Color.white.opacity(0.2))
+                            .frame(width: 70, height: 70)
                         
-                        if isCurrentDevice {
-                            StatusBadge(
-                                text: "This Device",
-                                icon: "checkmark.circle.fill",
-                                color: .green
+                        Image(systemName: deviceIcon)
+                            .font(.system(size: 35))
+                            .foregroundColor(.white)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(device.deviceName)
+                            .font(.title3)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                        
+                        if isPrimary {
+                            HStack(spacing: 6) {
+                                Image(systemName: "star.fill")
+                                    .font(.caption)
+                                Text("Primary Device")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                            }
+                            .foregroundColor(.yellow)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(Color.white.opacity(0.2))
                             )
+                        } else {
+                            Text("Secondary Device")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.8))
                         }
                     }
                     
-                    // Last updated
-                    if let lastUpdated = formatDate(device.updatedAt) {
-                        Text("Updated \(lastUpdated)")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
+                    Spacer()
                 }
-                
-                Spacer()
+                .padding(24)
             }
-            .padding(16)
+            .frame(height: 140)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             
-            // Action buttons section
-            if shouldShowActions {
-                Divider()
-                    .padding(.horizontal, 16)
+            // Bottom info section
+            HStack(spacing: 0) {
+                InfoPill(
+                    icon: "checkmark.shield.fill",
+                    title: "Active",
+                    color: .green
+                )
                 
-                HStack(spacing: 10) {
-                    // Make Primary button
-                    if !device.isPrimary && isThisDevicePrimary {
-                        ModernActionButton(
-                            title: "Make Primary",
-                            icon: "star.fill",
-                            color: .blue,
-                            style: .bordered,
-                            action: onMakePrimary
-                        )
-                    }
-                    
-                    // Unlink button
-                    if shouldShowUnlinkButton && canUnlink {
-                        ModernActionButton(
-                            title: "Unlink",
-                            icon: "trash.fill",
-                            color: .red,
-                            style: device.isPrimary ? .filled : .bordered,
-                            action: onUnlinkDevice
-                        )
-                    }
+                Divider()
+                    .frame(height: 30)
+                
+                if let lastUpdated = formatDate(device.updatedAt) {
+                    InfoPill(
+                        icon: "clock.fill",
+                        title: lastUpdated,
+                        color: .blue
+                    )
                 }
-                .padding(16)
             }
+            .padding(.vertical, 16)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .offset(y: -20)
         }
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
-        .scaleEffect(isPressed ? 0.98 : 1.0)
+        .shadow(color: .black.opacity(0.1), radius: 20, y: 10)
     }
-    
-    // MARK: - Computed Properties
     
     private var deviceIcon: String {
         let name = device.deviceName.lowercased()
@@ -413,33 +369,9 @@ struct ModernDeviceCard: View {
             return "ipad.gen2"
         } else if name.contains("mac") {
             return "laptopcomputer"
-        } else if name.contains("watch") {
-            return "applewatch"
         } else {
             return "iphone.gen3"
         }
-    }
-    
-    private var deviceIconColor: Color {
-        if device.isPrimary {
-            return .blue
-        } else if isCurrentDevice {
-            return .green
-        } else {
-            return .gray
-        }
-    }
-    
-    private var shouldShowActions: Bool {
-        return !device.isPrimary || isCurrentDevice
-    }
-    
-    private var shouldShowUnlinkButton: Bool {
-        return !device.isPrimary
-    }
-    
-    private var canUnlink: Bool {
-        return isCurrentDevice || isThisDevicePrimary
     }
     
     private func formatDate(_ dateString: String) -> String? {
@@ -451,19 +383,178 @@ struct ModernDeviceCard: View {
         let components = calendar.dateComponents([.day, .hour, .minute], from: date, to: now)
         
         if let days = components.day, days > 0 {
-            return days == 1 ? "1 day ago" : "\(days) days ago"
+            return days == 1 ? "1d ago" : "\(days)d ago"
         } else if let hours = components.hour, hours > 0 {
-            return hours == 1 ? "1 hour ago" : "\(hours) hours ago"
+            return hours == 1 ? "1h ago" : "\(hours)h ago"
         } else if let minutes = components.minute, minutes > 0 {
-            return minutes == 1 ? "1 minute ago" : "\(minutes) minutes ago"
+            return minutes == 1 ? "1m ago" : "\(minutes)m ago"
         } else {
-            return "Just now"
+            return "Now"
         }
     }
 }
 
-// MARK: - Status Badge
-struct StatusBadge: View {
+// MARK: - Info Pill
+struct InfoPill: View {
+    let icon: String
+    let title: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundColor(color)
+            
+            Text(title)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Other Device Card
+struct OtherDeviceCard: View {
+    let device: GetDeviceData
+    let isThisDevicePrimary: Bool
+    let onMakePrimary: () -> Void
+    let onUnlink: () -> Void
+    
+    @State private var showActions = false
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Main content
+            Button(action: {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    showActions.toggle()
+                    if showActions {
+                        HapticManager.impact(style: .light)
+                    }
+                }
+            }) {
+                HStack(spacing: 16) {
+                    // Device icon
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(
+                                LinearGradient(
+                                    colors: device.isPrimary ?
+                                        [Color.blue.opacity(0.2), Color.purple.opacity(0.2)] :
+                                        [Color.gray.opacity(0.1), Color.gray.opacity(0.05)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 56, height: 56)
+                        
+                        Image(systemName: deviceIcon)
+                            .font(.system(size: 26))
+                            .foregroundColor(device.isPrimary ? .blue : .gray)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(device.deviceName)
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        HStack(spacing: 8) {
+                            if device.isPrimary {
+                                CompactBadge(text: "Primary", icon: "star.fill", color: .blue)
+                            }
+                            
+                            if let lastUpdated = formatDate(device.updatedAt) {
+                                CompactBadge(text: lastUpdated, icon: "clock", color: .gray)
+                            }
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: showActions ? "chevron.up" : "chevron.down")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                        .rotationEffect(.degrees(showActions ? 0 : 0))
+                }
+                .padding(16)
+                .background(Color(.secondarySystemGroupedBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            // Action buttons
+            if showActions {
+                VStack(spacing: 10) {
+                    if !device.isPrimary && isThisDevicePrimary {
+                        ActionButton(
+                            title: "Make Primary Device",
+                            icon: "star.fill",
+                            color: .blue,
+                            style: .prominent,
+                            action: onMakePrimary
+                        )
+                    }
+                    
+                    if isThisDevicePrimary {
+                        ActionButton(
+                            title: "Unlink Device",
+                            icon: "trash.fill",
+                            color: .red,
+                            style: .destructive,
+                            action: onUnlink
+                        )
+                    }
+                }
+                .padding(16)
+                .background(Color(.tertiarySystemGroupedBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .transition(.asymmetric(
+                    insertion: .scale(scale: 0.95).combined(with: .opacity),
+                    removal: .scale(scale: 0.95).combined(with: .opacity)
+                ))
+            }
+        }
+        .shadow(color: .black.opacity(0.05), radius: 8, y: 4)
+    }
+    
+    private var deviceIcon: String {
+        let name = device.deviceName.lowercased()
+        if name.contains("iphone") {
+            return "iphone.gen3"
+        } else if name.contains("ipad") {
+            return "ipad.gen2"
+        } else if name.contains("mac") {
+            return "laptopcomputer"
+        } else {
+            return "iphone.gen3"
+        }
+    }
+    
+    private func formatDate(_ dateString: String) -> String? {
+        let formatter = ISO8601DateFormatter()
+        guard let date = formatter.date(from: dateString) else { return nil }
+        
+        let now = Date()
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.day, .hour, .minute], from: date, to: now)
+        
+        if let days = components.day, days > 0 {
+            return days == 1 ? "1d ago" : "\(days)d ago"
+        } else if let hours = components.hour, hours > 0 {
+            return hours == 1 ? "1h ago" : "\(hours)h ago"
+        } else if let minutes = components.minute, minutes > 0 {
+            return minutes == 1 ? "1m ago" : "\(minutes)m ago"
+        } else {
+            return "Now"
+        }
+    }
+}
+
+// MARK: - Compact Badge
+struct CompactBadge: View {
     let text: String
     let icon: String
     let color: Color
@@ -471,53 +562,117 @@ struct StatusBadge: View {
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
-                .font(.system(size: 10))
+                .font(.system(size: 9))
             Text(text)
                 .font(.caption2)
                 .fontWeight(.medium)
         }
+        .foregroundColor(color)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(color.opacity(0.15))
-        .foregroundColor(color)
+        .background(color.opacity(0.1))
         .clipShape(Capsule())
     }
 }
 
-// MARK: - Modern Action Button
-struct ModernActionButton: View {
+// MARK: - Action Button
+struct ActionButton: View {
     let title: String
     let icon: String
     let color: Color
-    let style: ButtonDisplayStyle
+    let style: ButtonActionStyle
     let action: () -> Void
     
-    enum ButtonDisplayStyle {
-        case filled
-        case bordered
+    enum ButtonActionStyle {
+        case prominent
+        case destructive
     }
     
     var body: some View {
         Button(action: action) {
-            Label(title, systemImage: icon)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(
-                    Group {
-                        if style == .filled {
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(color)
-                        } else {
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(color.opacity(0.1))
-                        }
-                    }
-                )
-                .foregroundColor(style == .filled ? .white : color)
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(style == .prominent ? color : Color.clear)
+            )
+            .foregroundColor(style == .prominent ? .white : color)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(color.opacity(style == .prominent ? 0 : 0.3), lineWidth: 2)
+            )
         }
         .buttonStyle(ScaleButtonStyle())
+    }
+}
+
+// MARK: - Security Info Card
+struct SecurityInfoCard: View {
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.green.opacity(0.2), Color.mint.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 50, height: 50)
+                
+                Image(systemName: "lock.shield.fill")
+                    .font(.title3)
+                    .foregroundColor(.green)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Secure & Protected")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                
+                Text("Only your primary device can manage linked devices")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 8, y: 4)
+    }
+}
+
+// MARK: - Session Provider
+struct SessionProvider {
+    private let userSession: UserSession
+    
+    init(userSession: UserSession) {
+        self.userSession = userSession
+    }
+    
+    private var currentDeviceID: String {
+        return userSession.currentUserDeviceID
+    }
+    
+    func isThisDevicePrimary() -> Bool {
+        return userSession.thisDeviceIsPrimary
+    }
+    
+    func isCurrentDevice(_ device: GetDeviceData) -> Bool {
+        return device.id == currentDeviceID
     }
 }
 
@@ -525,7 +680,7 @@ struct ModernActionButton: View {
 struct ScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }

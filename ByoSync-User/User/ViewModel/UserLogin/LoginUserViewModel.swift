@@ -71,8 +71,11 @@ final class LoginViewModel: ObservableObject {
             email: userData.email,
             phoneNumber: userData.phoneNumber,
             deviceKey: deviceData.deviceKey,
-            deviceName: deviceData.deviceName
+            deviceName: deviceData.deviceName,
+            userId: deviceData.user,
+            userDeviceId: deviceData.id
         )
+        print("✅ Saved user with userId : \(deviceData.user)")
         
         // Save to session
         UserSession.shared.saveUser(user)

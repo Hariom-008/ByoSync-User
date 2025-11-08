@@ -10,230 +10,133 @@ struct EnterAmountView: View {
 
     // MARK: - Validation
     private var isValidAmount: Bool {
-        guard let amountValue = Double(amount), amountValue > 0 else { return false }
+        guard let amountValue = Int(amount), amountValue > 0 else {
+            print("DEBUG: Invalid amount - value: \(amount)")
+            return false
+        }
+        print("DEBUG: Valid amount - value: \(amountValue)")
         return true
     }
 
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background gradient
-                LinearGradient(
-                    colors: [Color(hex: "F8F9FD"), Color.white],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+                // Simple background
+                Color(hex: "F8F9FD")
+                    .ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     // MARK: - Top Navigation
                     HStack {
                         Button(action: {
+                            print("DEBUG: Dismiss button tapped")
                             dismiss()
                             hideTabBar = false
                         }) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 16, weight: .semibold))
+                            Image(systemName: "xmark")
+                                .font(.system(size: 16, weight: .medium))
                                 .foregroundColor(.primary)
-                                .frame(width: 40, height: 40)
-                                .background(Color.white)
-                                .clipShape(Circle())
-                                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+                                .frame(width: 44, height: 44)
                         }
                         Spacer()
-                        Text(String(localized: "enter_amount.title"))
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Color.clear.frame(width: 40, height: 40)
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
-                    .padding(.bottom, 24)
 
-                    ScrollView {
-                        VStack(spacing: 32) {
-                            // MARK: - Recipient Info Card
-                            VStack(spacing: 16) {
-                                ZStack {
-                                    Circle()
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [
-                                                    Color(hex: "4B548D").opacity(0.1),
-                                                    Color(hex: "4B548D").opacity(0.05)
-                                                ],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                        .frame(width: 60, height: 60)
+                    Spacer()
 
-                                    Image("merchant_photo")
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fit)
-                                        .frame(width: 60, height: 60)
-                                        .clipShape(Circle())
-                                        .overlay(
-                                            Circle()
-                                                .stroke(Color.white, lineWidth: 3)
-                                        )
-                                        .shadow(color: Color(hex: "4B548D").opacity(0.25), radius: 12, x: 0, y: 6)
-                                }
-                                .padding(.top, 12)
+                    // MARK: - Amount Input Section (Centered)
+                    VStack(spacing: 24) {
+                        Text(String(localized: "enter_amount.enter_amount"))
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.secondary)
 
-                                VStack(spacing: 6) {
-                                    Text(String(localized: "enter_amount.merchant"))
-                                        .font(.system(size: 20, weight: .bold))
-                                        .foregroundColor(.primary)
-
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "phone.fill")
-                                            .font(.system(size: 12))
-                                            .foregroundColor(.secondary)
-                                        Text(String(localized: "common.phone_number"))
-                                            .font(.system(size: 15))
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-
-                                // Status badge
-                                HStack(spacing: 4) {
-                                    Circle()
-                                        .fill(Color(hex: "4CAF50"))
-                                        .frame(width: 8, height: 8)
-                                    Text(String(localized: "enter_amount.ready_to_receive"))
-                                        .font(.system(size: 13, weight: .medium))
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color(hex: "4CAF50").opacity(0.1))
-                                .clipShape(Capsule())
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 24)
-                            .background(
-                                RoundedRectangle(cornerRadius: 24)
-                                    .fill(Color.white)
-                                    .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 4)
-                            )
-                            .padding(.horizontal, 20)
-
-                            // MARK: - Amount Input Section
-                            VStack(spacing: 20) {
-                                Text(String(localized: "enter_amount.enter_amount"))
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(.secondary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 20)
-
-                                HStack(spacing: 8) {
-                                    Text(String(localized: "common.currency_symbol"))
-                                        .font(.system(size: 32, weight: .bold))
-                                        .foregroundColor(amount.isEmpty ? .gray : Color(hex: "4B548D"))
-
-                                    TextField(String(localized: "enter_amount.amount_placeholder"), text: $amount)
-                                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                                        .keyboardType(.decimalPad)
-                                        .foregroundColor(amount.isEmpty ? .gray : .black)
-                                        .focused($isAmountFocused)
-                                        .lineLimit(1)
-                                        .multilineTextAlignment(.center)
-
-                                    if !amount.isEmpty {
-                                        Button(action: {
-                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                                amount = ""
-                                            }
-                                        }) {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .font(.system(size: 24))
-                                                .foregroundColor(.gray.opacity(0.4))
-                                        }
-                                        .transition(.scale.combined(with: .opacity))
-                                    }
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 20)
+                        ZStack{
+                            // Amount TextField
+                            TextField(String(localized: "enter_amount.amount_placeholder"), text: $amount)
+                                .font(.system(size: 56, weight: .bold, design: .rounded))
+                                .keyboardType(.numberPad)
+                                .foregroundColor(.primary)
+                                .focused($isAmountFocused)
+                                .multilineTextAlignment(.center)
+                                .frame(height: 80)
+                                .padding(.horizontal, 40)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 20)
+                                    RoundedRectangle(cornerRadius: 16)
                                         .fill(Color.white)
-                                        .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 4)
+                                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
                                 )
-                                .padding(.horizontal, 20)
-
-                                // Amount display
-                                if !amount.isEmpty, let amountValue = Double(amount) {
-                                    HStack(spacing: 8) {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(Color(hex: "4CAF50"))
-                                        Text(String(format: String(localized: "enter_amount.amount_format"), amountValue))
-                                            .font(.system(size: 14, weight: .medium))
-                                            .foregroundColor(.secondary)
+                                .padding(.horizontal, 40)
+                                .onChange(of: amount) { oldValue, newValue in
+                                    print("DEBUG: Amount changed from '\(oldValue)' to '\(newValue)'")
+                                    // Filter to allow only numbers
+                                    let filtered = newValue.filter { $0.isNumber }
+                                    if filtered != newValue {
+                                        amount = filtered
+                                        print("DEBUG: Amount filtered to '\(filtered)'")
                                     }
-                                    .padding(.horizontal, 20)
-                                    .transition(.move(edge: .top).combined(with: .opacity))
+                                }
+                            
+                            VStack{
+                                Spacer()
+                                // Clear button
+                                if !amount.isEmpty {
+                                    Button(action: {
+                                        HapticManager.impact(style: .light)
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                            amount = ""
+                                        }
+                                    }) {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .font(.system(size: 14))
+                                            Text("Clear")
+                                                .font(.system(size: 15, weight: .medium))
+                                        }
+                                        .foregroundColor(.secondary)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color.gray.opacity(0.1))
+                                        )
+                                    }
+                                    .transition(.scale.combined(with: .opacity))
                                 }
                             }
-
-                            Spacer(minLength: 20)
                         }
-                        .padding(.bottom, 120)
                     }
+                    
+                    Spacer()
 
-                    // MARK: - Bottom Action Buttons
-                    VStack(spacing: 12) {
-                        if isKeyboardVisible {
-                            Button(action: {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    isAmountFocused = false
-                                }
-                            }) {
-                                Label(String(localized: "enter_amount.hide_keyboard"), systemImage: "keyboard.chevron.compact.down")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
-                                    .foregroundColor(.white)
-                                    .background(Color.gray.opacity(0.6))
-                                    .cornerRadius(12)
-                            }
-                        }
-
+                    // MARK: - Bottom Continue Button
+                    VStack(spacing: 0) {
                         if isValidAmount {
                             NavigationLink(destination: SortedUsersView(hideTabBar: $hideTabBar, amount: $amount)) {
-                                Label(String(localized: "enter_amount.continue_payment"), systemImage: "arrow.right")
-                                    .font(.system(size: 16, weight: .semibold))
+                                Text("Continue")
+                                    .font(.system(size: 17, weight: .semibold))
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 16)
                                     .foregroundColor(.white)
-                                    .background(
-                                        LinearGradient(
-                                            colors: [Color(hex: "4B548D"), Color(hex: "5E68A6")],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .cornerRadius(14)
-                                    .shadow(color: Color(hex: "4B548D").opacity(0.3), radius: 12, x: 0, y: 6)
+                                    .background(Color(hex: "4B548D"))
+                                    .cornerRadius(12)
                             }
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 16)
-                    .background(Color.white)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isKeyboardVisible)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isValidAmount)
+                    .animation(.easeInOut(duration: 0.25), value: isValidAmount)
                 }
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
             .navigationBarHidden(true)
             .onAppear {
+                print("DEBUG: EnterAmountView appeared")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     isAmountFocused = true
                     hideTabBar = true
+                    print("DEBUG: Keyboard focused and tab bar hidden")
                 }
 
                 // Keyboard observers
@@ -242,6 +145,7 @@ struct EnterAmountView: View {
                     object: nil,
                     queue: .main
                 ) { _ in
+                    print("DEBUG: Keyboard will show")
                     withAnimation(.easeOut(duration: 0.25)) {
                         isKeyboardVisible = true
                     }
@@ -252,12 +156,14 @@ struct EnterAmountView: View {
                     object: nil,
                     queue: .main
                 ) { _ in
+                    print("DEBUG: Keyboard will hide")
                     withAnimation(.easeOut(duration: 0.25)) {
                         isKeyboardVisible = false
                     }
                 }
             }
             .onDisappear {
+                print("DEBUG: EnterAmountView disappeared")
                 NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillShowNotification, object: nil)
                 NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillHideNotification, object: nil)
             }

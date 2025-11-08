@@ -4,7 +4,7 @@ import Foundation
 struct UserAPIEndpoint{
     //static let baseURL = "http://192.168.1.16:7000"
     
-    static let baseURL = "https://byo-sync-backend-testing.vercel.app/"
+    static let baseURL = "https://byo-sync-backend-testing.vercel.app"
     
     // Login,Register,Phone & Email Verification
     struct Auth {
@@ -76,14 +76,20 @@ struct UserAPIEndpoint{
     struct GetUserSorted{
         static let getUserSortedbyTransaction = "\(baseURL)/api/v1/users/get-users-sorted-by-noOf-transactions-received"
     }
+    
+    struct Leaderboard{
+        static let getRankboard = "\(baseURL)/api/v1/users/get-users-rank-board"
+    }
 }
 
 
 struct CommonEndpoint{
-    static let baseURL = "https://byo-sync-backend-testing.vercel.app/"
+    static let baseURL = "https://byo-sync-backend-testing.vercel.app"
     
     static let summaryTransactionData = "\(baseURL)/api/v1/recons/merchant-and-user-summary"
     
     static let CreateOrder = "\(baseURL)/api/v1/orders/create"
+    
+    
 }
 

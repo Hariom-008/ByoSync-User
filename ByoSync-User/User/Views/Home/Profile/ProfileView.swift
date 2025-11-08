@@ -35,7 +35,7 @@ struct ProfileView: View {
             
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
-                    headerSection
+                   // headerSection
                     profileHeaderCard
                     personalInfoCard
                     quickActionsCard
@@ -69,7 +69,42 @@ struct ProfileView: View {
                     .zIndex(100)
             }
         }
-        .navigationBarBackButtonHidden(true)
+        .navigationTitle("Profile")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar{
+            ToolbarItem(placement: .navigationBarTrailing){
+                HStack{
+                    Button {
+                        openTestinLinkedDeviceView.toggle()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "iphone.gen3")
+                                .font(.system(size: 15, weight: .semibold))
+                        }
+                        .foregroundStyle(Color(hex: "4B548D"))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .fill(Color(hex: "4B548D").opacity(0.1))
+                        )
+                    }
+                    Button {
+                        openSettingView.toggle()
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color(hex: "4B548D"))
+                            .frame(width: 40, height: 40)
+                            .background(
+                                Circle()
+                                    .fill(Color(hex: "4B548D").opacity(0.1))
+                            )
+                    }
+                }
+
+            }
+        }
         .sheet(isPresented: $showEditProfile) {
             EditProfileView()
                 .onDisappear {
@@ -102,60 +137,6 @@ struct ProfileView: View {
             }
         }
     }
-    
-    private var headerSection: some View {
-        ZStack {
-            // Centered title
-            Text(L("profile_title"))
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color(hex: "4B548D"), Color(hex: "6B74A8")],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-            
-            // Side buttons
-            HStack {
-                Button {
-                    openTestinLinkedDeviceView.toggle()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "iphone.gen3")
-                            .font(.system(size: 15, weight: .semibold))
-                        Text("Devices")
-                            .font(.system(size: 12, weight: .semibold))
-                    }
-                    .foregroundStyle(Color(hex: "4B548D"))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(
-                        Capsule()
-                            .fill(Color(hex: "4B548D").opacity(0.1))
-                    )
-                }
-                
-                Spacer()
-                
-                Button {
-                    openSettingView.toggle()
-                } label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 15))
-                        .foregroundStyle(Color(hex: "4B548D"))
-                        .frame(width: 40, height: 40)
-                        .background(
-                            Circle()
-                                .fill(Color(hex: "4B548D").opacity(0.1))
-                        )
-                }
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
-    }
-    
     // MARK: - Profile Header Card
     private var profileHeaderCard: some View {
         VStack(spacing: 20) {

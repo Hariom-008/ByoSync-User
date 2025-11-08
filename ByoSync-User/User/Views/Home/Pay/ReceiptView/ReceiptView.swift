@@ -6,16 +6,13 @@ struct ReceiptView: View {
     @State private var showContent = false
     @State private var showButton = false
     @Binding var hideTabBar: Bool
-    @Binding var selectedUser: UserData?
+    @Binding var selectedUser: UserData
+    @Binding var orderId: String
 
     var amount: Int
 
-     var merchantName: String { selectedUser?.firstName ?? "Merchant" }
-     var merchantPhone: String { selectedUser?.phoneNumber ?? "+91XXXXXXXXXX" }
-     var transactionID: String = "#TXN\(Int.random(in: 10000...99999))BYO"
-
     var cashback: String {
-        "\((Int(amount) ?? 0) * 10 / 100)"
+        "\((Int(amount)) * 10 / 100)"
     }
 
     var body: some View {
@@ -40,7 +37,7 @@ struct ReceiptView: View {
                         .padding(.horizontal, 20)
                         .padding(.bottom, 20)
 
-                    merchantCardView
+                    recipientCardView
                         .padding(.horizontal, 20)
                         .padding(.bottom, 20)
 
@@ -126,22 +123,30 @@ struct ReceiptView: View {
             Text(String(localized: "receipt.amount_paid"))
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.secondary)
-            
-            Text("\(String(localized: "common.currency_symbol"))\(amount)")
-                .font(.system(size: 48, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
-            
-            HStack(spacing: 6) {
-                Image(systemName: String(localized: "icon.gift_fill"))
-                    .font(.system(size: 12))
-                Text(String(format: String(localized: "receipt.cashback_earned"), cashback))
-                    .font(.system(size: 14, weight: .semibold))
+            HStack{
+                Image("byosync_coin")
+                    .resizable()
+                    .interpolation(.high)  // Better quality interpolation
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 40, height: 40)
+                    .clipShape(Circle())  // If it's a circular coin
+                    .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)  // Adds depth
+                Text("\(amount)")
+                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
             }
-            .foregroundColor(Color(hex: "4CAF50"))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(Color(hex: "4CAF50").opacity(0.12))
-            .clipShape(Capsule())
+            
+//            HStack(spacing: 6) {
+//                Image(systemName: String(localized: "icon.gift_fill"))
+//                    .font(.system(size: 12))
+//                Text(String(format: String(localized: "receipt.cashback_earned"), cashback))
+//                    .font(.system(size: 14, weight: .semibold))
+//            }
+//            .foregroundColor(Color(hex: "4CAF50"))
+//            .padding(.horizontal, 14)
+//            .padding(.vertical, 8)
+//            .background(Color(hex: "4CAF50").opacity(0.12))
+//            .clipShape(Capsule())
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
@@ -155,52 +160,73 @@ struct ReceiptView: View {
         .animation(.easeOut(duration: 0.5).delay(0.3), value: showContent)
     }
     
-    // MARK: - Merchant Card
-    private var merchantCardView: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(Color(hex: "F0F1F5"))
-                    .frame(width: 64, height: 64)
-                
-                Image("merchant_photo")
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 58, height: 58)
-                    .clipShape(Circle())
-            }
-            
-            VStack(alignment: .leading, spacing: 6) {
-                Text(merchantName)
+    // MARK: - Recipient Card
+    private var recipientCardView: some View {
+        VStack(spacing: 16) {
+            HStack(spacing: 10) {
+                Image(systemName: "arrow.up.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(Color(hex: "4B548D"))
+                Text("Paid To")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.primary)
-                
-                HStack(spacing: 4) {
-                    Image(systemName: String(localized: "icon.phone_fill"))
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                    Text(merchantPhone)
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                }
+                Spacer()
             }
             
-            Spacer()
-            
-            Button {
-                // Pay again
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 11, weight: .semibold))
-                    Text(String(localized: "receipt.pay_again"))
-                        .font(.system(size: 12, weight: .semibold))
+            HStack(spacing: 14) {
+                // Profile Image or Initials
+                Group {
+                    if let url = URL(string: selectedUser.profilePic), !selectedUser.profilePic.isEmpty {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .empty:
+                                ProgressView()
+                                    .frame(width: 54, height: 54)
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 54, height: 54)
+                                    .clipShape(Circle())
+                            case .failure:
+                                userInitialsView
+                            @unknown default:
+                                userInitialsView
+                            }
+                        }
+                    } else {
+                        userInitialsView
+                    }
                 }
-                .foregroundColor(Color(hex: "4B548D"))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(Color(hex: "4B548D").opacity(0.1))
-                .clipShape(Capsule())
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("\(selectedUser.firstName) \(selectedUser.lastName)")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    HStack(spacing: 4) {
+                        Image(systemName: "envelope.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Text(selectedUser.email)
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                    
+                    if !selectedUser.phoneNumber.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: String(localized: "icon.phone_fill"))
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                            Text(selectedUser.phoneNumber)
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                
+                Spacer()
             }
         }
         .padding(16)
@@ -212,6 +238,18 @@ struct ReceiptView: View {
         .opacity(showContent ? 1 : 0)
         .offset(y: showContent ? 0 : 20)
         .animation(.easeOut(duration: 0.5).delay(0.4), value: showContent)
+    }
+    
+    private var userInitialsView: some View {
+        ZStack {
+            Circle()
+                .fill(Color(hex: "4B548D").opacity(0.15))
+                .frame(width: 54, height: 54)
+            
+            Text(selectedUser.initials)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(Color(hex: "4B548D"))
+        }
     }
     
     // MARK: - Transaction Details Card
@@ -238,8 +276,8 @@ struct ReceiptView: View {
                 
                 txnDetailRow(
                     icon: "number",
-                    label: String(localized: "receipt.transaction_id"),
-                    value: transactionID,
+                    label: "OrderId",
+                    value: orderId,
                     delay: 0.6,
                     isMonospaced: true
                 )
@@ -249,7 +287,7 @@ struct ReceiptView: View {
                 txnDetailRow(
                     icon: String(localized: "icon.creditcard_fill"),
                     label: String(localized: "receipt.payment_method"),
-                    value: String(localized: "upi_app.google_pay"),
+                    value: "ByoSync",
                     delay: 0.7
                 )
                 
@@ -278,7 +316,9 @@ struct ReceiptView: View {
     // MARK: - Buttons
     private var actionButtonsView: some View {
         VStack(spacing: 12) {
-            Button(action: { }) {
+            Button(action: {
+                // TODO: Implement share functionality
+            }) {
                 HStack(spacing: 10) {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 14, weight: .semibold))

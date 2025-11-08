@@ -124,7 +124,7 @@ final class RegisterUserViewModel: ObservableObject {
         case .success(let response):
             print("✅ [VM] Registration API call succeeded")
             print("📦 [VM] Response message: \(response.message)")
-            print("📦 [VM] Success status: \(response.success)")
+            print("📦 [VM] Success status: \(response.success ?? false)")
             
             // Validate we have the required data
             guard let userData = response.data?.user else {
@@ -138,34 +138,48 @@ final class RegisterUserViewModel: ObservableObject {
             print("   - Name: \(userData.firstName) \(userData.lastName)")
             print("   - Email: \(userData.email)")
             print("   - Email Verified: \(userData.emailVerified)")
-            print("   - Phone: \(userData.phoneNumber ?? "N/A")")
+            print("   - Phone: \(userData.phoneNumber)")
             
             if let deviceData = response.data?.device {
+                // Convert to User model
+                let user = User(
+                    firstName: userData.firstName,
+                    lastName: userData.lastName,
+                    email: userData.email,
+                    phoneNumber: userData.phoneNumber,
+                    deviceKey: deviceData.deviceKey,
+                    deviceName: deviceData.deviceName,
+                    userId: deviceData.user,
+                    userDeviceId: deviceData.id
+                )
+                print("✅ Saved user with userId : \(deviceData.user)")
+                
+                // Save to session
+                UserSession.shared.saveUser(user)
+                UserSession.shared.setEmailVerified(userData.emailVerified)
+                UserSession.shared.setProfilePicture(userData.profilePic)
+                UserSession.shared.setCurrentDeviceID(deviceData.id)
+                UserSession.shared.setThisDevicePrimary(deviceData.isPrimary)
+                UserSession.shared.setUserWallet(userData.wallet)
+                
                 print("📱 [VM] Device data received:")
-                print("   - Device Name: \(deviceData.deviceName ?? "Unknown")")
+                print("   - Device Name: \(deviceData.deviceName)")
                 print("   - Is Primary: \(deviceData.isPrimary)")
-                print("   - Has Token: \(deviceData.token != nil)")
+                print("   - Has Token: \(deviceData.token)")
                 print("   - Device ID: \(deviceData.id)")
+                
             } else {
                 print("⚠️ [VM] Warning: No device data in response")
             }
-            
-            // Success - navigate to main tab
-            print("✅ [VM] Registration complete")
-            print("🚀 [VM] Setting navigateToMainTab = true")
-            
+                    
             // Use a small delay to ensure UI is ready
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
                 print("🔄 [VM] Actually setting navigateToMainTab now")
                 self?.navigateToMainTab = true
-                print("✅ [VM] navigateToMainTab is now: \(self?.navigateToMainTab ?? false)")
             }
             
         case .failure(let error):
             print("❌ [VM] Registration FAILED")
-            print("❌ [VM] Error: \(error)")
-            print("❌ [VM] Error description: \(error.localizedDescription)")
-            
             // Handle specific error types
             switch error {
             case .unauthorized:

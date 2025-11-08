@@ -12,10 +12,10 @@ struct SortedUsersView: View {
     @StateObject private var viewModel = SortedUsersViewModel()
     @State private var searchText = ""
     @State private var showSearchBar = false
-    @Binding var hideTabBar:Bool
+    @Binding var hideTabBar: Bool
     @Binding var amount: String
-    @State var selectedUser: UserData?
-    @State var openSelectedUserDetailsView:Bool = false
+    @State private var selectedUser: UserData?
+    @State private var openSelectedUserDetailsView: Bool = false
     
     var body: some View {
         NavigationStack {
@@ -35,8 +35,14 @@ struct SortedUsersView: View {
                     searchButton
                 }
             }
-            .navigationDestination(isPresented: $openSelectedUserDetailsView){
-                PaymentConfirmationView(hideTabBar: $hideTabBar, selectedUser:$selectedUser, amount: amount)
+            .navigationDestination(isPresented: $openSelectedUserDetailsView) {
+                if let user = selectedUser {
+                    PaymentConfirmationView(
+                        hideTabBar: $hideTabBar,
+                        selectedUser: .constant(user),
+                        amount: amount
+                    )
+                }
             }
             .task {
                 await viewModel.fetchSortedUsers()
@@ -111,7 +117,7 @@ struct SortedUsersView: View {
     private var contentView: some View {
         if viewModel.isLoading {
             loadingView
-        } else if $viewModel.users.isEmpty {
+        } else if viewModel.users.isEmpty {
             emptyStateView
         } else {
             usersList
@@ -151,7 +157,7 @@ struct SortedUsersView: View {
             
             Button(action: {
                 Task {
-                    await viewModel.retry
+                    await viewModel.retry()
                 }
             }) {
                 HStack {
@@ -170,16 +176,18 @@ struct SortedUsersView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
-    // MARK: - Users List
     private var usersList: some View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 ForEach(filteredUsers) { user in
-                    UserCardView(user: user)
-                        .onTapGesture {
-                            openSelectedUserDetailsView.toggle()
+                    if UserSession.shared.currentUser?.userId != user.id{
+                        UserCardView(user: user) {  // Pass the closure here
+                            print("DEBUG: User selected - \(user.firstName) \(user.lastName)")
+                            print("DEBUG: User ID - \(user.id)")
                             selectedUser = user
+                            openSelectedUserDetailsView = true
                         }
+                    }
                 }
             }
             .padding()
@@ -189,6 +197,7 @@ struct SortedUsersView: View {
         }
     }
     
+    
     private var filteredUsers: [UserData] {
         viewModel.filterUsers(by: searchText)
     }
@@ -197,29 +206,27 @@ struct SortedUsersView: View {
 // MARK: - User Card View
 struct UserCardView: View {
     let user: UserData
+    let onTap: () -> Void  // Add this closure
     @State private var isPressed = false
     
     var body: some View {
-        Button(action: {
-            // Handle user selection - navigate to payment screen
-            print("Selected user: \(user.firstName) \(user.lastName)")
-        }) {
-            HStack(spacing: 16) {
-                profileImage
-                userInfo
-                Spacer()
-                chevron
-            }
-            .padding(16)
-            .background(cardBackground)
-            .cornerRadius(16)
-            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
-            .scaleEffect(isPressed ? 0.97 : 1.0)
+        HStack(spacing: 16) {
+            profileImage
+            userInfo
+            Spacer()
+            chevron
         }
-        .buttonStyle(PlainButtonStyle())
+        .padding(16)
+        .background(cardBackground)
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+        .scaleEffect(isPressed ? 0.97 : 1.0)
         .pressEvents(
             onPress: { isPressed = true },
-            onRelease: { isPressed = false }
+            onRelease: {
+                isPressed = false
+                onTap()  // Call the tap action here
+            }
         )
     }
     

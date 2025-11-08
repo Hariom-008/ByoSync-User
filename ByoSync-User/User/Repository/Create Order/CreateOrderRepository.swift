@@ -13,8 +13,44 @@ struct CreateOrderRequest: Encodable {
 // MARK: - Response Model
 struct CreateOrderResponse: Decodable {
     let success: Bool
-    let orderId: String?
+    let data: OrderData
     let message: String?
+}
+
+struct OrderData: Codable, Identifiable {
+    let id: String
+    let type: OrderType      // ✅ Use OrderType here
+    let receiverId: String
+    let coins: Int
+    let status: OrderStatus  // ✅ "SUCCESS" will map here
+    let senderId: String
+    let senderDeviceId: String
+    let createdAt: String
+    let updatedAt: String
+    let v: Int
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case receiverId
+        case coins
+        case status
+        case senderId
+        case senderDeviceId
+        case createdAt
+        case updatedAt
+        case id = "_id"
+        case v = "__v"
+    }
+}
+
+enum OrderType: String, Codable {
+    case transfer = "TRANSFER"
+}
+enum OrderStatus: String, Codable {
+    case success = "SUCCESS"
+    // add more if API returns others, e.g.:
+    // case pending = "PENDING"
+    // case failed = "FAILED"
 }
 
 // MARK: - Repository
@@ -47,6 +83,7 @@ final class CreateOrderRepository {
             "coins": amount,
             "senderId": senderId
         ]
+        let headers = getHeader.shared.getAuthHeaders()
         
         print("📦 Request Body: \(parameters)")
         
@@ -54,12 +91,12 @@ final class CreateOrderRepository {
             CommonEndpoint.CreateOrder,
             method: .post,
             parameters: parameters,
-            headers: nil
+            headers: headers
         ) { (result: Result<CreateOrderResponse, APIError>) in
             switch result {
             case .success(let response):
                 print("✅ [CreateOrderRepo] Order created successfully")
-                print("✅ Order ID: \(response.orderId ?? "N/A")")
+                print("✅ Order ID: \(response.data.id)")
                 print("✅ Message: \(response.message ?? "N/A")")
                 completion(.success(response))
                 
@@ -78,7 +115,10 @@ final class CreateOrderViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var successMessage: String?
-    @Published var orderId: String?
+    @Published var orderId: String = ""
+    
+    @Published var senderDeviceId = UserSession.shared.currentUser?.userDeviceId
+    @Published var senderId = UserSession.shared.currentUser?.userId
     
     // MARK: - Dependencies
     private let repository: CreateOrderRepository
@@ -89,12 +129,11 @@ final class CreateOrderViewModel: ObservableObject {
         print("🟢 [CreateOrderVM] Initialized")
     }
     
+  
     // MARK: - Create Order
     func createOrder(
         receiverId: String,
-        senderDeviceId: String,
         amount: Int,
-        senderId: String
     ) {
         print("🔵 [CreateOrderVM] Creating order...")
         print("📤 Amount: \(amount)")
@@ -102,14 +141,14 @@ final class CreateOrderViewModel: ObservableObject {
         // Reset previous states
         errorMessage = nil
         successMessage = nil
-        orderId = nil
+        orderId = ""
         isLoading = true
         
         repository.createOrder(
             receiverId: receiverId,
-            senderDeviceId: senderDeviceId,
+            senderDeviceId: senderDeviceId ?? "",
             amount: amount,
-            senderId: senderId
+            senderId: senderId ?? ""
         ) { [weak self] result in
             DispatchQueue.main.async {
                 self?.isLoading = false
@@ -117,7 +156,7 @@ final class CreateOrderViewModel: ObservableObject {
                 switch result {
                 case .success(let response):
                     print("✅ [CreateOrderVM] Order created successfully")
-                    self?.orderId = response.orderId
+                    self?.orderId = response.data.id
                     self?.successMessage = response.message ?? "Order created successfully"
                     
                 case .failure(let error):
@@ -139,7 +178,7 @@ final class CreateOrderViewModel: ObservableObject {
         print("🔄 [CreateOrderVM] Resetting state")
         errorMessage = nil
         successMessage = nil
-        orderId = nil
+        orderId = ""
         isLoading = false
     }
 }

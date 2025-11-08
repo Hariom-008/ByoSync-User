@@ -17,10 +17,12 @@ struct User: Codable {
     let deviceName: String?
     let fcmToken: String?
     let refferalCode: String?
+    let userId: String?
+    let userDeviceId: String?
     
     
     // Convenience initializer
-    init(firstName: String, lastName: String, email: String, phoneNumber: String? = nil, deviceKey: String? = nil, deviceName: String? = nil,fcmToken:String? = nil, refferalCode: String? = nil) {
+    init(firstName: String, lastName: String, email: String, phoneNumber: String? = nil, deviceKey: String? = nil, deviceName: String? = nil,fcmToken:String? = nil, refferalCode: String? = nil, userId:String? = nil,userDeviceId:String? = nil) {
         self.firstName = firstName
         self.lastName = lastName
         self.email = email
@@ -29,6 +31,8 @@ struct User: Codable {
         self.deviceName = deviceName
         self.fcmToken = fcmToken
         self.refferalCode = refferalCode
+        self.userId = userId
+        self.userDeviceId = userDeviceId
     }
 }
 struct Address: Codable {

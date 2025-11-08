@@ -50,7 +50,7 @@ struct WalletView: View {
                                     }
                                 
                                 Text("\(String(format: "%.2f", UserSession.shared.wallet))")
-                                    .font(.system(size: 48, weight: .bold))
+                                    .font(.system(size: 36, weight: .bold))
                                     .foregroundColor(.white)
                             }
                         }

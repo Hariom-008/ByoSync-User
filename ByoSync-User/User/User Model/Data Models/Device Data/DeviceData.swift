@@ -25,3 +25,22 @@ struct DeviceData: Codable, Identifiable {
         case token
     }
 }
+
+
+struct GetDeviceData:Codable,Identifiable{
+    let id: String
+    let deviceKey: String
+    let deviceName: String
+    let isPrimary: Bool
+    let createdAt: String
+    let updatedAt: String
+    
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case deviceKey
+        case deviceName
+        case isPrimary
+        case createdAt
+        case updatedAt
+    }
+}

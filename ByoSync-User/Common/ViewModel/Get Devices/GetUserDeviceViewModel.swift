@@ -4,19 +4,13 @@ import SwiftUI
 import Alamofire
 
 final class GetDevicesViewModel: ObservableObject {
-    @Published var devices: [DeviceData] = []
+    @Published var devices: [GetDeviceData] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var successMessage: String?
     
     @ObservedObject private var userSession = UserSession.shared
    // @ObservedObject private var merchantSession = MerchantSession.shared
-    
-    // MARK: - Session Detection
-//    private var isMerchantMode: Bool {
-//        merchantSession.isLoggedIn
-//    }
-    
     // MARK: - Fetch Linked Devices (Callback-based)
     func fetchUserDevices(clearMessages: Bool = true, showErrors: Bool = true) {
         isLoading = true
@@ -25,17 +19,9 @@ final class GetDevicesViewModel: ObservableObject {
             errorMessage = nil
             successMessage = nil
         }
-
-//        if isMerchantMode {
-//            print("📱 Using MERCHANT repository for device fetch")
-//            MerchantDevicesRepository.shared.getUserDevices { [weak self] result in
-//                self?.handleDevicesResult(result, showErrors: showErrors)
-//            }
-//        } else {
             print("👤 Using USER repository for device fetch")
             UserDevicesRepository.shared.getUserDevices { [weak self] result in
                 self?.handleDevicesResult(result, showErrors: showErrors)
-          //  }
         }
     }
     
@@ -47,18 +33,11 @@ final class GetDevicesViewModel: ObservableObject {
         successMessage = nil
         
         await withCheckedContinuation { continuation in
-//            if isMerchantMode {
-//                print("📱 Using MERCHANT repository for async device fetch")
-//                MerchantDevicesRepository.shared.getUserDevices { [weak self] result in
-//                    self?.handleDevicesResult(result, showErrors: true)
-//                    continuation.resume()
-//                }
-//            } else {
+
                 print("👤 Using USER repository for async device fetch")
                 UserDevicesRepository.shared.getUserDevices { [weak self] result in
                     self?.handleDevicesResult(result, showErrors: true)
                     continuation.resume()
-              //  }
             }
         }
     }
@@ -72,16 +51,10 @@ final class GetDevicesViewModel: ObservableObject {
         print("🔄 Change primary device requested")
         print("   Device ID: \(deviceId)")
         
-//        if isMerchantMode {
-//            print("📱 Using MERCHANT repository for change primary")
-//            MerchantDevicesRepository.shared.changePrimaryDevice(deviceId: deviceId) { [weak self] result in
-//                self?.handleChangePrimaryResult(result)
-//            }
-//        } else {
             print("👤 Using USER repository for change primary")
             UserDevicesRepository.shared.changePrimaryDevice(deviceId: deviceId) { [weak self] result in
                 self?.handleChangePrimaryResult(result)
-           // }
+
         }
     }
     
@@ -90,13 +63,9 @@ final class GetDevicesViewModel: ObservableObject {
         isLoading = true
         
         let currentDeviceId: String
-//        if isMerchantMode {
-//            currentDeviceId = merchantSession.merchantDeviceId
-//            print("📱 Using MERCHANT device ID: \(currentDeviceId)")
-//        } else {
             currentDeviceId = UserSession.shared.currentUserDeviceID
             print("👤 Using USER device ID: \(currentDeviceId)")
-       // }
+       
         
         guard !currentDeviceId.isEmpty else {
             self.errorMessage = "No device ID found."
@@ -104,12 +73,6 @@ final class GetDevicesViewModel: ObservableObject {
             return
         }
         
-//        if isMerchantMode {
-//            print("📱 Using MERCHANT repository for unlink this device")
-//            MerchantDevicesRepository.shared.unlinkThisDevice(deviceId: currentDeviceId) { [weak self] result in
-//                self?.handleUnlinkResult(result)
-//            }
-//        } else {
             print("👤 Using USER repository for unlink this device")
             UserDevicesRepository.shared.unlinkThisDevice(deviceId: currentDeviceId) { [weak self] result in
                 self?.handleUnlinkResult(result)
@@ -124,13 +87,7 @@ final class GetDevicesViewModel: ObservableObject {
         successMessage = nil
         
         print("🔗 Unlink device requested: \(deviceId)")
-        
-//        if isMerchantMode {
-//            print("📱 Using MERCHANT repository for unlink other device")
-//            MerchantDevicesRepository.shared.unlinkThisDevice(deviceId: deviceId) { [weak self] result in
-//                self?.handleUnlinkResult(result)
-//            }
-//        } else {
+
             print("👤 Using USER repository for unlink other device")
             UserDevicesRepository.shared.unlinkThisDevice(deviceId: deviceId) { [weak self] result in
                 self?.handleUnlinkResult(result)
@@ -140,7 +97,7 @@ final class GetDevicesViewModel: ObservableObject {
     
     // MARK: - Private Helper Methods
     
-    private func handleDevicesResult(_ result: Result<[DeviceData], APIError>, showErrors: Bool) {
+    private func handleDevicesResult(_ result: Result<[GetDeviceData], APIError>, showErrors: Bool) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             self.isLoading = false
@@ -170,12 +127,7 @@ final class GetDevicesViewModel: ObservableObject {
                 self.isLoading = false
                 self.successMessage = message
                 self.fetchUserDevices(clearMessages: false, showErrors: false)
-                
-                // Update the appropriate session
-//                if self.isMerchantMode {
-//                    print("✅ Updating merchant primary device status")
-//                    MerchantSession.shared.saveMerchantDevicePrimaryStatus(false)
-//                } else {
+
                     print("✅ Updating user primary device status")
                     UserSession.shared.setThisDevicePrimary(false)
                // }
