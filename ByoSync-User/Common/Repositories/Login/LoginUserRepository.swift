@@ -1,5 +1,14 @@
 import Foundation
 import Alamofire
+import SwiftUI
+
+// MARK: - Root Response
+//struct LoginResponse: Codable {
+//    let statusCode: Int
+//    let data: LoginData
+//    let message: String
+//    let success: Bool
+//}
 
 final class LoginUserRepository {
     
@@ -9,18 +18,20 @@ final class LoginUserRepository {
 
     func login<T: Codable>(
         name: String,
-        deviceId: String,
+        deviceKey: String,
+        fcmToken: String,
         completion: @escaping (Result<APIResponse<T>, APIError>) -> Void
     ) {
         let loginData = LoginRequest(
             name: name,
-            deviceId: deviceId
+            deviceKey: deviceKey,
+            fcmToken: fcmToken
         )
         
         print("📤 Logging In:")
         print("URL: \(UserAPIEndpoint.Auth.logIn)")
         print("name: \(name)")
-        print("deviceId: \(deviceId)")
+        print("deviceId: \(deviceKey)")
         
         APIClient.shared.request(
             UserAPIEndpoint.Auth.logIn,
@@ -33,6 +44,7 @@ final class LoginUserRepository {
                 print("✅ Login successful")
                 print("✅ Response: \(response.message)")
                 completion(.success(response))
+            
                 
             case .failure(let error):
                 print("❌ Login failed: \(error.localizedDescription)")
@@ -44,18 +56,11 @@ final class LoginUserRepository {
     // Convenience method for User Login
     func loginUser(
         name: String,
-        deviceId: String,
+        deviceKey: String,
+        fcmToken : String,
         completion: @escaping (Result<APIResponse<LoginData>, APIError>) -> Void
     ) {
-        login(name: name, deviceId: deviceId, completion: completion)
-    }
     
-    // Convenience method for Merchant Login
-//    func loginMerchant(
-//        name: String,
-//        deviceId: String,
-//        completion: @escaping (Result<APIResponse<MerchantDataWrapper>, APIError>) -> Void
-//    ) {
-//        login(name: name, deviceId: deviceId, completion: completion)
-//    }
+        login(name: name, deviceKey: deviceKey,fcmToken: fcmToken ,completion: completion)
+    }
 }

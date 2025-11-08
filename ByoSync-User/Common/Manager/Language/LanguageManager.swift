@@ -41,7 +41,6 @@ class LanguageManager: ObservableObject {
     func localizedString(forKey key: String) -> String {
         let localized = bundle?.localizedString(forKey: key, value: nil, table: nil)
         ?? NSLocalizedString(key, comment: "")
-        print("🔑 Translating key in Language : [\(currentLanguageCode)]")
         return localized
     }
 }

@@ -2,7 +2,6 @@ import SwiftUI
 
 struct EnterNumberView: View {
     @StateObject private var viewModel = PhoneOTPViewModel()
-    @State private var navigateToOTPVerification = false
     @FocusState private var isPhoneFieldFocused: Bool
     @Environment(\.dismiss) private var dismiss
     
@@ -18,7 +17,7 @@ struct EnterNumberView: View {
                             .font(.title2)
                             .fontWeight(.bold)
                         
-                        Text("We'll send you a verification code")
+                        Text("We'll send you a verification code via Firebase")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -105,6 +104,7 @@ struct EnterNumberView: View {
                     // Continue Button
                     Button(action: {
                         isPhoneFieldFocused = false
+                        // This now calls Firebase authentication
                         viewModel.sendOTP()
                     }) {
                         HStack(spacing: 8) {

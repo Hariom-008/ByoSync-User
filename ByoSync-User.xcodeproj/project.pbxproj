@@ -7,29 +7,98 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		BF1EA1472EBB61DD0077D606 /* SocketIO in Frameworks */ = {isa = PBXBuildFile; productRef = BF1EA1462EBB61DD0077D606 /* SocketIO */; };
+		BF54D06E2EBDD14600A0F3ED /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = BF54D06D2EBDD14600A0F3ED /* FirebaseAuth */; };
+		BF54D0702EBDD14600A0F3ED /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = BF54D06F2EBDD14600A0F3ED /* FirebaseFirestore */; };
+		BF54D07B2EBDE58E00A0F3ED /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = BF54D07A2EBDE58E00A0F3ED /* FirebaseMessaging */; };
+		BF54D0902EBE19D500A0F3ED /* NotificationServiceExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BF54D0892EBE19D500A0F3ED /* NotificationServiceExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BFC703302EBB5CBE001B13C7 /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = BFC7032F2EBB5CBE001B13C7 /* Alamofire */; };
 		BFC703352EBB5CED001B13C7 /* Cloudinary in Frameworks */ = {isa = PBXBuildFile; productRef = BFC703342EBB5CED001B13C7 /* Cloudinary */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		BF54D08E2EBE19D500A0F3ED /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BFC7008F2EBB5C03001B13C7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BF54D0882EBE19D500A0F3ED;
+			remoteInfo = NotificationServiceExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BF54D0952EBE19D500A0F3ED /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BF54D0902EBE19D500A0F3ED /* NotificationServiceExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		BF54D0892EBE19D500A0F3ED /* NotificationServiceExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NotificationServiceExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		BFC700972EBB5C03001B13C7 /* ByoSync-User.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ByoSync-User.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		BF54D06B2EBDD08900A0F3ED /* Exceptions for "ByoSync-User" folder in "ByoSync-User" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = BFC700962EBB5C03001B13C7 /* ByoSync-User */;
+		};
+		BF54D0942EBE19D500A0F3ED /* Exceptions for "NotificationServiceExtension" folder in "NotificationServiceExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = BF54D0882EBE19D500A0F3ED /* NotificationServiceExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		BF54D08A2EBE19D500A0F3ED /* NotificationServiceExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BF54D0942EBE19D500A0F3ED /* Exceptions for "NotificationServiceExtension" folder in "NotificationServiceExtension" target */,
+			);
+			path = NotificationServiceExtension;
+			sourceTree = "<group>";
+		};
 		BFC700992EBB5C03001B13C7 /* ByoSync-User */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BF54D06B2EBDD08900A0F3ED /* Exceptions for "ByoSync-User" folder in "ByoSync-User" target */,
+			);
 			path = "ByoSync-User";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		BF54D0862EBE19D500A0F3ED /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BFC700942EBB5C03001B13C7 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BF54D07B2EBDE58E00A0F3ED /* FirebaseMessaging in Frameworks */,
 				BFC703302EBB5CBE001B13C7 /* Alamofire in Frameworks */,
 				BFC703352EBB5CED001B13C7 /* Cloudinary in Frameworks */,
+				BF1EA1472EBB61DD0077D606 /* SocketIO in Frameworks */,
+				BF54D0702EBDD14600A0F3ED /* FirebaseFirestore in Frameworks */,
+				BF54D06E2EBDD14600A0F3ED /* FirebaseAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -40,6 +109,7 @@
 			isa = PBXGroup;
 			children = (
 				BFC700992EBB5C03001B13C7 /* ByoSync-User */,
+				BF54D08A2EBE19D500A0F3ED /* NotificationServiceExtension */,
 				BFC700982EBB5C03001B13C7 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -48,6 +118,7 @@
 			isa = PBXGroup;
 			children = (
 				BFC700972EBB5C03001B13C7 /* ByoSync-User.app */,
+				BF54D0892EBE19D500A0F3ED /* NotificationServiceExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,6 +126,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		BF54D0882EBE19D500A0F3ED /* NotificationServiceExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BF54D0912EBE19D500A0F3ED /* Build configuration list for PBXNativeTarget "NotificationServiceExtension" */;
+			buildPhases = (
+				BF54D0852EBE19D500A0F3ED /* Sources */,
+				BF54D0862EBE19D500A0F3ED /* Frameworks */,
+				BF54D0872EBE19D500A0F3ED /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				BF54D08A2EBE19D500A0F3ED /* NotificationServiceExtension */,
+			);
+			name = NotificationServiceExtension;
+			packageProductDependencies = (
+			);
+			productName = NotificationServiceExtension;
+			productReference = BF54D0892EBE19D500A0F3ED /* NotificationServiceExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		BFC700962EBB5C03001B13C7 /* ByoSync-User */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = BFC700A22EBB5C04001B13C7 /* Build configuration list for PBXNativeTarget "ByoSync-User" */;
@@ -62,10 +155,12 @@
 				BFC700932EBB5C03001B13C7 /* Sources */,
 				BFC700942EBB5C03001B13C7 /* Frameworks */,
 				BFC700952EBB5C03001B13C7 /* Resources */,
+				BF54D0952EBE19D500A0F3ED /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				BF54D08F2EBE19D500A0F3ED /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				BFC700992EBB5C03001B13C7 /* ByoSync-User */,
@@ -74,6 +169,10 @@
 			packageProductDependencies = (
 				BFC7032F2EBB5CBE001B13C7 /* Alamofire */,
 				BFC703342EBB5CED001B13C7 /* Cloudinary */,
+				BF1EA1462EBB61DD0077D606 /* SocketIO */,
+				BF54D06D2EBDD14600A0F3ED /* FirebaseAuth */,
+				BF54D06F2EBDD14600A0F3ED /* FirebaseFirestore */,
+				BF54D07A2EBDE58E00A0F3ED /* FirebaseMessaging */,
 			);
 			productName = "ByoSync-User";
 			productReference = BFC700972EBB5C03001B13C7 /* ByoSync-User.app */;
@@ -89,6 +188,9 @@
 				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
+					BF54D0882EBE19D500A0F3ED = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
 					BFC700962EBB5C03001B13C7 = {
 						CreatedOnToolsVersion = 26.0.1;
 					};
@@ -111,6 +213,8 @@
 			packageReferences = (
 				BFC7032E2EBB5CBE001B13C7 /* XCRemoteSwiftPackageReference "Alamofire" */,
 				BFC703332EBB5CED001B13C7 /* XCRemoteSwiftPackageReference "cloudinary_ios" */,
+				BF1EA1452EBB61DD0077D606 /* XCRemoteSwiftPackageReference "socket.io-client-swift" */,
+				BF54D06C2EBDD14600A0F3ED /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BFC700982EBB5C03001B13C7 /* Products */;
@@ -118,11 +222,19 @@
 			projectRoot = "";
 			targets = (
 				BFC700962EBB5C03001B13C7 /* ByoSync-User */,
+				BF54D0882EBE19D500A0F3ED /* NotificationServiceExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		BF54D0872EBE19D500A0F3ED /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BFC700952EBB5C03001B13C7 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -133,6 +245,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		BF54D0852EBE19D500A0F3ED /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BFC700932EBB5C03001B13C7 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -142,7 +261,71 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		BF54D08F2EBE19D500A0F3ED /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BF54D0882EBE19D500A0F3ED /* NotificationServiceExtension */;
+			targetProxy = BF54D08E2EBE19D500A0F3ED /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		BF54D0922EBE19D500A0F3ED /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 26HBC2PDLM;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NotificationServiceExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NotificationServiceExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.KavionIntelligence.byosync.user.NotificationServiceExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BF54D0932EBE19D500A0F3ED /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 26HBC2PDLM;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NotificationServiceExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NotificationServiceExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.KavionIntelligence.byosync.user.NotificationServiceExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		BFC700A02EBB5C04001B13C7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -269,22 +452,25 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "ByoSync-User/ByoSync-User.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = LAP54KU2SV;
+				DEVELOPMENT_TEAM = 26HBC2PDLM;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "ByoSync-User/Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.KavionIntelligence.ML-iOS.ByoSync-User";
+				PRODUCT_BUNDLE_IDENTIFIER = com.KavionIntelligence.byosync.user;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -301,22 +487,25 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "ByoSync-User/ByoSync-User.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = LAP54KU2SV;
+				DEVELOPMENT_TEAM = 26HBC2PDLM;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "ByoSync-User/Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.KavionIntelligence.ML-iOS.ByoSync-User";
+				PRODUCT_BUNDLE_IDENTIFIER = com.KavionIntelligence.byosync.user;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -331,6 +520,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		BF54D0912EBE19D500A0F3ED /* Build configuration list for PBXNativeTarget "NotificationServiceExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BF54D0922EBE19D500A0F3ED /* Debug */,
+				BF54D0932EBE19D500A0F3ED /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		BFC700922EBB5C03001B13C7 /* Build configuration list for PBXProject "ByoSync-User" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -352,6 +550,22 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		BF1EA1452EBB61DD0077D606 /* XCRemoteSwiftPackageReference "socket.io-client-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/socketio/socket.io-client-swift.git";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
+		BF54D06C2EBDD14600A0F3ED /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.5.0;
+			};
+		};
 		BFC7032E2EBB5CBE001B13C7 /* XCRemoteSwiftPackageReference "Alamofire" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Alamofire/Alamofire.git";
@@ -371,6 +585,26 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		BF1EA1462EBB61DD0077D606 /* SocketIO */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BF1EA1452EBB61DD0077D606 /* XCRemoteSwiftPackageReference "socket.io-client-swift" */;
+			productName = SocketIO;
+		};
+		BF54D06D2EBDD14600A0F3ED /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BF54D06C2EBDD14600A0F3ED /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		BF54D06F2EBDD14600A0F3ED /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BF54D06C2EBDD14600A0F3ED /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		BF54D07A2EBDE58E00A0F3ED /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BF54D06C2EBDD14600A0F3ED /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
 		BFC7032F2EBB5CBE001B13C7 /* Alamofire */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = BFC7032E2EBB5CBE001B13C7 /* XCRemoteSwiftPackageReference "Alamofire" */;

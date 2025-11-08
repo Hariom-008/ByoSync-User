@@ -10,8 +10,8 @@ final class RegisterUserViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var showError: Bool = false
-    @Published var registrationSuccess: Bool = false
-    @Published var deviceId: String = "12345678"
+    @Published var navigateToMainTab: Bool = false
+    @Published var deviceId: String = "123456c"
     @Published var deviceName: String = "iPhone 15"
     
     private let repository = RegisterUserRepository.shared
@@ -19,42 +19,75 @@ final class RegisterUserViewModel: ObservableObject {
     
     // MARK: - Computed Properties
     var allFieldsFilled: Bool {
-        !firstName.isEmpty &&
-        !lastName.isEmpty &&
-        !email.isEmpty &&
-        !phoneNumber.isEmpty
+        let filled = !firstName.isEmpty &&
+                     !lastName.isEmpty &&
+                     !email.isEmpty &&
+                     !phoneNumber.isEmpty
+        print("📋 [VM] All fields filled: \(filled)")
+        print("   - First Name: '\(firstName)' (empty: \(firstName.isEmpty))")
+        print("   - Last Name: '\(lastName)' (empty: \(lastName.isEmpty))")
+        print("   - Email: '\(email)' (empty: \(email.isEmpty))")
+        print("   - Phone: '\(phoneNumber)' (empty: \(phoneNumber.isEmpty))")
+        return filled
     }
     
     var isValidEmail: Bool {
+        guard !email.isEmpty else {
+            print("📧 [VM] Email is empty")
+            return false
+        }
         let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
-        return emailPredicate.evaluate(with: email)
+        let valid = emailPredicate.evaluate(with: email)
+        print("📧 [VM] Email '\(email)' is valid: \(valid)")
+        return valid
     }
     
     var canSubmit: Bool {
-        allFieldsFilled && isValidEmail
+        let can = allFieldsFilled && isValidEmail
+        print("✅ [VM] Can submit: \(can)")
+        return can
     }
     
     // MARK: - Actions
     func registerUser() {
+        print("\n" + String(repeating: "=", count: 50))
+        print("🚀 [VM] registerUser() called")
+        print(String(repeating: "=", count: 50))
+        
+        // Force log the validation state
+        print("📊 [VM] Validation State:")
+        print("   - Can Submit: \(canSubmit)")
+        print("   - All Fields Filled: \(allFieldsFilled)")
+        print("   - Valid Email: \(isValidEmail)")
+        
         guard canSubmit else {
-            if !isValidEmail {
+            print("❌ [VM] Validation FAILED - Cannot submit")
+            if !isValidEmail && !email.isEmpty {
+                print("❌ [VM] Invalid email format")
                 showErrorMessage("Please enter a valid email address")
-            } else {
+            } else if !allFieldsFilled {
+                print("❌ [VM] Missing required fields")
                 showErrorMessage("Please fill in all fields")
             }
             return
         }
         
+        print("✅ [VM] Validation PASSED - Proceeding with registration")
+        
         isLoading = true
         errorMessage = nil
         
-        print("🚀 Starting user registration...")
-        print("Name: \(firstName) \(lastName)")
-        print("Email: \(email)")
-        print("Phone: \(phoneNumber)")
-        print("📱 Device ID: \(deviceId)")
-        print("📱 Device Name: \(deviceName)")
+        print("🚀 [VM] Starting registration flow...")
+        print("📝 [VM] User Details:")
+        print("   - First Name: \(firstName)")
+        print("   - Last Name: \(lastName)")
+        print("   - Email: \(email)")
+        print("   - Phone: \(phoneNumber)")
+        print("   - Device ID: \(deviceId)")
+        print("   - Device Name: \(deviceName)")
+        
+        print("📞 [VM] Calling repository.registerUser()...")
         
         repository.registerUser(
             firstName: firstName,
@@ -64,62 +97,119 @@ final class RegisterUserViewModel: ObservableObject {
             deviceId: deviceId,
             deviceName: deviceName
         ) { [weak self] result in
+            print("📥 [VM] Repository returned with result")
+            
             DispatchQueue.main.async {
-                self?.isLoading = false
-                self?.handleRegistrationResult(result)
+                guard let self = self else {
+                    print("⚠️ [VM] Self is nil in completion handler")
+                    return
+                }
+                
+                print("🔄 [VM] On main thread, handling result...")
+                self.isLoading = false
+                self.handleRegistrationResult(result)
             }
         }
+        
+        print("⏳ [VM] Waiting for repository response...")
     }
     
     // MARK: - Private Methods
     private func handleRegistrationResult(_ result: Result<APIResponse<LoginData>, APIError>) {
+        print("\n" + String(repeating: "=", count: 50))
+        print("📥 [VM] handleRegistrationResult() called")
+        print(String(repeating: "=", count: 50))
+        
         switch result {
         case .success(let response):
-            print("✅ Registration successful: \(response.message)")
+            print("✅ [VM] Registration API call succeeded")
+            print("📦 [VM] Response message: \(response.message)")
+            print("📦 [VM] Success status: \(response.success)")
             
-            // Check if we have user data
-            if let userData = response.data?.user {
-                print("👤 User registered: \(userData.firstName) \(userData.lastName)")
-                print("📧 Email: \(userData.email)")
-                print("✉️ Email verified: \(userData.emailVerified)")
+            // Validate we have the required data
+            guard let userData = response.data?.user else {
+                print("⚠️ [VM] Warning: No user data in response")
+                print("❌ [VM] Response data is nil: \(response.data == nil)")
+                showErrorMessage("Registration succeeded but user data is missing")
+                return
             }
             
-            // Check if we have device data
+            print("👤 [VM] User data received:")
+            print("   - Name: \(userData.firstName) \(userData.lastName)")
+            print("   - Email: \(userData.email)")
+            print("   - Email Verified: \(userData.emailVerified)")
+            print("   - Phone: \(userData.phoneNumber ?? "N/A")")
+            
             if let deviceData = response.data?.device {
-                print("📱 Device registered: \(deviceData.deviceName ?? "Unknown")")
-                print("🔑 Device Primary: \(deviceData.isPrimary)")
-                print("🔒 Token saved: \(deviceData.token != nil)")
+                print("📱 [VM] Device data received:")
+                print("   - Device Name: \(deviceData.deviceName ?? "Unknown")")
+                print("   - Is Primary: \(deviceData.isPrimary)")
+                print("   - Has Token: \(deviceData.token != nil)")
+                print("   - Device ID: \(deviceData.id)")
+            } else {
+                print("⚠️ [VM] Warning: No device data in response")
             }
             
-            registrationSuccess = true
+            // Success - navigate to main tab
+            print("✅ [VM] Registration complete")
+            print("🚀 [VM] Setting navigateToMainTab = true")
+            
+            // Use a small delay to ensure UI is ready
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+                print("🔄 [VM] Actually setting navigateToMainTab now")
+                self?.navigateToMainTab = true
+                print("✅ [VM] navigateToMainTab is now: \(self?.navigateToMainTab ?? false)")
+            }
             
         case .failure(let error):
-            print("❌ Registration failed: \(error.localizedDescription)")
+            print("❌ [VM] Registration FAILED")
+            print("❌ [VM] Error: \(error)")
+            print("❌ [VM] Error description: \(error.localizedDescription)")
             
             // Handle specific error types
             switch error {
             case .unauthorized:
+                print("🔐 [VM] Error type: Unauthorized")
                 showErrorMessage("Authentication failed. Please try again.")
+                
             case .serverError:
+                print("🔥 [VM] Error type: Server Error")
                 showErrorMessage("Server error. Please try again later.")
+                
             case .networkError:
+                print("📡 [VM] Error type: Network Error")
                 showErrorMessage("Network error. Please check your connection.")
+                
             case .decodingError(let message):
+                print("🔍 [VM] Error type: Decoding Error")
+                print("🔍 [VM] Decoding message: \(message)")
                 showErrorMessage("Data error: \(message)")
+                
             case .mismatchedHmac:
+                print("🔒 [VM] Error type: HMAC Mismatch")
                 showErrorMessage("Security validation failed. Please try again.")
+                
             case .failedToGenerateHmac:
+                print("🔑 [VM] Error type: Failed to Generate HMAC")
                 showErrorMessage("Failed to generate security key.")
+                
             default:
+                print("❓ [VM] Error type: Unknown")
+                print("❓ [VM] Full error: \(error)")
                 showErrorMessage(error.localizedDescription)
             }
         }
+        
+        print(String(repeating: "=", count: 50) + "\n")
     }
     
     private func showErrorMessage(_ message: String) {
+        print("⚠️ [VM] Showing error to user: \(message)")
         errorMessage = message
         showError = true
+        print("⚠️ [VM] showError set to: \(showError)")
     }
+    
     // MARK: - Field Validation
     func validateEmail() -> String? {
         guard !email.isEmpty else { return nil }
@@ -142,11 +232,13 @@ final class RegisterUserViewModel: ObservableObject {
     
     // MARK: - Clear Form
     func clearForm() {
+        print("🧹 [VM] Clearing form")
         firstName = ""
         lastName = ""
         email = ""
         phoneNumber = ""
         errorMessage = nil
         showError = false
+        navigateToMainTab = false
     }
 }

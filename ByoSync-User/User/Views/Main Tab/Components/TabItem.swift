@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+// MARK: - Tab Item Component
 struct TabItem: View {
     let systemName: String
     let title: String
@@ -16,17 +17,16 @@ struct TabItem: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 6) {
-                    VStack(spacing: 4){
-                        Image(systemName: systemName)
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(isSelected ? .black : .gray)
-                        Text(title)
-                            .font(.caption2)
-                            .fontWeight(.medium)
-                            .foregroundColor(isSelected ? .black : .black)
-                    }
+                Image(systemName: systemName)
+                    .font(.system(size: 22, weight: isSelected ? .semibold : .regular))
+                    .foregroundColor(isSelected ? Color(hex: "4B548D") : .gray)
+                
+                Text(title)
+                    .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+                    .foregroundColor(isSelected ? Color(hex: "4B548D") : .gray)
             }
-            .frame(width: 80, height: 70)
+            .frame(maxWidth: .infinity)
         }
+        .buttonStyle(TabItemButtonStyle())
     }
 }

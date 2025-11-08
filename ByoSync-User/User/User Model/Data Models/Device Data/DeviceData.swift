@@ -1,36 +1,27 @@
-//
-//  DeviceData.swift
-//  ByoSync
-//
-//  Created by Hari's Mac on 22.10.2025.
-//
-
-import Foundation
-
+import SwiftUI
+// MARK: - Device Data
 struct DeviceData: Codable, Identifiable {
     let id: String
-    let deviceId: String
+    let deviceKey: String
     let deviceName: String
-    let user: String?  // Optional because merchant response might not have this
-    let merchant: String?
+    let user: String
     let isPrimary: Bool
+    let fcmToken: String
     let createdAt: String
     let updatedAt: String
-    let v: Int?
-    let token: String?
+    let v: Int
+    let token: String
     
     enum CodingKeys: String, CodingKey {
         case id = "_id"
-        case deviceId
+        case deviceKey
         case deviceName
-        case isPrimary
-        case createdAt
-        case token
-       
         case user
-        case merchant
-        
+        case isPrimary
+        case fcmToken
+        case createdAt
         case updatedAt
         case v = "__v"
+        case token
     }
 }

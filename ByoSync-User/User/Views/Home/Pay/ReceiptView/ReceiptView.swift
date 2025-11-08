@@ -2,53 +2,52 @@ import SwiftUI
 
 struct ReceiptView: View {
     @Environment(\.dismiss) var dismiss
-    @State private var isAnimating: Bool = false
-    @State private var showContent: Bool = false
-    @State private var showButton: Bool = false
+    @State private var isAnimating = false
+    @State private var showContent = false
+    @State private var showButton = false
     @Binding var hideTabBar: Bool
-    
-    let amount: String
-    let merchantName: String = String(localized: "enter_amount.merchant")
-    let merchantPhone: String = String(localized: "common.phone_number")
-    let transactionID: String = "#TXN101025SBI"
-    
+    @Binding var selectedUser: UserData?
+
+    var amount: Int
+
+     var merchantName: String { selectedUser?.firstName ?? "Merchant" }
+     var merchantPhone: String { selectedUser?.phoneNumber ?? "+91XXXXXXXXXX" }
+     var transactionID: String = "#TXN\(Int.random(in: 10000...99999))BYO"
+
     var cashback: String {
         "\((Int(amount) ?? 0) * 10 / 100)"
     }
-    
+
     var body: some View {
         ZStack {
-            // Background
             LinearGradient(
                 colors: [Color(hex: "F8F9FD"), Color.white],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
-            
+
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
-                    // ✅ Success Animation
                     VStack(spacing: 24) {
                         successAnimationView.frame(height: 200)
                         successTextView
                     }
                     .padding(.top, 40)
                     .padding(.bottom, 32)
-                    
-                    // ✅ Cards
+
                     amountCardView
                         .padding(.horizontal, 20)
                         .padding(.bottom, 20)
-                    
+
                     merchantCardView
                         .padding(.horizontal, 20)
                         .padding(.bottom, 20)
-                    
+
                     transactionDetailsCardView
                         .padding(.horizontal, 20)
                         .padding(.bottom, 24)
-                    
+
                     actionButtonsView
                         .padding(.horizontal, 20)
                         .padding(.bottom, 32)
@@ -355,8 +354,4 @@ struct ReceiptView: View {
         formatter.dateFormat = String(localized: "date.format.full")
         return formatter.string(from: Date())
     }
-}
-
-#Preview {
-    ReceiptView(hideTabBar: .constant(false), amount: "450")
 }

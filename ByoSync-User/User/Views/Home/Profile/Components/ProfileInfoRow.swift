@@ -12,6 +12,7 @@ struct ProfileInfoRow: View {
     let icon: String
     let label: String
     let value: String
+    var iconColor: Color = Color(hex: "4B548D")
     @State private var openEmailOTPView: Bool = false
     
     var body: some View {
@@ -56,3 +57,4 @@ struct ProfileInfoRow: View {
         }
     }
 }
+

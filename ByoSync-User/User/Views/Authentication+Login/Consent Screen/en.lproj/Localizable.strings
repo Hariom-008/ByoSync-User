@@ -136,8 +136,8 @@
 "search_placeholder" = "Pay by name or phone number";
 "available_credit" = "Available Credit";
 "my_wallet" = "My Wallet";
-"pay_to_merchant" = "Pay to merchant";
-"cashback_subtext" = "Pay • Get upto 10% cashback";
+"pay_to_merchant" = "Pay";
+"cashback_subtext" = "Pay  • Get upto 10% cashback";
 "promotions" = "Promotions";
 "weekend_offer_title" = "Weekend Special Offer";
 "weekend_offer_subtitle" = "Extra 20% cashback on all payments";

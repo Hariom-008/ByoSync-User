@@ -4,7 +4,6 @@ struct AuthenticationView: View {
     @State var openEnterNumber: Bool = false
     @State var openRegister: Bool = false
     @State var openLoginSheet: Bool = false
-    @Binding var selectedUser: UserType
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
@@ -92,18 +91,13 @@ struct AuthenticationView: View {
                 }
                 .zIndex(1)
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark")
-                            .foregroundColor(.primary)
-                    }
-                }
-            }
             .sheet(isPresented: $openLoginSheet){
                 LoginView()
             }
             .navigationBarBackButtonHidden(true)
+            .navigationDestination(isPresented: $openRegister) {
+                EnterNumberView()
+            }
         }
     }
 }

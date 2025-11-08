@@ -24,14 +24,22 @@ final class RegisterUserRepository {
         deviceName: String,
         completion: @escaping (Result<APIResponse<LoginData>, APIError>) -> Void
     ) {
-        // Create User object
+        print("📤 [API] POST \(UserAPIEndpoint.Auth.userRegister)")
+        
+        var fcmToken = ""
+        FCMTokenManager.shared.getFCMToken { token in
+            guard let token else { return }
+            fcmToken = token
+        }
+
         let user = User(
             firstName: firstName,
             lastName: lastName,
             email: email,
             phoneNumber: phoneNumber,
-            deviceId: deviceId,
-            deviceName: deviceName
+            deviceKey: deviceId,
+            deviceName: deviceName,
+            fcmToken: fcmToken
         )
         
         // Encode User to JSON string with consistent formatting
@@ -40,13 +48,12 @@ final class RegisterUserRepository {
         
         guard let jsonData = try? encoder.encode(user),
               let jsonString = String(data: jsonData, encoding: .utf8) else {
+            print("❌ [API] Failed to encode user data")
             completion(.failure(.failedToGenerateHmac))
             return
         }
         
-        print("📤 Registering User:")
-        print("URL: \(UserAPIEndpoint.Auth.userRegister)")
-        print("JSON Body: \(jsonString)")
+        print("📦 [API] Request body prepared for: \(email)")
         
         // Use the SAME jsonString for both HMAC and request body
         requestWithJSONString(
@@ -57,63 +64,64 @@ final class RegisterUserRepository {
         ) { result in
             switch result {
             case .success(let response):
-                print("✅ User registered successfully")
-                print("✅ Response: \(response.message)")
+                print("✅ [API] Registration successful")
+                self.handleSuccessfulRegistration(response: response, originalData: user, completion: completion)
                 
-                // Extract user and device data from response
-                let userData = response.data?.user
-                let deviceData = response.data?.device
-                
-                // Save token to UserDefaults
-                if let token = deviceData?.token, !token.isEmpty {
-                    UserDefaults.standard.set(token, forKey: "token")
-                    print("🔒 Saved auth token to UserDefaults: \(token)")
-                } else {
-                    print("⚠️ No token found in response")
-                }
-                
-                // Convert to User model
-                let registeredUser = User(
-                    firstName: userData?.firstName ?? firstName,
-                    lastName: userData?.lastName ?? lastName,
-                    email: userData?.email ?? email,
-                    phoneNumber: userData?.phoneNumber ?? phoneNumber,
-                    deviceId: deviceData?.deviceId ?? deviceId,
-                    deviceName: deviceData?.deviceName ?? deviceName
-                )
-                
-                // Save to UserSession
-                UserSession.shared.saveUser(registeredUser)
-                UserSession.shared.setEmailVerified(userData?.emailVerified ?? false)
-                UserSession.shared.setProfilePicture(userData?.profilePic ?? "")
-                UserSession.shared.setCurrentDeviceID(deviceData?.id ?? "")
-                UserSession.shared.setThisDevicePrimary(deviceData?.isPrimary ?? false)
-                
-                print("🔑 Registered Device Primary Status: \(deviceData?.isPrimary ?? false)")
-                print("👤 User Profile Pic: \(userData?.profilePic ?? "❌ nil ProfilePhoto")")
-                
-                print("""
-                      ✅ Registration Complete:
-                      firstName: \(registeredUser.firstName)
-                      lastName: \(registeredUser.lastName)
-                      email: \(registeredUser.email)
-                      phoneNumber: \(registeredUser.phoneNumber ?? "N/A")
-                      deviceId: \(registeredUser.deviceId ?? "N/A")
-                      deviceName: \(registeredUser.deviceName ?? "N/A")
-                      emailVerified: \(userData?.emailVerified ?? false)
-                      isPrimary: \(deviceData?.isPrimary ?? false)
-                      token saved: \(deviceData?.token != nil)
-                      """)
-                
-                completion(.success(response))
                 
             case .failure(let error):
-                print("❌ Registration failed: \(error.localizedDescription)")
+                print("❌ [API] Registration failed: \(error.localizedDescription)")
                 completion(.failure(error))
             }
         }
     }
     
+    // MARK: - Handle Successful Registration
+    private func handleSuccessfulRegistration(
+        response: APIResponse<LoginData>,
+        originalData: User,
+        completion: @escaping (Result<APIResponse<LoginData>, APIError>) -> Void
+    ) {
+        let userData = response.data?.user
+        let deviceData = response.data?.device
+        
+        // Save token to UserDefaults
+        if let token = deviceData?.token, !token.isEmpty {
+            UserDefaults.standard.set(token, forKey: "token")
+            print("🔐 [SESSION] Token saved")
+        } else {
+            print("⚠️ [SESSION] No token in response")
+        }
+        
+        // Create registered user
+        let registeredUser = User(
+            firstName: userData?.firstName ?? originalData.firstName,
+            lastName: userData?.lastName ?? originalData.lastName,
+            email: userData?.email ?? originalData.email,
+            phoneNumber: userData?.phoneNumber ?? originalData.phoneNumber,
+            deviceKey: deviceData?.deviceKey ?? originalData.deviceKey,
+            deviceName: deviceData?.deviceName ?? originalData.deviceName
+        )
+        
+        // Save to UserSession
+        UserSession.shared.saveUser(registeredUser)
+        UserSession.shared.setEmailVerified(userData?.emailVerified ?? false)
+        UserSession.shared.setProfilePicture(userData?.profilePic ?? "")
+        UserSession.shared.setCurrentDeviceID(deviceData?.id ?? "")
+        UserSession.shared.setThisDevicePrimary(deviceData?.isPrimary ?? false)
+        
+        // Log important session data
+        print("💾 [SESSION] User saved to session")
+        print("📧 [SESSION] Email verified: \(userData?.emailVerified ?? false)")
+        print("📱 [SESSION] Primary device: \(deviceData?.isPrimary ?? false)")
+        
+        if let profilePic = userData?.profilePic, !profilePic.isEmpty {
+            print("🖼️ [SESSION] Profile picture URL saved")
+        }
+        
+        completion(.success(response))
+    }
+    
+    // MARK: - Request with JSON String
     private func requestWithJSONString(
         url: String,
         method: HTTPMethod,
@@ -133,16 +141,17 @@ final class RegisterUserRepository {
             "x-idempotency-key": timestamp
         ]
         
-        print("📋 Request Headers:")
-        print("HMAC Key Generated or x-signature: \(signature)")
-        print("x-timestamp: \(timestamp)")
+        print("🔑 [SECURITY] HMAC signature generated")
+        print("⏰ [SECURITY] Timestamp: \(timestamp)")
         
         guard let jsonData = jsonString.data(using: .utf8) else {
+            print("❌ [API] Failed to convert JSON string to data")
             completion(.failure(.mismatchedHmac))
             return
         }
         
         guard let requestUrl = URL(string: url) else {
+            print("❌ [API] Invalid URL: \(url)")
             completion(.failure(.unknown))
             return
         }
@@ -155,10 +164,9 @@ final class RegisterUserRepository {
         // Add all headers to the request
         headers.dictionary.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)
-            print("\(key): \(value)")
         }
         
-        print("📨 Final Request Body: \(jsonString)")
+        print("🌐 [API] Sending request...")
         
         // Use the updated APIClient method that returns LoginData
         APIClient.shared.requestWithCustomBodyAndResponse(request, completion: completion)

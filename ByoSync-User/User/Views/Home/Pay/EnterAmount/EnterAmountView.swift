@@ -203,7 +203,7 @@ struct EnterAmountView: View {
                         }
 
                         if isValidAmount {
-                            NavigationLink(destination: PaymentConfirmationView(hideTabBar: $hideTabBar, amount: amount)) {
+                            NavigationLink(destination: SortedUsersView(hideTabBar: $hideTabBar, amount: $amount)) {
                                 Label(String(localized: "enter_amount.continue_payment"), systemImage: "arrow.right")
                                     .font(.system(size: 16, weight: .semibold))
                                     .frame(maxWidth: .infinity)

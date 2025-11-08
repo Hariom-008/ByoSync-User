@@ -71,7 +71,7 @@ final class UpdateProfileViewModel: ObservableObject {
                             lastName: lastName,
                             email: email,
                             phoneNumber: UserSession.shared.currentUser?.phoneNumber,
-                            deviceId: UserSession.shared.currentUser?.deviceId,
+                            deviceKey: UserSession.shared.currentUser?.deviceKey,
                             deviceName: UserSession.shared.currentUser?.deviceName
                         )
                     )

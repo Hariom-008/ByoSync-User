@@ -5,12 +5,9 @@ struct OTPVerificationView: View {
     @ObservedObject var viewModel: PhoneOTPViewModel
     
     @State private var otpCode: [String] = ["", "", "", "", "", ""]
-    @State private var isVerifying = false
-    @State private var verificationError: String?
-    @State private var showError = false
     @State private var navigateToRegister = false
     @FocusState private var focusedField: Int?
-    @State var hasError : Bool = false
+    @State var hasError: Bool = false
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -50,7 +47,7 @@ struct OTPVerificationView: View {
             .padding(.horizontal, 24)
             
             // Error message
-            if let error = verificationError {
+            if let error = viewModel.errorMessage {
                 Text(error)
                     .font(.caption)
                     .foregroundColor(.red)
@@ -84,7 +81,7 @@ struct OTPVerificationView: View {
             // Verify Button
             Button(action: verifyOTP) {
                 HStack(spacing: 8) {
-                    if isVerifying {
+                    if viewModel.isLoading {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                     } else {
@@ -97,10 +94,10 @@ struct OTPVerificationView: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(isOTPComplete && !isVerifying ? Color.indigo : Color.gray)
+                .background(isOTPComplete && !viewModel.isLoading ? Color.indigo : Color.gray)
                 .cornerRadius(12)
             }
-            .disabled(!isOTPComplete || isVerifying)
+            .disabled(!isOTPComplete || viewModel.isLoading)
             .padding(.horizontal, 24)
             .padding(.bottom, 20)
             
@@ -122,16 +119,17 @@ struct OTPVerificationView: View {
                 }
             }
         }
-        .alert("Error", isPresented: $showError) {
+        .alert("Error", isPresented: $viewModel.showError) {
             Button("OK", role: .cancel) {
                 hasError = false
+                clearOTP()
             }
         } message: {
-            if let error = verificationError {
+            if let error = viewModel.errorMessage {
                 Text(error)
             }
         }
-        .navigationDestination(isPresented: $navigateToRegister) {
+        .navigationDestination(isPresented: $viewModel.isAuthenticated) {
             RegisterUserView(phoneNumber: $phoneNumber)
         }
         .onAppear {
@@ -171,49 +169,14 @@ struct OTPVerificationView: View {
     private func verifyOTP() {
         guard isOTPComplete else { return }
         
-        isVerifying = true
-        verificationError = nil
         hasError = false
         
-        print("🔐 Starting OTP verification...")
+        print("🔐 Starting Firebase OTP verification...")
         print("📱 Phone Number: \(phoneNumber)")
         print("🔢 OTP: \(otpString)")
         
-        // phoneNumber is already in format +916XXXXXXXXX
-        OTPRepository.shared.verifyOTP(
-            phoneNumber: phoneNumber,
-            otp: otpString
-        ) { [self] result in
-            DispatchQueue.main.async {
-                isVerifying = false
-                
-                switch result {
-                case .success(let response):
-                    print("✅ OTP Verification Response: \(response)")
-                    handleVerificationSuccess(response)
-                    
-                case .failure(let error):
-                    print("❌ OTP Verification Error: \(error.localizedDescription)")
-                    verificationError = error.localizedDescription
-                    hasError = true
-                    showError = true
-                    clearOTP()
-                }
-            }
-        }
-    }
-    
-    private func handleVerificationSuccess(_ response: VerifyOTPResponse) {
-        if response.success {
-            print("✅ OTP verified successfully, navigating to registration...")
-            navigateToRegister = true
-        } else {
-            print("❌ Verification failed: \(response.message)")
-            verificationError = response.message
-            hasError = true
-            showError = true
-            clearOTP()
-        }
+        // Call Firebase verification through ViewModel
+        viewModel.verifyOTP(code: otpString)
     }
     
     private func clearOTP() {
@@ -238,6 +201,38 @@ struct OTPVerificationView: View {
         }
         
         return formatted
+    }
+}
+
+// MARK: - CodeDigitField Component
+struct CodeDigitField: View {
+    @Binding var text: String
+    let isFocused: Bool
+    let hasError: Bool
+    
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemGray6))
+                .frame(width: 50, height: 60)
+            
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(
+                    hasError ? Color.red :
+                    isFocused ? Color.indigo :
+                    Color.clear,
+                    lineWidth: 2
+                )
+                .frame(width: 50, height: 60)
+            
+            TextField("", text: $text)
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.center)
+                .font(.title2)
+                .fontWeight(.semibold)
+                .frame(width: 50, height: 60)
+                .background(Color.clear)
+        }
     }
 }
 

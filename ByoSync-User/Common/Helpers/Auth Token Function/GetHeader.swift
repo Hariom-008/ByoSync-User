@@ -27,4 +27,11 @@ final class getHeader{
         }
         return headers
     }
+    func saveAuthHeaders(_ header: String){
+        guard !header.isEmpty else{
+            return
+        }
+        UserDefaults.standard.set(header, forKey: "token")
+        print("✅ Auth Header Token is Saved")
+    }
 }

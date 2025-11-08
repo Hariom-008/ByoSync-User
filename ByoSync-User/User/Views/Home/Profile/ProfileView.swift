@@ -13,6 +13,7 @@ struct ProfileView: View {
     @State var openEncryptionSHATesting: Bool = false
     @State var openLocationTestingView: Bool = false
     @State var openSettingView: Bool = false
+    @State private var hasLoadedProfilePicture = false // Prevent redundant loads
     
     let getUserData = GetUserDataRepository.shared
     @StateObject var EmailVerifyVM = EmailVerificationViewModel()
@@ -21,22 +22,31 @@ struct ProfileView: View {
     
     var body: some View {
         ZStack {
-            Color(hex: "F5F7FA")
-                .ignoresSafeArea()
+            // Modern gradient background
+            LinearGradient(
+                colors: [
+                    Color(hex: "F5F7FA"),
+                    Color(hex: "E8ECF4")
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
             
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 20) {
+                VStack(spacing: 24) {
                     headerSection
                     profileHeaderCard
                     personalInfoCard
+                    quickActionsCard
                     menuSection
                 }
                 .padding(.bottom, 100)
             }
             
-            // Loading overlay
+            // Simplified loading overlay
             if isLoadingUserData {
-                Color.black.opacity(0.3)
+                Color.black.opacity(0.4)
                     .ignoresSafeArea()
                     .overlay(
                         VStack(spacing: 16) {
@@ -46,21 +56,26 @@ struct ProfileView: View {
                             
                             Text(L("refreshing_profile"))
                                 .foregroundColor(.primary)
-                                .font(.system(size: 16, weight: .medium))
+                                .font(.system(size: 16, weight: .semibold))
                         }
-                        .padding(30)
+                        .padding(32)
                         .background(
                             RoundedRectangle(cornerRadius: 20)
                                 .fill(Color.white)
-                                .shadow(color: .black.opacity(0.1), radius: 20, y: 10)
+                                .shadow(color: .black.opacity(0.15), radius: 20, y: 10)
                         )
                     )
+                    .transition(.opacity)
                     .zIndex(100)
             }
         }
         .navigationBarBackButtonHidden(true)
         .sheet(isPresented: $showEditProfile) {
             EditProfileView()
+                .onDisappear {
+                    // Reload profile picture only after editing
+                    loadProfilePicture()
+                }
         }
         .sheet(isPresented: $openTestinLinkedDeviceView) {
             LinkedDevicesView()
@@ -80,227 +95,368 @@ struct ProfileView: View {
             Text(alertMessage)
         }
         .onAppear {
-            loadProfilePicture()
+            // Only load once per view lifecycle
+            if !hasLoadedProfilePicture {
+                loadProfilePicture()
+                hasLoadedProfilePicture = true
+            }
         }
     }
     
-    // MARK: - Header Section
     private var headerSection: some View {
-        HStack {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.headline.weight(.semibold))
-                    .foregroundColor(.primary)
-                    .padding(10)
-                    .background(Color.white)
-                    .clipShape(Circle())
-                    .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
-            }
-            
-            Spacer()
-            
+        ZStack {
+            // Centered title
             Text(L("profile_title"))
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundColor(.primary)
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Color(hex: "4B548D"), Color(hex: "6B74A8")],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
             
-            Spacer()
-            
-            Menu {
+            // Side buttons
+            HStack {
                 Button {
                     openTestinLinkedDeviceView.toggle()
                 } label: {
-                    Label(L("linked_devices"), systemImage: "iphone")
+                    HStack(spacing: 6) {
+                        Image(systemName: "iphone.gen3")
+                            .font(.system(size: 15, weight: .semibold))
+                        Text("Devices")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundStyle(Color(hex: "4B548D"))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        Capsule()
+                            .fill(Color(hex: "4B548D").opacity(0.1))
+                    )
                 }
-
+                
+                Spacer()
+                
                 Button {
                     openSettingView.toggle()
                 } label: {
-                    Label(L("settings"), systemImage: "gear")
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color(hex: "4B548D"))
+                        .frame(width: 40, height: 40)
+                        .background(
+                            Circle()
+                                .fill(Color(hex: "4B548D").opacity(0.1))
+                        )
                 }
-
-            } label: {
-                Label(L("more"), systemImage: "ellipsis.circle")
-                    .font(.headline)
-                    .foregroundStyle(.black)
             }
         }
         .padding(.horizontal, 20)
-        .padding(.top, 16)
+        .padding(.top, 8)
     }
     
     // MARK: - Profile Header Card
     private var profileHeaderCard: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
+            // Profile Picture with better styling
             ZStack(alignment: .bottomTrailing) {
                 AsyncImage(url: profilePic) { phase in
                     switch phase {
                     case .empty:
-                        Image(systemName: "person.circle.fill")
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 60, height: 60)
-                            .foregroundColor(.orange)
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.orange.opacity(0.6), Color.orange],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 120, height: 120)
+                            .overlay(
+                                Image(systemName: "person.fill")
+                                    .font(.system(size: 50))
+                                    .foregroundColor(.white)
+                            )
                     case .success(let image):
                         image
                             .resizable()
                             .scaledToFill()
                             .frame(width: 120, height: 120)
                             .clipShape(Circle())
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white, lineWidth: 4)
+                            )
+                            .shadow(color: Color(hex: "4B548D").opacity(0.3), radius: 15, y: 8)
                     case .failure:
-                        ProgressView()
+                        Circle()
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: 120, height: 120)
+                            .overlay(
+                                Image(systemName: "person.fill")
+                                    .font(.system(size: 50))
+                                    .foregroundColor(.gray)
+                            )
                     @unknown default:
                         EmptyView()
                     }
                 }
 
+                // Verified badge
                 if UserSession.shared.isEmailVerified {
                     ZStack {
                         Circle()
                             .fill(Color.white)
-                            .frame(width: 32, height: 32)
+                            .frame(width: 36, height: 36)
+                            .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
                         
                         Image(systemName: "checkmark.seal.fill")
-                            .font(.title3)
-                            .foregroundColor(.green)
+                            .font(.system(size: 24))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [Color.green, Color.green.opacity(0.8)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
                     }
-                    .offset(x: 5, y: 5)
+                    .offset(x: 8, y: 8)
+                }
+            }
+            .padding(.top, 8)
+            
+            // User Info
+            VStack(spacing: 8) {
+                Text("\(userSession.currentUser?.firstName ?? "User") \(userSession.currentUser?.lastName ?? "Name")")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                
+                VStack(spacing: 4) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "envelope.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                        Text("\(userSession.currentUser?.email ?? "email@example.com")")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack(spacing: 6) {
+                        Image(systemName: "phone.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                        Text("\(userSession.currentUser?.phoneNumber ?? "No phone")")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
             
-            VStack(spacing: 6) {
-                Text("\(userSession.currentUser?.firstName ?? "Nil") \(userSession.currentUser?.lastName ?? "Nil")")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                
-                Text("\(userSession.currentUser?.email ?? "No email")")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                
-                Text("\(userSession.currentUser?.phoneNumber ?? "No phone")")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
+            // Edit Profile Button
             Button {
                 showEditProfile = true
             } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "pencil")
-                        .font(.caption)
+                HStack(spacing: 8) {
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.system(size: 16))
                     Text(L("edit_profile"))
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
+                        .font(.system(size: 16, weight: .semibold))
                 }
-                .foregroundColor(Color(hex: "4B548D"))
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
-                .background(Color(hex: "4B548D").opacity(0.1))
-                .cornerRadius(20)
+                .foregroundColor(.white)
+                .padding(.horizontal, 28)
+                .padding(.vertical, 12)
+                .background(
+                    LinearGradient(
+                        colors: [Color(hex: "4B548D"), Color(hex: "5B64A0")],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(25)
+                .shadow(color: Color(hex: "4B548D").opacity(0.4), radius: 12, y: 6)
             }
+            .buttonStyle(ScaleButtonStyle())
         }
-        .padding(.vertical, 24)
+        .padding(.vertical, 32)
         .frame(maxWidth: .infinity)
-        .background(Color.white)
-        .cornerRadius(24)
-        .shadow(color: .black.opacity(0.04), radius: 12, y: 4)
+        .background(
+            RoundedRectangle(cornerRadius: 28)
+                .fill(Color.white)
+                .shadow(color: .black.opacity(0.06), radius: 20, y: 8)
+        )
         .padding(.horizontal, 20)
     }
     
     // MARK: - Personal Info Card
     private var personalInfoCard: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 24) {
             HStack {
-                Label(L("user_section"), systemImage: "person.text.rectangle")
-                    .font(.headline)
-                    .foregroundColor(.primary)
+                HStack(spacing: 10) {
+                    Image(systemName: "person.text.rectangle.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color(hex: "4B548D"), Color(hex: "6B74A8")],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    
+                    Text(L("user_section"))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                }
                 Spacer()
             }
             
-            VStack(spacing: 12) {
+            VStack(spacing: 16) {
                 ProfileInfoRow(
                     icon: "person.fill",
                     label: L("first_name"),
-                    value: userSession.currentUser?.firstName ?? "N/A"
+                    value: userSession.currentUser?.firstName ?? "N/A",
+                    iconColor: Color(hex: "4B548D")
                 )
                 
                 Divider()
+                    .padding(.leading, 60)
                 
                 ProfileInfoRow(
                     icon: "person.fill",
                     label: L("last_name"),
-                    value: userSession.currentUser?.lastName ?? "N/A"
+                    value: userSession.currentUser?.lastName ?? "N/A",
+                    iconColor: Color(hex: "6B74A8")
                 )
                 
                 Divider()
+                    .padding(.leading, 60)
                 
                 ProfileInfoRow(
                     icon: "envelope.fill",
                     label: L("email_address"),
-                    value: userSession.currentUser?.email ?? "N/A email"
+                    value: userSession.currentUser?.email ?? "N/A email",
+                    iconColor: Color.blue
                 )
                 
                 Divider()
+                    .padding(.leading, 60)
                 
                 ProfileInfoRow(
                     icon: "phone.fill",
                     label: L("phone_number"),
-                    value: userSession.currentUser?.phoneNumber ?? "N/A phone"
+                    value: userSession.currentUser?.phoneNumber ?? "N/A phone",
+                    iconColor: Color.green
                 )
             }
         }
-        .padding(20)
-        .background(Color.white)
-        .cornerRadius(20)
-        .shadow(color: .black.opacity(0.04), radius: 12, y: 4)
+        .padding(24)
+        .background(
+            RoundedRectangle(cornerRadius: 24)
+                .fill(Color.white)
+                .shadow(color: .black.opacity(0.06), radius: 20, y: 8)
+        )
+        .padding(.horizontal, 20)
+    }
+    
+    // MARK: - Quick Actions Card
+    private var quickActionsCard: some View {
+        VStack(spacing: 16) {
+            HStack {
+                HStack(spacing: 10) {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Color.orange)
+                    
+                    Text("Quick Actions")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                }
+                Spacer()
+            }
+            
+            HStack(spacing: 12) {
+                QuickActionButton(
+                    icon: "lock.shield.fill",
+                    title: "Encryption",
+                    gradient: [Color.cyan, Color.blue]
+                ) {
+                    openEncryptionSHATesting.toggle()
+                }
+                
+                QuickActionButton(
+                    icon: "location.fill",
+                    title: "Location",
+                    gradient: [Color.purple, Color.pink]
+                ) {
+                    openLocationTestingView.toggle()
+                }
+            }
+        }
+        .padding(24)
+        .background(
+            RoundedRectangle(cornerRadius: 24)
+                .fill(Color.white)
+                .shadow(color: .black.opacity(0.06), radius: 20, y: 8)
+        )
         .padding(.horizontal, 20)
     }
     
     // MARK: - Menu Section
     private var menuSection: some View {
-        VStack(spacing: 18) {
-            VStack(spacing: 12) {
-                MenuOptionRow(
-                    icon: "info.circle.fill",
-                    title: L("testing_encryption"),
-                    color: .cyan
-                ) {
-                    openEncryptionSHATesting.toggle()
-                }
-                MenuOptionRow(
-                    icon: "info.circle.fill",
-                    title: L("location_testing"),
-                    color: .cyan
-                ) {
-                    openLocationTestingView.toggle()
-                }
+        VStack(spacing: 16) {
+            // Slide to Logout
+            SlideToLogoutButton(
+                isDisabled: userSession.thisDeviceIsPrimary
+            ) {
+                performLogout()
             }
             
-            Button {
-                logOutRepo.logOut { result in
-                    switch result {
-                    case .success:
-                        print("✅ User logged out successfully")
-                        DispatchQueue.main.async {
-                            UserSession.shared.clearUser()
-                            UserDefaults.standard.removeObject(forKey: "token")
-                        }
-                    case .failure(let error):
-                        print("❌ Logout failed: \(error.localizedDescription)")
-                    }
+            if userSession.thisDeviceIsPrimary {
+                HStack{
+                    Image(systemName: "hand.raised.fill")
+                        .font(.system(size: 13,weight: .bold))
+                        .foregroundStyle(.red)
+                    Text("Cannot log out from primary device")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
                 }
-            } label: {
-                Text(L("log_out"))
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
-                    .foregroundColor(.red)
             }
-            .foregroundStyle(userSession.thisDeviceIsPrimary ? .gray : .red)
-            .disabled(userSession.thisDeviceIsPrimary)
-            .padding(.top, 20)
         }
         .padding(.horizontal, 20)
+        .padding(.bottom, 20)
+    }
+    
+    // MARK: - Logout Handler (optimized)
+    private func performLogout() {
+        // Perform logout on background thread
+        Task {
+            do {
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    logOutRepo.logOut { result in
+                        switch result {
+                        case .success:
+                            continuation.resume()
+                        case .failure(let error):
+                            continuation.resume(throwing: error)
+                        }
+                    }
+                }
+                
+                // Success - update UI on main thread
+                await MainActor.run {
+                    print("✅ User logged out successfully")
+                    UserSession.shared.clearUser()
+                    UserDefaults.standard.removeObject(forKey: "token")
+                }
+            } catch {
+                await MainActor.run {
+                    print("❌ Logout failed: \(error.localizedDescription)")
+                    alertTitle = "Error"
+                    alertMessage = "Logout failed: \(error.localizedDescription)"
+                    showAlert = true
+                }
+            }
+        }
     }
     
     // MARK: - Fetch User Data
@@ -323,6 +479,9 @@ struct ProfileView: View {
                     """
                     showAlert = true
                     
+                    // Reload profile picture after data refresh
+                    loadProfilePicture()
+                    
                 case .failure(let error):
                     alertTitle = L("error_refresh")
                     alertMessage = "\(L("refresh_failed"))\n\(error.localizedDescription)"
@@ -341,6 +500,48 @@ struct ProfileView: View {
             profilePic = nil
             print("⚠️ No valid profile picture URL found.")
         }
+    }
+}
+
+struct QuickActionButton: View {
+    let icon: String
+    let title: String
+    let gradient: [Color]
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: gradient,
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 56, height: 56)
+                        .shadow(color: gradient[0].opacity(0.4), radius: 12, y: 6)
+                    
+                    Image(systemName: icon)
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                
+                Text(title)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.gray.opacity(0.05))
+            )
+        }
+        .buttonStyle(ScaleButtonStyle())
     }
 }
 

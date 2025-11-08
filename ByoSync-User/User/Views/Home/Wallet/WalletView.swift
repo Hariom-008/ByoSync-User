@@ -7,6 +7,7 @@ struct WalletView: View {
     @State private var selectedTabIndex: Int = 0
     @StateObject var transactionVM = TransactionViewModel()
     @EnvironmentObject var languageManager: LanguageManager
+    @State private var isRotating = 0.0
 
     var body: some View {
         NavigationStack {
@@ -30,10 +31,28 @@ struct WalletView: View {
                                 .foregroundColor(.white.opacity(0.8))
                                 .textCase(.uppercase)
                                 .tracking(1.2)
-                            
-                            Text("\(L("common.currency_symbol"))\(String(format: "%.2f", UserSession.shared.wallet))")
-                                .font(.system(size: 48, weight: .bold))
-                                .foregroundColor(.white)
+                            HStack {
+                                Image("byosync_coin")
+                                    .resizable()
+                                    .interpolation(.high)  // Better quality interpolation
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 80, height: 80)
+                                    .clipShape(Circle())  // If it's a circular coin
+                                    .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)  // Adds depth
+                                    .rotation3DEffect(
+                                        .degrees(isRotating),
+                                        axis: (x: 0.0, y: 1.0, z: 0.0)
+                                    )
+                                    .onAppear {
+                                        withAnimation(.linear(duration: 1.0)) {
+                                            isRotating = 360.0
+                                        }
+                                    }
+                                
+                                Text("\(String(format: "%.2f", UserSession.shared.wallet))")
+                                    .font(.system(size: 48, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
                         }
                         
                         // Balance breakdown

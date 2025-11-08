@@ -2,10 +2,12 @@ import SwiftUI
 
 struct PaymentConfirmationView: View {
     @State private var isProcessing = false
-    @State private var showSuccess = false
-    @State private var navigateToUPI = false
+    @State private var navigateToRecieptView = false
     @Environment(\.dismiss) var dismiss
     @Binding var hideTabBar: Bool
+    @Binding var selectedUser: UserData?
+
+    @StateObject private var createOrderVM = CreateOrderViewModel()
 
     let amount: String
     let merchantName: String = String(localized: "enter_amount.merchant")
@@ -22,10 +24,8 @@ struct PaymentConfirmationView: View {
             .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
                 headerSection
 
-                // Main card
                 ZStack {
                     RoundedRectangle(cornerRadius: 28)
                         .fill(Color.white)
@@ -47,12 +47,14 @@ struct PaymentConfirmationView: View {
                 }
             }
 
-            // Processing overlay
             if isProcessing { processingOverlay }
         }
         .navigationBarHidden(true)
-        .navigationDestination(isPresented: $navigateToUPI) {
-            ChooseUPIAppView(hideTabBar: $hideTabBar, amount: amount)
+        .navigationDestination(isPresented: $navigateToRecieptView) {
+            ReceiptView(
+                hideTabBar: $hideTabBar,
+                selectedUser: $selectedUser, amount: Int(amount) ?? 0
+            )
         }
         .onAppear { hideTabBar = true }
     }
@@ -93,7 +95,6 @@ struct PaymentConfirmationView: View {
                 Circle()
                     .fill(Color(hex: "4B548D").opacity(0.1))
                     .frame(width: 100, height: 100)
-
                 Image(systemName: String(localized: "icon.faceid"))
                     .font(.system(size: 50))
                     .foregroundColor(Color(hex: "4B548D"))
@@ -137,17 +138,13 @@ struct PaymentConfirmationView: View {
                     value: merchantName,
                     icon: String(localized: "icon.person_fill")
                 )
-
                 Divider().padding(.vertical, 4)
-
                 detailRow(
                     label: String(localized: "payment_confirmation.upi_id"),
                     value: upiID,
                     icon: "at"
                 )
-
                 Divider().padding(.vertical, 4)
-
                 detailRow(
                     label: String(localized: "payment_confirmation.date_time"),
                     value: formattedDateTime,
@@ -169,12 +166,10 @@ struct PaymentConfirmationView: View {
                 Image(systemName: String(localized: "icon.shield_fill"))
                     .font(.system(size: 14))
                     .foregroundColor(Color(hex: "4CAF50"))
-
                 VStack(alignment: .leading, spacing: 4) {
                     Text(String(localized: "payment_confirmation.secure_payment"))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.primary)
-
                     Text(String(localized: "payment_confirmation.payment_encrypted"))
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
@@ -184,18 +179,6 @@ struct PaymentConfirmationView: View {
             .padding(16)
             .background(Color(hex: "4CAF50").opacity(0.08))
             .cornerRadius(12)
-
-            HStack(spacing: 8) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-
-                Text(String(localized: "payment_confirmation.agree_terms"))
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                Spacer()
-            }
-            .padding(.horizontal, 8)
         }
     }
 
@@ -203,7 +186,6 @@ struct PaymentConfirmationView: View {
     private var processingOverlay: some View {
         ZStack {
             Color.black.opacity(0.5).ignoresSafeArea()
-
             VStack(spacing: 24) {
                 ZStack {
                     Circle()
@@ -213,12 +195,10 @@ struct PaymentConfirmationView: View {
                         .scaleEffect(1.8)
                         .tint(.white)
                 }
-
                 VStack(spacing: 8) {
                     Text(String(localized: "payment_confirmation.processing"))
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.white)
-
                     Text(String(localized: "payment_confirmation.verifying_faceid"))
                         .font(.system(size: 14))
                         .foregroundColor(.white.opacity(0.7))
@@ -240,7 +220,6 @@ struct PaymentConfirmationView: View {
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
                 .frame(width: 20)
-
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
                     .font(.system(size: 12))
@@ -259,18 +238,37 @@ struct PaymentConfirmationView: View {
         return formatter.string(from: Date())
     }
 
+    // MARK: - Confirm Action
     private func handleConfirmPayment() {
+        guard let receiverId = selectedUser?.id else {
+            print("❌ Missing receiver ID")
+            return
+        }
+
+        let senderId = UserDefaults.standard.string(forKey: "user_id") ?? ""
+        let senderDeviceId = UserDefaults.standard.string(forKey: "device_id") ?? ""
+
         isProcessing = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-            withAnimation(.easeInOut(duration: 0.3)) { isProcessing = false }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                navigateToUPI = true
+        Task {
+            do {
+                let order = try await createOrderVM.createOrder(
+                    receiverId: receiverId,
+                    senderDeviceId: senderDeviceId,
+                    amount: Int(amount) ?? 0,
+                    senderId:senderId
+                )
+               // print("✅ Order Created: \(order.orderId)")
+                withAnimation(.easeInOut(duration: 0.3)) { isProcessing = false }
+                navigateToRecieptView = true
+            } catch {
+                print("❌ Failed: \(error.localizedDescription)")
+                withAnimation(.easeInOut(duration: 0.3)) { isProcessing = false }
             }
         }
     }
 }
 
-// MARK: - Action Buttons
+// MARK: - Buttons
 extension PaymentConfirmationView {
     var actionButtonsSection: some View {
         VStack(spacing: 14) {
@@ -311,8 +309,4 @@ extension PaymentConfirmationView {
             }
         }
     }
-}
-
-#Preview {
-    PaymentConfirmationView(hideTabBar: .constant(false), amount: "450")
 }

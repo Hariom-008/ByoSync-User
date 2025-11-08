@@ -8,7 +8,7 @@
 import Foundation
 
 struct MerchantEndpoints{
-   // static let baseURL = "https://backend-byosync.vercel.app" -> Deployed
+   // static let baseURL = "http://192.168.1.16:7000" 
     static let baseURL = "https://backend-byosync.vercel.app"
     
     struct Auth{

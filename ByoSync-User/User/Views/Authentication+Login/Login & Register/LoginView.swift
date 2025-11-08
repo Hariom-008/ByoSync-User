@@ -89,7 +89,14 @@ struct LoginView: View {
                 Spacer()
                 
                 Button {
-                    Task { await viewModel.login() }
+                    Task {
+                        // Completion style:
+                        FCMTokenManager.shared.getFCMToken { token in
+                            guard let token else { return }
+                            viewModel.fcmToken = token
+                        }
+                        await viewModel.login()
+                    }
                 } label: {
                     HStack {
                         if viewModel.isLoading {

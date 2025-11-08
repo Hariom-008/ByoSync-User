@@ -8,7 +8,8 @@
 import Foundation
 import SwiftUI
 
-enum MainTab: Hashable {
+// MARK: - Main Tab Enum
+enum MainTab {
     case home
-    case transactions
+    case profile
 }

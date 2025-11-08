@@ -9,6 +9,8 @@ struct TransactionView: View {
     @State private var selectedYear: Int = Calendar.current.component(.year, from: Date())
     @State private var customStartDate: Date = Date()
     @State private var customEndDate: Date = Date()
+    @Binding var hideTabBar:Bool
+    @Environment(\.dismiss) var dismiss
 
     var body: some View {
         ZStack {
@@ -55,6 +57,20 @@ struct TransactionView: View {
                 .ignoresSafeArea(edges: .bottom)
             }
         }
+        .navigationBarBackButtonHidden(true)
+        .navigationTitle("Transaction")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar{
+            ToolbarItem(placement: .navigationBarLeading){
+                Button{
+                    dismiss()
+                    hideTabBar.toggle()
+                }label: {
+                    Image(systemName: "chevron.left")
+                        .font(.subheadline)
+                }
+            }
+        }
         .onAppear {
             fetchInitialData()
         }
@@ -72,19 +88,16 @@ struct TransactionView: View {
     private var headerSection: some View {
         VStack(spacing: 16) {
             // Top bar
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("transaction.title")
-                        .font(.title).bold()
-                        .foregroundColor(.white)
-                    Text(viewModel.formattedDateDisplay(getDisplayDate()))
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.7))
-                }
-                Spacer()
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
+//            HStack {
+//                VStack(alignment: .leading, spacing: 4) {
+//                    Text(viewModel.formattedDateDisplay(getDisplayDate()))
+//                        .font(.subheadline)
+//                        .foregroundColor(.white.opacity(0.7))
+//                }
+//                Spacer()
+//            }
+//            .padding(.horizontal, 20)
+//            .padding(.top, 8)
             
             // Summary cards
             HStack(spacing: 12) {
@@ -514,5 +527,5 @@ struct TransactionView: View {
 }
 
 #Preview {
-    TransactionView()
+    TransactionView(hideTabBar:.constant(false))
 }

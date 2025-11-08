@@ -126,42 +126,6 @@ struct EmailVerificationView: View {
     }
 }
 
-struct CodeDigitField: View {
-    @Binding var text: String
-    let isFocused: Bool
-    let hasError: Bool
-    
-    var body: some View {
-        TextField("", text: $text)
-            .keyboardType(.numberPad)
-            .multilineTextAlignment(.center)
-            .font(.system(size: 32, weight: .semibold))
-            .frame(width: 50, height: 60)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemGray6))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(borderColor, lineWidth: 2)
-            )
-            .animation(.easeInOut(duration: 0.2), value: isFocused)
-            .animation(.easeInOut(duration: 0.2), value: hasError)
-    }
-    
-    var borderColor: Color {
-        if hasError {
-            return .red
-        } else if isFocused {
-            return .indigo
-        } else if !text.isEmpty {
-            return .indigo.opacity(0.5)
-        } else {
-            return .clear
-        }
-    }
-}
-
 #Preview {
     EmailVerificationView()
 }

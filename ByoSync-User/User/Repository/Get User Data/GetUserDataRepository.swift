@@ -39,7 +39,7 @@ final class GetUserDataRepository{
                     lastName: userData?.lastName ?? "nil",
                     email: userData?.email ?? "nil email",
                     phoneNumber: userData?.phoneNumber,
-                    deviceId: deviceData?.deviceId,
+                    deviceKey: deviceData?.deviceKey,
                     deviceName: deviceData?.deviceName
                 )
                 
@@ -59,7 +59,7 @@ final class GetUserDataRepository{
                       lastName: \(user.lastName)
                       email: \(user.email)
                       phoneNumber: \(user.phoneNumber ?? "nil phone")
-                      deviceId: \(user.deviceId ?? "nil deviceID")
+                      deviceId: \(user.deviceKey ?? "nil deviceID")
                       deviceName: \(user.deviceName ?? "nil deviceName")
                       """)
                 

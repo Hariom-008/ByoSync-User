@@ -4,6 +4,7 @@ struct RegisterUserView: View {
     @StateObject private var viewModel = RegisterUserViewModel()
     @Environment(\.dismiss) private var dismiss
     @Binding var phoneNumber: String
+    @State private var shouldNavigateToMain = false // ✅ Local state for navigation
     
     var body: some View {
         NavigationStack {
@@ -34,10 +35,33 @@ struct RegisterUserView: View {
                     
                     ScrollView {
                         VStack(spacing: 20) {
-                            FormField(icon: "person.fill", placeholder: L("first_name"), text: $viewModel.firstName, keyboardType: .default)
-                            FormField(icon: "person.fill", placeholder: L("last_name"), text: $viewModel.lastName, keyboardType: .default)
-                            FormField(icon: "envelope", placeholder: L("email"), text: $viewModel.email, keyboardType: .emailAddress)
-                            FormField(icon: "phone.fill", placeholder: L("phone_number"), text: $viewModel.phoneNumber, keyboardType: .phonePad)
+                            FormField(
+                                icon: "person.fill",
+                                placeholder: L("first_name"),
+                                text: $viewModel.firstName,
+                                keyboardType: .default
+                            )
+                            
+                            FormField(
+                                icon: "person.fill",
+                                placeholder: L("last_name"),
+                                text: $viewModel.lastName,
+                                keyboardType: .default
+                            )
+                            
+                            FormField(
+                                icon: "envelope",
+                                placeholder: L("email"),
+                                text: $viewModel.email,
+                                keyboardType: .emailAddress
+                            )
+                            
+                            FormField(
+                                icon: "phone.fill",
+                                placeholder: L("phone_number"),
+                                text: $viewModel.phoneNumber,
+                                keyboardType: .phonePad
+                            )
                         }
                         .padding(.horizontal, 24)
                         .padding(.top, 12)
@@ -45,20 +69,40 @@ struct RegisterUserView: View {
                     
                     Spacer()
                     
-                    Button(action: { viewModel.registerUser() }) {
+                    // ✅ Register Button with proper validation
+                    Button(action: {
+                        print("🔘 [VIEW] Register button tapped")
+                        print("📋 [VIEW] Can submit: \(viewModel.canSubmit)")
+                        print("📋 [VIEW] Fields filled: \(viewModel.allFieldsFilled)")
+                        print("📋 [VIEW] Email valid: \(viewModel.isValidEmail)")
+                        
+                        // Hide keyboard
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        
+                        viewModel.registerUser()
+                    }) {
                         HStack {
                             if viewModel.isLoading {
                                 ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                Text("Registering...")
+                                    .foregroundColor(.white)
                             } else {
                                 Text(L("continue"))
                             }
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color(hex: "4B548D"))
+                        .background(
+                            // ✅ Show visual feedback for disabled state
+                            !viewModel.canSubmit || viewModel.isLoading
+                            ? Color(hex: "4B548D").opacity(0.5)
+                            : Color(hex: "4B548D")
+                        )
                         .foregroundColor(.white)
                         .cornerRadius(12)
                     }
+                    .disabled(!viewModel.canSubmit || viewModel.isLoading) // ✅ Disable when invalid
                     .padding(.horizontal, 24)
                     .padding(.bottom, 32)
                 }
@@ -72,14 +116,40 @@ struct RegisterUserView: View {
                 }
             }
             .alert(L("error"), isPresented: $viewModel.showError) {
-                Button("OK", role: .cancel) {}
+                Button("OK", role: .cancel) {
+                    print("⚠️ [VIEW] Error alert dismissed")
+                }
             } message: {
                 if let errorMessage = viewModel.errorMessage {
                     Text(errorMessage)
                 }
             }
+            // ✅ Use onChange to trigger navigation
+            .onChange(of: viewModel.navigateToMainTab) { oldValue, newValue in
+                print("🔄 [VIEW] navigateToMainTab changed: \(oldValue) -> \(newValue)")
+                if newValue {
+                    // Small delay to ensure state is properly set
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        shouldNavigateToMain = true
+                    }
+                }
+            }
+            .onChange(of: viewModel.showError) { oldValue, newValue in
+                print("🔄 [VIEW] showError changed: \(oldValue) -> \(newValue)")
+            }
         }
-        .onAppear { viewModel.phoneNumber = phoneNumber }
+        .onAppear {
+            print("👀 [VIEW] RegisterUserView appeared")
+            viewModel.phoneNumber = phoneNumber
+            print("📱 [VIEW] Phone number set to: \(phoneNumber)")
+        }
+        // ✅ Move fullScreenCover outside NavigationStack
+        .fullScreenCover(isPresented: $shouldNavigateToMain) {
+            MainTabView()
+                .onAppear {
+                    print("✅ [VIEW] MainTabView presented successfully")
+                }
+        }
     }
 }
 
@@ -142,4 +212,8 @@ struct FormField: View {
             return nil
         }
     }
+}
+
+#Preview {
+    RegisterUserView(phoneNumber: .constant("+1234567890"))
 }

@@ -2,13 +2,12 @@ import Foundation
 
  
 struct UserAPIEndpoint{
-    //static let baseURL = "https://backend-byosync.vercel.app"
+    //static let baseURL = "http://192.168.1.16:7000"
     
-    static let baseURL = "https://backend-byosync.vercel.app"
+    static let baseURL = "https://byo-sync-backend-testing.vercel.app/"
     
     // Login,Register,Phone & Email Verification
     struct Auth {
-        static let users = "\(baseURL)/api/v1/users/"
         static let userRegister = "\(baseURL)/api/v1/users/user-register"
         static let phoneOTP = "\(baseURL)/api/v1/users/phone-otp"
         static let verifyOTP = "\(baseURL)/api/v1/users/verify-otp"
@@ -74,13 +73,17 @@ struct UserAPIEndpoint{
     struct PaymentOrder{
         static let updateOrder = "\(baseURL)/api/v1/orders/update"
     }
+    struct GetUserSorted{
+        static let getUserSortedbyTransaction = "\(baseURL)/api/v1/users/get-users-sorted-by-noOf-transactions-received"
+    }
 }
 
 
 struct CommonEndpoint{
-    static let baseURL = "https://backend-byosync.vercel.app"
+    static let baseURL = "https://byo-sync-backend-testing.vercel.app/"
     
     static let summaryTransactionData = "\(baseURL)/api/v1/recons/merchant-and-user-summary"
     
     static let CreateOrder = "\(baseURL)/api/v1/orders/create"
 }
+

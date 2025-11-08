@@ -17,11 +17,7 @@ struct RootView: View {
                      if accountType == "user" {
                         // User logged in
                         if userSession.currentUser == nil {
-                            UserTypeSelectionView()
-                                .transition(.asymmetric(
-                                    insertion: .move(edge: .trailing).combined(with: .opacity),
-                                    removal: .move(edge: .leading).combined(with: .opacity)
-                                ))
+                            AuthenticationView()
                         } else if !consentAccepted {
                             // User logged in but hasn't accepted consent → go to consent view
                             UserConsentView(onComplete: {
@@ -31,10 +27,6 @@ struct RootView: View {
                                 // Save consent acceptance to UserDefaults
                                 UserDefaults.standard.set(true, forKey: "consentAccepted")
                             })
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .bottom).combined(with: .opacity),
-                                removal: .move(edge: .top).combined(with: .opacity)
-                            ))
                         } else {
                             // User logged in AND consent accepted → go to main app
                             MainTabView()
@@ -45,12 +37,8 @@ struct RootView: View {
                         }
                     }
                 } else {
-                    // If no account type found, fallback to user selection
-                    UserTypeSelectionView()
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .trailing).combined(with: .opacity),
-                            removal: .move(edge: .leading).combined(with: .opacity)
-                        ))
+                    // If no account type found, go directly to authentication
+                    AuthenticationView()
                 }
             }
         }
