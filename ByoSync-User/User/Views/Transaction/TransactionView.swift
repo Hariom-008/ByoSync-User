@@ -9,74 +9,78 @@ struct TransactionView: View {
     @State private var selectedYear: Int = Calendar.current.component(.year, from: Date())
     @State private var customStartDate: Date = Date()
     @State private var customEndDate: Date = Date()
-    @Binding var hideTabBar:Bool
+    @Binding var hideTabBar: Bool
     @Environment(\.dismiss) var dismiss
-
+    
     var body: some View {
         ZStack {
-            // Background gradient
-            LinearGradient(
-                colors: [Color(hex: "4B548D"), Color(hex: "3A4270")],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            // Background
+            Color(hex: "F8F9FD")
+                .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // MARK: - Header Section
-                headerSection
+                // MARK: - Header
+//                headerSection
+//                    .background(
+//                        LinearGradient(
+//                            colors: [Color(hex: "4B548D"), Color(hex: "5E6BA8")],
+//                            startPoint: .topLeading,
+//                            endPoint: .bottomTrailing
+//                        )
+//                    )
                 
-                // MARK: - Content Sheet
-                VStack(spacing: 0) {
-                    // Controls Section
-                    controlsSection
-                    
-                    Divider()
-                    
-                    // MARK: - Success Message
-                    if let successMessage = viewModel.successMessage {
-                        HStack(spacing: 8) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                                .font(.system(size: 16))
-                            Text(successMessage)
-                                .font(.subheadline)
-                                .foregroundColor(.green)
+                // MARK: - Main Content
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        // Filter Section
+                        filterSection
+                            .padding(.horizontal, 20)
+                            .padding(.top, 24)
+                        
+                        // Stats Cards
+                        statsSection
+                            .padding(.horizontal, 20)
+                        
+                        // Success Message
+                        if let successMessage = viewModel.successMessage {
+                            successBanner(message: successMessage)
+                                .padding(.horizontal, 20)
+                                .transition(.move(edge: .top).combined(with: .opacity))
                         }
-                        .padding(.vertical, 12)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.green.opacity(0.1))
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                        
+                        // Content Area
+                        contentSection
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 24)
                     }
-                    
-                    // MARK: - Content Area
-                    contentArea
                 }
-                .background(Color.white)
-                .cornerRadius(24, corners: [.topLeft, .topRight])
-                .ignoresSafeArea(edges: .bottom)
             }
         }
         .navigationBarBackButtonHidden(true)
-        .navigationTitle("Transaction")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar{
-            ToolbarItem(placement: .navigationBarLeading){
-                Button{
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
                     dismiss()
                     hideTabBar.toggle()
-                }label: {
+                } label: {
                     Image(systemName: "chevron.left")
-                        .font(.subheadline)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.black)
                 }
+            }
+            
+            ToolbarItem(placement: .principal) {
+                Text("Transactions")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.black)
             }
         }
         .onAppear {
             fetchInitialData()
         }
-        .animation(.easeInOut(duration: 0.3), value: viewModel.isLoading)
-        .animation(.easeInOut(duration: 0.3), value: viewModel.transactions.count)
-        .animation(.easeInOut(duration: 0.2), value: viewModel.successMessage)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.isLoading)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.transactions.count)
+        .animation(.easeInOut(duration: 0.3), value: viewModel.successMessage)
         .onChange(of: viewModel.downloadedFileURL) { newValue in
             if let url = newValue {
                 viewModel.shareFile(url: url)
@@ -85,259 +89,320 @@ struct TransactionView: View {
     }
     
     // MARK: - Header Section
-    private var headerSection: some View {
-        VStack(spacing: 16) {
-            // Top bar
+//    private var headerSection: some View {
+//        VStack(spacing: 16) {
 //            HStack {
-//                VStack(alignment: .leading, spacing: 4) {
-//                    Text(viewModel.formattedDateDisplay(getDisplayDate()))
-//                        .font(.subheadline)
-//                        .foregroundColor(.white.opacity(0.7))
-//                }
+//                Image("byosync_image")
+//                    .resizable()
+//                    .scaledToFit()
+//                    .frame(height: 32)
+//                
 //                Spacer()
+//                
+//                HStack(spacing: 4) {
+//                    Circle()
+//                        .fill(Color.green)
+//                        .frame(width: 8, height: 8)
+//                    Text("Live")
+//                        .font(.caption)
+//                        .foregroundColor(.white.opacity(0.9))
+//                }
+//                .padding(.horizontal, 12)
+//                .padding(.vertical, 6)
+//                .background(Color.white.opacity(0.15))
+//                .cornerRadius(12)
 //            }
 //            .padding(.horizontal, 20)
 //            .padding(.top, 8)
-            
-            // Summary cards
+//        }
+//        .padding(.bottom, 24)
+//    }
+    
+    // MARK: - Filter Section
+    private var filterSection: some View {
+        VStack(spacing: 12) {
             HStack(spacing: 12) {
-                CompactSummaryCard(
-                    icon: "dollarsign.circle.fill",
-                    title: String(localized: "transaction.total_paid"),
-                    value: "₹\(String(format: "%.0f", viewModel.totalAmount))"
-                )
-                CompactSummaryCard(
-                    icon: "doc.text.fill",
-                    title: String(localized: "transaction.count"),
-                    value: "\(viewModel.transactionCount)"
-                )
-                CompactSummaryCard(
-                    icon: "gift.fill",
-                    title: String(localized: "transaction.saved"),
-                    value: "₹\(String(format: "%.2f", viewModel.discount))"
-                )
+                // Period Type Selector
+                periodTypeSelector
+                
+                // Report Type Selector
+                reportTypeSelector
             }
-            .padding(.horizontal, 20)
+            
+            // Date Selector
+            dateSelector
         }
-        .padding(.bottom, 24)
-    }
-    
-    // MARK: - Controls Section
-    private var controlsSection: some View {
-        VStack(spacing: 16) {
-            if selectedPeriodType == .custom {
-                // Custom Period Layout (VStack arrangement)
-                VStack(spacing: 12) {
-                    // First Row: Filter and Fetch buttons
-                    HStack(spacing: 12) {
-                        // Filter Menu Button
-                        filterMenuButton
-                        
-                        Spacer()
-                        
-                        // Fetch Button
-                        fetchButton
-                    }
-                    
-                    // Second Row: Date Pickers
-                    datePickerCompact
-                }
-            } else {
-                // Daily/Monthly Layout (HStack arrangement)
-                HStack(spacing: 12) {
-                    // Filter Menu Button
-                    filterMenuButton
-                    
-                    // Date Picker (for Daily only)
-                    if selectedPeriodType == .daily {
-                        datePickerCompact
-                    } else {
-                        Spacer()
-                    }
-                    
-                    // Fetch Button
-                    fetchButton
-                }
-            }
-        }
-        .padding(20)
+        .padding(16)
         .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
     }
     
-    // MARK: - Filter Menu Button
-    private var filterMenuButton: some View {
+    private var periodTypeSelector: some View {
         Menu {
-            // Period Type Section
-            Section(header: Text("Period Type")) {
-                Picker("Period", selection: $selectedPeriodType) {
-                    ForEach(PeriodType.allCases, id: \.self) { type in
-                        Label(type.displayName, systemImage: type.iconName)
-                            .tag(type)
+            ForEach(PeriodType.allCases, id: \.self) { type in
+                Button {
+                    withAnimation(.spring(response: 0.3)) {
+                        selectedPeriodType = type
                     }
-                }
-            }
-            
-            // Report Type Section
-            Section(header: Text("Report Type")) {
-                Picker("Report", selection: $selectedReportType) {
-                    ForEach(ReportType.allCases, id: \.self) { type in
-                        Label(type.displayName, systemImage: type.iconName)
-                            .tag(type)
-                    }
-                }
-            }
-            
-            // Date Selection Section
-            Section(header: Text("Date Selection")) {
-                switch selectedPeriodType {
-                case .monthly:
-                    Menu {
-                        Picker("Month", selection: $selectedMonth) {
-                            ForEach(1...12, id: \.self) { month in
-                                Text(monthName(month))
-                                    .tag(month)
-                            }
-                        }
-                    } label: {
-                        Label("Month: \(monthName(selectedMonth))", systemImage: "calendar")
-                    }
-                    
-                    Menu {
-                        Picker("Year", selection: $selectedYear) {
-                            ForEach(2020...Calendar.current.component(.year, from: Date()), id: \.self) { year in
-                                Text(String(year))
-                                    .tag(year)
-                            }
-                        }
-                    } label: {
-                        Label("Year: \(selectedYear)", systemImage: "calendar.badge.clock")
-                    }
-                default:
-                    EmptyView()
+                } label: {
+                    Label(type.displayName, systemImage: type.iconName)
                 }
             }
         } label: {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: selectedPeriodType.iconName)
+                    .font(.system(size: 14))
+                    .foregroundColor(Color(hex: "4B548D"))
+                
                 VStack(alignment: .leading, spacing: 2) {
-                    HStack {
-                        Text("Filter")
-                            .font(.caption2)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.primary)
-                        Image(systemName: "chevron.down")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Text(filterSummary)
+                    Text("Period")
                         .font(.caption2)
                         .foregroundColor(.secondary)
+                    Text(selectedPeriodType.displayName)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
                 }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.down")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(12)
+            .frame(maxWidth: .infinity)
             .background(Color(hex: "F5F7FA"))
             .cornerRadius(12)
         }
     }
     
-    // MARK: - Fetch Button
-    private var fetchButton: some View {
-        Button(action: fetchData) {
-            HStack(spacing: 4) {
-                if viewModel.isLoading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .scaleEffect(0.9)
+    private var reportTypeSelector: some View {
+        Menu {
+            ForEach(ReportType.allCases, id: \.self) { type in
+                Button {
+                    withAnimation(.spring(response: 0.3)) {
+                        selectedReportType = type
+                    }
+                } label: {
+                    Label(type.displayName, systemImage: type.iconName)
                 }
-                Text(viewModel.isLoading ? "..." : selectedReportType.buttonText)
-                    .font(.caption2)
-                    .fontWeight(.regular)
-                    .lineLimit(1)
             }
-            .foregroundColor(.white)
-            .frame(width: 75)
-            .padding(.vertical, 12)
-            .background(
-                LinearGradient(
-                    colors: [Color(hex: "4B548D"), Color(hex: "5E6BA8")],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: selectedReportType.iconName)
+                    .font(.system(size: 14))
+                    .foregroundColor(Color(hex: "4B548D"))
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Type")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Text(selectedReportType.displayName)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.down")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity)
+            .background(Color(hex: "F5F7FA"))
             .cornerRadius(12)
-            .shadow(color: Color(hex: "4B548D").opacity(0.3), radius: 6, y: 3)
         }
-        .disabled(viewModel.isLoading)
     }
     
-    // MARK: - Compact Date Picker
     @ViewBuilder
-    private var datePickerCompact: some View {
-        switch selectedPeriodType {
-        case .daily:
-            HStack(spacing: 8) {
+    private var dateSelector: some View {
+        VStack(spacing: 12) {
+            switch selectedPeriodType {
+            case .daily:
                 DatePicker(
-                    "",
+                    "Select Date",
                     selection: $selectedDate,
                     in: ...Date(),
                     displayedComponents: .date
                 )
-                .datePickerStyle(.compact)
-                .labelsHidden()
-            }
-            .padding(.horizontal, 12)
-            .cornerRadius(12)
-            
-        case .custom:
-            HStack(spacing: 10) {
-                // Start Date
-                HStack(spacing: 6) {
-                    DatePicker(
-                        "From",
-                        selection: $customStartDate,
-                        in: ...Date(),
-                        displayedComponents: .date
-                    )
-                    .datePickerStyle(.compact)
-                    .labelsHidden()
-                }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 10)
+                .datePickerStyle(.graphical)
+                .tint(Color(hex: "4B548D"))
                 
-                Text("→")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                // End Date
-                HStack(spacing: 6) {
-                    DatePicker(
-                        "To",
-                        selection: $customEndDate,
-                        in: customStartDate...Date(),
-                        displayedComponents: .date
-                    )
-                    .datePickerStyle(.compact)
-                    .labelsHidden()
+            case .monthly:
+                HStack(spacing: 12) {
+                    Menu {
+                        Picker("Month", selection: $selectedMonth) {
+                            ForEach(1...12, id: \.self) { month in
+                                Text(monthName(month)).tag(month)
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text(monthName(selectedMonth))
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            Spacer()
+                            Image(systemName: "chevron.down")
+                                .font(.caption)
+                        }
+                        .foregroundColor(.primary)
+                        .padding(12)
+                        .frame(maxWidth: .infinity)
+                        .background(Color(hex: "F5F7FA"))
+                        .cornerRadius(12)
+                    }
+                    
+                    Menu {
+                        Picker("Year", selection: $selectedYear) {
+                            ForEach(2020...Calendar.current.component(.year, from: Date()), id: \.self) { year in
+                                Text(String(year)).tag(year)
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text(String(selectedYear))
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            Spacer()
+                            Image(systemName: "chevron.down")
+                                .font(.caption)
+                        }
+                        .foregroundColor(.primary)
+                        .padding(12)
+                        .frame(maxWidth: .infinity)
+                        .background(Color(hex: "F5F7FA"))
+                        .cornerRadius(12)
+                    }
                 }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 10)
+                
+            case .custom:
+                VStack(spacing: 12) {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("From")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            DatePicker(
+                                "",
+                                selection: $customStartDate,
+                                in: ...Date(),
+                                displayedComponents: .date
+                            )
+                            .datePickerStyle(.compact)
+                            .labelsHidden()
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(12)
+                        .background(Color(hex: "F5F7FA"))
+                        .cornerRadius(12)
+                        
+                        Image(systemName: "arrow.right")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("To")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            DatePicker(
+                                "",
+                                selection: $customEndDate,
+                                in: customStartDate...Date(),
+                                displayedComponents: .date
+                            )
+                            .datePickerStyle(.compact)
+                            .labelsHidden()
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(12)
+                        .background(Color(hex: "F5F7FA"))
+                        .cornerRadius(12)
+                    }
+                }
             }
-            .frame(maxWidth: .infinity)
             
-        default:
-            EmptyView()
+            // Fetch Button
+            Button(action: fetchData) {
+                HStack(spacing: 8) {
+                    if viewModel.isLoading {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(0.9)
+                    } else {
+                        Image(systemName: selectedReportType == .view ? "eye.fill" : "arrow.down.circle.fill")
+                            .font(.system(size: 14))
+                    }
+                    Text(viewModel.isLoading ? "Loading..." : selectedReportType.buttonText)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    LinearGradient(
+                        colors: [Color(hex: "4B548D"), Color(hex: "5E6BA8")],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(12)
+                .shadow(color: Color(hex: "4B548D").opacity(0.3), radius: 8, y: 4)
+            }
+            .disabled(viewModel.isLoading)
         }
     }
     
-    // MARK: - Helper Computed Property
-    private var filterSummary: String {
-        "\(selectedPeriodType.displayName) • \(selectedReportType.displayName)"
+    // MARK: - Stats Section
+    private var statsSection: some View {
+        HStack(spacing: 12) {
+            StatCard(
+                icon: "doc.text.fill",
+                iconColor: Color(hex: "4B548D"),
+                title: "Total",
+                value: "\(viewModel.transactionCount)",
+                subtitle: viewModel.transactionCount == 1 ? "transaction" : "transactions"
+            )
+            
+            StatCard(
+                icon: "indianrupeesign.circle.fill",
+                iconColor: Color(hex: "5E6BA8"),
+                title: "Amount",
+                value: "₹\(String(format: "%.0f", viewModel.totalAmount))",
+                subtitle: "total spent"
+            )
+        }
     }
     
-    // MARK: - Content Area
+    // MARK: - Success Banner
+    private func successBanner(message: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 20))
+                .foregroundColor(.green)
+            
+            Text(message)
+                .font(.subheadline)
+                .foregroundColor(.green)
+            
+            Spacer()
+        }
+        .padding(16)
+        .background(Color.green.opacity(0.1))
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.green.opacity(0.3), lineWidth: 1)
+        )
+    }
+    
+    // MARK: - Content Section
     @ViewBuilder
-    private var contentArea: some View {
+    private var contentSection: some View {
         if viewModel.isLoading {
             loadingView
         } else if let errorMessage = viewModel.errorMessage {
@@ -353,126 +418,141 @@ struct TransactionView: View {
     
     // MARK: - Loading View
     private var loadingView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             ProgressView()
                 .scaleEffect(1.5)
                 .tint(Color(hex: "4B548D"))
-            Text("transaction.processing_request")
+            
+            Text("Loading transactions...")
                 .font(.subheadline)
-                .foregroundColor(.gray)
+                .foregroundColor(.secondary)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
+        .frame(height: 300)
         .background(Color.white)
+        .cornerRadius(16)
     }
     
     // MARK: - Error View
     private func errorView(message: String) -> some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 48))
+                .font(.system(size: 56))
                 .foregroundColor(.orange)
             
-            Text("transaction.something_wrong")
-                .font(.headline)
-                .foregroundColor(.black.opacity(0.8))
+            Text("Something went wrong")
+                .font(.title3)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
             
             Text(message)
                 .font(.subheadline)
-                .foregroundColor(.gray)
+                .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
+                .padding(.horizontal, 24)
             
             Button(action: fetchData) {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.clockwise")
-                        .font(.caption)
-                    Text("transaction.try_again")
+                    Text("Try Again")
                 }
                 .font(.subheadline)
                 .fontWeight(.semibold)
-                .foregroundColor(Color(hex: "4B548D"))
+                .foregroundColor(.white)
                 .padding(.horizontal, 24)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color(hex: "4B548D"), lineWidth: 2)
-                )
+                .padding(.vertical, 12)
+                .background(Color(hex: "4B548D"))
+                .cornerRadius(10)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
+        .padding(40)
         .background(Color.white)
+        .cornerRadius(16)
     }
     
     // MARK: - Empty State View
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             Image(systemName: "tray.fill")
-                .font(.system(size: 56))
-                .foregroundColor(.gray.opacity(0.3))
+                .font(.system(size: 64))
+                .foregroundColor(Color(hex: "4B548D").opacity(0.3))
             
-            Text("transaction.no_transactions")
+            Text("No Transactions Found")
                 .font(.title3)
-                .fontWeight(.semibold)
-                .foregroundColor(.black.opacity(0.7))
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
             
-            Text(String(format: String(localized: "transaction.no_transactions_for_date"), periodDisplayText))
+            Text("No transactions were found for \(periodDisplayText)")
                 .font(.subheadline)
-                .foregroundColor(.gray)
+                .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
+        .padding(40)
         .background(Color.white)
+        .cornerRadius(16)
     }
     
     // MARK: - Transaction List View
     private var transactionListView: some View {
         VStack(spacing: 0) {
+            // Header
             HStack {
-                Text("\(viewModel.transactionCount) \(viewModel.transactionCount == 1 ? String(localized: "transaction.transaction") : String(localized: "transaction.transactions"))")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.black.opacity(0.6))
+                Text("\(viewModel.transactionCount) \(viewModel.transactionCount == 1 ? "Transaction" : "Transactions")")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                
                 Spacer()
+                
                 Text(periodDisplayText)
                     .font(.caption)
-                    .foregroundColor(.gray)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color(hex: "F5F7FA"))
+                    .cornerRadius(8)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .background(Color(UIColor.systemGray6))
-            
-            ScrollView(showsIndicators: false) {
-                LazyVStack(spacing: 12) {
-                    ForEach(viewModel.getSortedTransactions()) { tx in
-                        TransactionRow(tx: tx, discount: viewModel.calculateTransactionDiscount(tx.totalAmount))
-                    }
-                }
-                .padding(20)
-            }
+            .padding(16)
             .background(Color.white)
+            .cornerRadius(16, corners: [.topLeft, .topRight])
+            
+            // Transactions
+            LazyVStack(spacing: 12) {
+                ForEach(viewModel.getSortedTransactions()) { transaction in
+                    TransactionRow(transaction: transaction)
+                }
+            }
+            .padding(16)
+            .background(Color.white)
+            .cornerRadius(16, corners: [.bottomLeft, .bottomRight])
         }
     }
     
     // MARK: - Report Info View
     private var reportInfoView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: selectedReportType == .email ? "envelope.fill" : "arrow.down.circle.fill")
-                .font(.system(size: 48))
-                .foregroundColor(.gray.opacity(0.3))
+        VStack(spacing: 24) {
+            Image(systemName: "arrow.down.doc.fill")
+                .font(.system(size: 64))
+                .foregroundColor(Color(hex: "4B548D").opacity(0.3))
             
-            Text(selectedReportType == .email ?
-                 String(localized: "transaction.email_will_be_sent") :
-                    String(localized: "transaction.report_will_be_downloaded"))
-            .font(.subheadline)
-            .foregroundColor(.gray)
-            
-            Text(String(format: String(localized: "transaction.click_to_proceed"), selectedReportType.buttonText))
-                .font(.caption)
-                .foregroundColor(.gray.opacity(0.7))
+            VStack(spacing: 8) {
+                Text("Report Ready")
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                
+                Text("Click '\(selectedReportType.buttonText)' to proceed")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
+        .padding(40)
         .background(Color.white)
+        .cornerRadius(16)
     }
     
     // MARK: - Helper Methods
@@ -499,23 +579,14 @@ struct TransactionView: View {
         }
     }
     
-    private func getDisplayDate() -> Date {
-        switch selectedPeriodType {
-        case .daily:
-            return selectedDate
-        case .monthly, .custom:
-            return Date()
-        }
-    }
-    
     private var periodDisplayText: String {
         switch selectedPeriodType {
         case .daily:
-            return viewModel.formattedDate(selectedDate)
+            return viewModel.formattedDateDisplay(selectedDate)
         case .monthly:
             return "\(monthName(selectedMonth)) \(selectedYear)"
         case .custom:
-            return "\(viewModel.formattedDate(customStartDate)) - \(viewModel.formattedDate(customEndDate))"
+            return "\(viewModel.formattedDateDisplay(customStartDate)) - \(viewModel.formattedDateDisplay(customEndDate))"
         }
     }
     
@@ -526,6 +597,52 @@ struct TransactionView: View {
     }
 }
 
+// MARK: - Supporting Views
+
+struct StatCard: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let value: String
+    let subtitle: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.system(size: 18))
+                    .foregroundColor(iconColor)
+                    .frame(width: 36, height: 36)
+                    .background(iconColor.opacity(0.1))
+                    .cornerRadius(8)
+                
+                Spacer()
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Text(value)
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
+    }
+}
 #Preview {
-    TransactionView(hideTabBar:.constant(false))
+    NavigationStack {
+        TransactionView(hideTabBar: .constant(false))
+    }
 }

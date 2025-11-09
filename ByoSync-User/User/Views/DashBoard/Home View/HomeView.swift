@@ -123,8 +123,8 @@ struct HomeView: View {
             Spacer()
             
             Button {
-                print("🔔 Notification button tapped")
-                // Add notification action
+               // openSocketClientTestView.toggle()
+                
             } label: {
                 ZStack {
                     Circle()
@@ -359,7 +359,8 @@ struct HomeView: View {
                             name: top3Users[1].firstName,
                             score: "\(top3Users[1].noOfTransactions)",
                             rankColor: Color(hex: "C0C0C0"),
-                            isHighlighted: top3Users[1].id == UserSession.shared.currentUser?.userId
+                            isHighlighted: top3Users[1].id == UserSession.shared.currentUser?.userId,
+                            isFirstRank: false
                         )
                         
                         // 1st Place
@@ -368,7 +369,8 @@ struct HomeView: View {
                             name: top3Users[0].id == UserSession.shared.currentUser?.userId ? "You" : top3Users[0].firstName,
                             score: "\(top3Users[0].noOfTransactions)",
                             rankColor: Color(hex: "FFD700"),
-                            isHighlighted: true
+                            isHighlighted: false,
+                            isFirstRank: true
                         )
                         
                         // 3rd Place
@@ -377,7 +379,8 @@ struct HomeView: View {
                             name: top3Users[2].firstName,
                             score: "\(top3Users[2].noOfTransactions)",
                             rankColor: Color(hex: "CD7F32"),
-                            isHighlighted: top3Users[2].id == UserSession.shared.currentUser?.userId
+                            isHighlighted: top3Users[2].id == UserSession.shared.currentUser?.userId,
+                            isFirstRank: false
                         )
                     }
                 } else if !top3Users.isEmpty {
@@ -403,13 +406,12 @@ struct HomeView: View {
                     .fill(Color.white)
                     .overlay(
                         RoundedRectangle(cornerRadius: 24)
-                            .stroke(
+                            .fill(
                                 LinearGradient(
-                                    colors: [Color.yellow.opacity(0.4), Color.orange.opacity(0.3)],
+                                    colors: [Color.yellow.opacity(0.1), Color.orange.opacity(0.5)],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 2
+                                )
                             )
                     )
                     .shadow(color: Color.yellow.opacity(0.15), radius: 15, x: 0, y: 8)
@@ -531,141 +533,10 @@ struct HomeView: View {
     }
 }
 
-// MARK: - Leaderboard Preview Item (Enhanced)
-private struct LeaderboardPreviewItem: View {
-    let rank: String
-    let name: String
-    let score: String
-    let rankColor: Color
-    var isHighlighted: Bool = false
-    
-    var body: some View {
-        VStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(rankColor.opacity(0.18))
-                    .frame(width: isHighlighted ? 58 : 48, height: isHighlighted ? 58 : 48)
-                
-                Circle()
-                    .stroke(rankColor.opacity(0.4), lineWidth: 2)
-                    .frame(width: isHighlighted ? 58 : 48, height: isHighlighted ? 58 : 48)
-                
-                Text(rank)
-                    .font(.system(size: isHighlighted ? 22 : 18, weight: .bold))
-                    .foregroundColor(rankColor)
-            }
-            
-            VStack(spacing: 3) {
-                Text(name)
-                    .font(.system(size: 13, weight: isHighlighted ? .bold : .semibold))
-                    .foregroundColor(.black)
-                    .lineLimit(1)
-                
-                Text(score)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.gray)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(isHighlighted ? rankColor.opacity(0.2) : Color.clear)
-        )
-        .scaleEffect(isHighlighted ? 1.05 : 1.0)
-    }
-}
-
-// MARK: - Promotion Card (Enhanced)
-private struct PromotionCard: View {
-    var promotionTitle: String
-    var promotionDescription: String
-    var icon: String
-    var iconColor: Color
-    var accentColor: Color
-    
-    var body: some View {
-        HStack(spacing: 16) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(
-                        LinearGradient(
-                            colors: [iconColor.opacity(0.2), iconColor.opacity(0.15)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 64, height: 64)
-
-                Image(systemName: icon)
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundColor(.white)
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text(promotionTitle)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.black)
-
-                Text(promotionDescription)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.gray)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(18)
-        .frame(width: 330)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color.white)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(
-                            LinearGradient(
-                                colors: [accentColor.opacity(0.19), accentColor.opacity(0.15)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                )
-                .shadow(color: accentColor.opacity(0.12), radius: 14, x: 0, y: 7)
-        )
-    }
-}
-
 // MARK: - Shimmer Effect for Loading
 extension View {
     func shimmer() -> some View {
         self.modifier(ShimmerModifier())
-    }
-}
-
-struct ShimmerModifier: ViewModifier {
-    @State private var phase: CGFloat = 0
-    
-    func body(content: Content) -> some View {
-        content
-            .overlay(
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        .clear,
-                        Color.white.opacity(0.3),
-                        .clear
-                    ]),
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .offset(x: phase)
-                .mask(content)
-            )
-            .onAppear {
-                withAnimation(Animation.linear(duration: 1.5).repeatForever(autoreverses: false)) {
-                    phase = 400
-                }
-            }
     }
 }
 

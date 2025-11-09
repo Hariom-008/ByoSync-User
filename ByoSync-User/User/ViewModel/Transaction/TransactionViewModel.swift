@@ -9,10 +9,8 @@ final class TransactionViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var successMessage: String?
     @Published var downloadedFileURL: URL?
-    @Published var discount: Double = 0.0
     @Published var totalAmount: Double = 0.0
 
-    @AppStorage("creditAvailable") var creditAvailable: Double = 0.0
     @AppStorage("transactionCount") var savedTransactionCount: Int = 0
     
     // Computed properties
@@ -22,10 +20,6 @@ final class TransactionViewModel: ObservableObject {
     
     var successCount: Int {
         transactions.filter { $0.status.uppercased() == "SUCCESS" }.count
-    }
-    
-    var formattedDiscount: String {
-        "₹\(String(format: "%.2f", discount))"
     }
     
     var formattedTotalAmount: String {
@@ -49,17 +43,6 @@ final class TransactionViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Discount Calculation Logic
-    /// Calculates discount for a single transaction amount
-    /// - Rules: If amount >= 10, apply 10% discount, but cap at ₹50 maximum per transaction
-    func calculateTransactionDiscount(_ amount: Double) -> Double {
-        if amount >= 10 {
-            let calculatedDiscount = amount * 0.10
-            return min(calculatedDiscount, 50.0)  // Cap at ₹50
-        }
-        return 0.0
-    }
-    
     // MARK: - Fetch Daily Transactions
     func fetchTransactions(for date: Date, reportType: ReportType) {
         let dateString = formattedDate(date)
@@ -67,10 +50,6 @@ final class TransactionViewModel: ObservableObject {
         switch reportType {
         case .view:
             fetchViewReport(date: dateString, type: "daily")
-        case .email:
-            sendEmailReport(date: dateString, type: "daily")
-        case .download:
-            downloadReport(date: dateString, type: "daily")
         }
     }
     
@@ -82,10 +61,6 @@ final class TransactionViewModel: ObservableObject {
         switch reportType {
         case .view:
             fetchMonthlyViewReport(month: monthString, year: yearString)
-        case .email:
-            sendMonthlyEmailReport(month: monthString, year: yearString)
-        case .download:
-            downloadMonthlyReport(month: monthString, year: yearString)
         }
     }
     
@@ -97,10 +72,6 @@ final class TransactionViewModel: ObservableObject {
         switch reportType {
         case .view:
             fetchCustomViewReport(startDate: startDateString, endDate: endDateString)
-        case .email:
-            sendCustomEmailReport(startDate: startDateString, endDate: endDateString)
-        case .download:
-            downloadCustomReport(startDate: startDateString, endDate: endDateString)
         }
     }
     
@@ -118,7 +89,7 @@ final class TransactionViewModel: ObservableObject {
                 switch result {
                 case .success(let data):
                     self.transactions = data
-                    self.calculateDiscount(from: data)
+                    self.calculateTotalAmount(from: data)
                     self.savedTransactionCount = data.count
                     self.successMessage = "✓ Loaded \(data.count) transaction\(data.count != 1 ? "s" : "")"
                     self.hideSuccessMessageAfterDelay()
@@ -185,7 +156,7 @@ final class TransactionViewModel: ObservableObject {
                 switch result {
                 case .success(let data):
                     self.transactions = data
-                    self.calculateDiscount(from: data)
+                    self.calculateTotalAmount(from: data)
                     self.savedTransactionCount = data.count
                     self.successMessage = "✓ Loaded \(data.count) transaction\(data.count != 1 ? "s" : "")"
                     self.hideSuccessMessageAfterDelay()
@@ -235,7 +206,7 @@ final class TransactionViewModel: ObservableObject {
                 switch result {
                 case .success(let data):
                     self.transactions = data
-                    self.calculateDiscount(from: data)
+                    self.calculateTotalAmount(from: data)
                     self.savedTransactionCount = data.count
                     self.successMessage = "✓ Loaded \(data.count) transaction\(data.count != 1 ? "s" : "")"
                     self.hideSuccessMessageAfterDelay()
@@ -271,26 +242,15 @@ final class TransactionViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Calculate Total Discount
-    /// Calculates total discount by summing discount for each transaction
-    /// - Each transaction: if amount >= 10, apply 10% discount capped at ₹50
-    private func calculateDiscount(from transactions: [Transaction]) {
-        let total = transactions.reduce(0.0) { $0 + $1.totalAmount }
-        totalAmount = total  // Update totalAmount
+    // MARK: - Calculate Total Amount
+    /// Calculates total amount from all transactions
+    private func calculateTotalAmount(from transactions: [Transaction]) {
+        let total = transactions.reduce(0.0) { $0 + Double($1.coins ?? 0) }
+        totalAmount = total
         
-        // Calculate total discount: sum of individual transaction discounts
-        let totalDiscount = transactions.reduce(0.0) { sum, tx in
-            sum + calculateTransactionDiscount(tx.totalAmount)
-        }
-        
-        discount = totalDiscount
-        creditAvailable = discount
-        
-        print("📊 Discount Calculation:")
+        print("📊 Amount Calculation:")
         print("   Total Amount: ₹\(String(format: "%.2f", total))")
-        print("   Total Discount (10% per transaction, max ₹50 each): ₹\(String(format: "%.2f", discount))")
         print("   Number of transactions: \(transactions.count)")
-        print("💾 Saved creditAvailable: ₹\(creditAvailable)")
     }
 
     // MARK: - Share Downloaded File
@@ -333,7 +293,7 @@ final class TransactionViewModel: ObservableObject {
     
     func formattedDateDisplay(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, MMM dd, yyyy"
+        formatter.dateFormat = "MMM dd, yyyy"
         return formatter.string(from: date)
     }
 }

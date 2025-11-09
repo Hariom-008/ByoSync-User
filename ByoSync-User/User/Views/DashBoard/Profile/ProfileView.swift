@@ -38,7 +38,6 @@ struct ProfileView: View {
                    // headerSection
                     profileHeaderCard
                     personalInfoCard
-                    quickActionsCard
                     menuSection
                 }
                 .padding(.bottom, 100)
@@ -339,49 +338,6 @@ struct ProfileView: View {
         .padding(.horizontal, 20)
     }
     
-    // MARK: - Quick Actions Card
-    private var quickActionsCard: some View {
-        VStack(spacing: 16) {
-            HStack {
-                HStack(spacing: 10) {
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 18))
-                        .foregroundStyle(Color.orange)
-                    
-                    Text("Quick Actions")
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
-                }
-                Spacer()
-            }
-            
-            HStack(spacing: 12) {
-                QuickActionButton(
-                    icon: "lock.shield.fill",
-                    title: "Encryption",
-                    gradient: [Color.cyan, Color.blue]
-                ) {
-                    openEncryptionSHATesting.toggle()
-                }
-                
-                QuickActionButton(
-                    icon: "location.fill",
-                    title: "Location",
-                    gradient: [Color.purple, Color.pink]
-                ) {
-                    openLocationTestingView.toggle()
-                }
-            }
-        }
-        .padding(24)
-        .background(
-            RoundedRectangle(cornerRadius: 24)
-                .fill(Color.white)
-                .shadow(color: .black.opacity(0.06), radius: 20, y: 8)
-        )
-        .padding(.horizontal, 20)
-    }
-    
     // MARK: - Menu Section
     private var menuSection: some View {
         VStack(spacing: 16) {
@@ -481,48 +437,6 @@ struct ProfileView: View {
             profilePic = nil
             print("⚠️ No valid profile picture URL found.")
         }
-    }
-}
-
-struct QuickActionButton: View {
-    let icon: String
-    let title: String
-    let gradient: [Color]
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: gradient,
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 56, height: 56)
-                        .shadow(color: gradient[0].opacity(0.4), radius: 12, y: 6)
-                    
-                    Image(systemName: icon)
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundColor(.white)
-                }
-                
-                Text(title)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.primary)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.gray.opacity(0.05))
-            )
-        }
-        .buttonStyle(ScaleButtonStyle())
     }
 }
 

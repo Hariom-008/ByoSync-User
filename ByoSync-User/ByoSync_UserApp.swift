@@ -9,15 +9,27 @@ struct ByoSync_UserApp: App {
     @StateObject private var languageManager = LanguageManager.shared
     @StateObject var userSession = UserSession.shared
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    @StateObject private var socketManager = SocketIOManager.shared
     
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environmentObject(userSession)
-                .id(languageManager.currentLanguageCode)
-                .environmentObject(languageManager)
-                .environment(\.locale, .init(identifier: languageManager.currentLanguageCode))
-                .preferredColorScheme(.light)
+            ZStack{
+                RootView()
+                    .environmentObject(userSession)
+                    .id(languageManager.currentLanguageCode)
+                    .environmentObject(languageManager)
+                    .environment(\.locale, .init(identifier: languageManager.currentLanguageCode))
+                    .preferredColorScheme(.light)
+                GlobalPaymentOverlayView()
+            }
+            .onAppear {
+                // Connect socket when app launches
+                socketManager.connect()
+            }
+            .onDisappear {
+                // Disconnect when app closes
+                socketManager.disconnect()
+            }
         }
     }
 }
@@ -166,8 +178,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     
     // MARK: - Remote Notifications
     func application(_ application: UIApplication,
-                    didReceiveRemoteNotification notification: [AnyHashable : Any],
-                    fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+                     didReceiveRemoteNotification notification: [AnyHashable : Any],
+                     fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         
         if Auth.auth().canHandleNotification(notification) {
             completionHandler(.noData)

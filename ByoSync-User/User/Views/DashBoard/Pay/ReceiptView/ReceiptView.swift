@@ -56,6 +56,8 @@ struct ReceiptView: View {
             withAnimation { isAnimating = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                 withAnimation(.easeOut(duration: 0.6)) { showContent = true }
+                AudioManager.shared.playPaymentSuccessSound()
+                print("🎶 Payment Success Sound is Played")
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
                 withAnimation { showButton = true }

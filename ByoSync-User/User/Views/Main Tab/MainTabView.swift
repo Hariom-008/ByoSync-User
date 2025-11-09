@@ -1,6 +1,8 @@
 import SwiftUI
+
 struct MainTabView: View {
     @EnvironmentObject private var languageManager: LanguageManager
+    @StateObject var socketManager = SocketIOManager.shared  // Add this
     @State private var selected: MainTab = .home
     @State private var openPayView = false
     @State var hideTabBar: Bool = false
@@ -112,7 +114,7 @@ struct MainTabView: View {
                                                 )
                                         )
                                     
-                                       Text("Pay")
+                                    Text("Pay")
                                         .font(.system(size: 14, weight: .semibold))
                                         .foregroundStyle(.white)
                                 }
@@ -134,6 +136,7 @@ struct MainTabView: View {
         }
     }
 }
+
 // MARK: - Custom Button Style
 struct TabItemButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {

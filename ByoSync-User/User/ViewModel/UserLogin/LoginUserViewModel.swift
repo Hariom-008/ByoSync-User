@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Combine
 
 // MARK: - Updated User Login ViewModel
@@ -14,7 +15,7 @@ final class LoginViewModel: ObservableObject {
     @Published var wallet: Int?
     @Published var fcmToken:String = ""
     
-    private let hardcodedDeviceId = "123456"
+    private let hardcodedDeviceId = "123456c"
 
     func login() async {
         guard !name.trimmingCharacters(in: .whitespaces).isEmpty else {
@@ -45,6 +46,8 @@ final class LoginViewModel: ObservableObject {
                     
                     self.updateUserSession(response: response)
                     self.loginSuccess = true
+                    SocketIOManager.shared.connect()
+                    print("✅ Socket is Connected")
                     UserDefaults.standard.set(response.data?.device.token ?? "", forKey: "token")
                     print("✅ Token Saved in UserDefaults")
                     

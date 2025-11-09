@@ -1,162 +1,104 @@
+////
+////  TransactionRow.swift
+////  ByoSync
+////
+////  Created by Hari's Mac on 01.11.2025.
+////
 //
-//  TransactionRow.swift
-//  ByoSync
-//
-//  Created by Hari's Mac on 01.11.2025.
-//
-
 import Foundation
 import SwiftUI
 
+
 struct TransactionRow: View {
-    let tx: Transaction
-    let discount: Double
-    
-    private var formattedDate: String {
-        let inputFormatter = DateFormatter()
-        inputFormatter.locale = Locale(identifier: "en_US_POSIX")
-        inputFormatter.timeZone = TimeZone(secondsFromGMT: 0)
-        inputFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
-
-        if let date = inputFormatter.date(from: tx.createdAt) {
-            let outputFormatter = DateFormatter()
-            outputFormatter.locale = Locale.current
-            outputFormatter.timeZone = TimeZone.current
-            outputFormatter.dateFormat = "MMM dd, yyyy • hh:mm a"
-
-            return outputFormatter.string(from: date)
-        } else {
-            return tx.createdAt
-        }
-    }
-    
-    private var statusColor: Color {
-        switch tx.status.uppercased() {
-        case "SUCCESS", "COMPLETED":
-            return .green
-        case "PENDING":
-            return .orange
-        case "FAILED":
-            return .red
-        default:
-            return .gray
-        }
+    let transaction: Transaction
+    var currentUser:Bool {
+        return UserSession.shared.currentUser?.userId == transaction.receiverId?.id
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 14) {
-                // Icon
-                ZStack {
-                    Circle()
-                        .fill(Color(hex: "4B548D").opacity(0.1))
-                        .frame(width: 44, height: 44)
-                    
-                    AsyncImage(url: stringToURL(tx.merchantId.merchantProfilePic)) { phase in
-                        switch phase {
-                        case .empty:
-                            Image(systemName: "person.circle.fill")
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 44, height: 44)
-                                .foregroundColor(.orange)
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 44, height: 44)
-                                .clipShape(Circle())
-                        case .failure:
-                            ProgressView()
-                        @unknown default:
-                            EmptyView()
-                        }
-                    }
-                }
+        HStack(spacing: 12) {
+            // Profile Image
+            AsyncImage(url: URL(string: transaction.receiverId?.userProfilePic ?? "")) { image in
+                image
+                    .resizable()
+                    .scaledToFill()
+            } placeholder: {
+                Circle()
+                    .fill(Color(hex: "4B548D").opacity(0.1))
+                    .overlay(
+                        Text("\(transaction.receiverId?.firstName.prefix(1) ?? "nil")")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(Color(hex: "4B548D"))
+                    )
+            }
+            .frame(width: 48, height: 48)
+            .clipShape(Circle())
+            
+            // Transaction Details
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(transaction.receiverId?.firstName ?? "nil") \(transaction.receiverId?.lastName ?? "nil")")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
                 
-                // Transaction Details
-                VStack(alignment: .leading, spacing: 6) {
-                    // Amount and status
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Paid to")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundColor(.gray)
-                            
-                            Text("\(tx.merchantId.merchantName)")
-                                .font(.subheadline)
-                                .foregroundColor(.black)
-                        }
-                        
-                        Spacer()
-                        
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("₹\(String(format: "%.2f", tx.totalAmount - discount))")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundColor(.red)
-                            
-                            // Status badge
-                            HStack(spacing: 4) {
-                                Circle()
-                                    .fill(statusColor)
-                                    .frame(width: 4, height: 4)
-                                
-                                Text(tx.status)
-                                    .font(.caption2.weight(.medium))
-                                    .foregroundColor(statusColor)
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(statusColor.opacity(0.1))
-                            .cornerRadius(6)
-                        }
-                    }
-                    
-                    // Date and time
-                    HStack(spacing: 4) {
-                        Text(formattedDate)
+                HStack(spacing: 8) {
+                    if currentUser{
+                      Text("Recieved")
+                            .font(.caption2)
+                            .foregroundStyle(.green)
+                    }else{
+                        Text("Sent")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }
+                    
+                    Circle()
+                        .fill(Color.secondary.opacity(0.3))
+                        .frame(width: 3, height: 3)
+                    
+                    Text(formattedDate(transaction.createdAt))
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
                 }
             }
-            .padding(12)
             
-            // MARK: - Discount Row (shown if discount > 0)
-            if discount > 0 {
-                Divider()
-                    .padding(.horizontal, 12)
+            Spacer()
+            
+            // Amount & Status
+            VStack(alignment: .trailing, spacing: 4) {
+                Text("\(currentUser ? "+" : "-")\(transaction.coins ?? 0)")
+                    .font(.subheadline)
+                    .fontWeight(.bold)
+                    .foregroundColor(currentUser ? .green : .red)
                 
-                HStack {
-                    HStack(spacing: 8) {
-                        Image(systemName: "gift.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.green)
-                        
-                        Text("Discount by ByoSync")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundColor(.black.opacity(0.7))
-                    }
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(transaction.status.uppercased() == "SUCCESS" ? Color.green : Color.orange)
+                        .frame(width: 6, height: 6)
                     
-                    Spacer()
-                    
-                    Text("+ ₹\(String(format: "%.2f", discount))")
-                        .font(.caption2.weight(.bold))
-                        .foregroundColor(.green)
+                    Text(transaction.status.capitalized)
+                        .font(.caption2)
+                        .foregroundColor(transaction.status.uppercased() == "SUCCESS" ? .green : .orange)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(Color.green.opacity(0.08))
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.black.opacity(0.06), lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
-        )
+        .padding(12)
+        .background(Color(hex: "F8F9FD"))
+        .cornerRadius(12)
+    }
+    
+    private func formattedDate(_ dateString: String) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+        
+        guard let date = formatter.date(from: dateString) else {
+            return dateString
+        }
+        
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateFormat = "MMM dd, h:mm a"
+        return displayFormatter.string(from: date)
     }
 }

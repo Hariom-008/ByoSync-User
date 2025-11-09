@@ -9,31 +9,27 @@ struct TransactionAPIResponse: Codable {
     let data: [Transaction]
 }
 
-struct Transaction: Codable, Identifiable,Equatable {
+struct Transaction: Codable, Identifiable, Equatable {
     let id: String
-    let merchantId: MerchantInfo
-    let currency: String
+    let type: String
+    let receiverId: TxUser?
+    let senderId: TxUser?
+    let senderDeviceId: String?
+    let coins: Int?
     let status: String
-    let user: TxUser
-    let payerDevice: String
     let createdAt: String
     let updatedAt: String
-    let discount: Double
-    let paidByUser: Double
-    let totalAmount: Double
     
     enum CodingKeys: String, CodingKey {
         case id = "_id"
-        case merchantId
-        case currency
+        case type
+        case receiverId
+        case senderId
+        case senderDeviceId
+        case coins
         case status
-        case user
-        case payerDevice
         case createdAt
         case updatedAt
-        case discount
-        case paidByUser
-        case totalAmount
     }
 }
 

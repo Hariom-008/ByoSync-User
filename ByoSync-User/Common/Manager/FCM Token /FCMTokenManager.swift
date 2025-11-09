@@ -64,18 +64,3 @@ final class FCMTokenManager {
         }
     }
 }
-
-@available(iOS 15.0, *)
-extension FCMTokenManager {
-    func getFCMToken() async -> String? {
-        await withCheckedContinuation { continuation in
-            getFCMToken { token in
-                continuation.resume(returning: token)
-            }
-        }
-    }
-    
-    func setToken(_ token: String) async {
-        await setToken(token)
-    }
-}

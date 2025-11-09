@@ -58,6 +58,13 @@ class GetUserRankViewModel: ObservableObject {
                     self?.users = response.data
                     
                     // Debug: Print top 3 users
+                    let allUsers = response.data
+                    for user in allUsers{
+                        if user.id == UserSession.shared.currentUser?.userId{
+                            UserSession.shared.wallet = user.wallet
+                            print("👍 Latest Wallet Balance Fetched")
+                        }
+                    }
                     let topUsers = response.data.prefix(3)
                     for (index, user) in topUsers.enumerated() {
                         print("🏆 Top \(index + 1): \(user.firstName) \(user.lastName) - Transactions: \(user.noOfTransactions), Coins: \(user.transactionCoins)")

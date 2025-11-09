@@ -58,15 +58,15 @@ struct WalletView: View {
                         // Balance breakdown
                         HStack(spacing: 16) {
                             balanceBreakdownItem(
-                                label: L("wallet.total_discounts"),
-                                value: "\(L("common.currency_symbol"))\(String(format: "%.2f", 500 - creditAvailable))",
+                                label: "Refer & Earn",
+                                value: "\(String(format: "%.2f", 500 - creditAvailable))",
                                 icon: "gift.fill",
                                 color: .green
                             )
                             
                             balanceBreakdownItem(
-                                label: L("wallet.transactions"),
-                                value: "\(transactionVM.savedTransactionCount)",
+                                label: "This month",
+                                value: "\(transactionVM.transactions.count)",
                                 icon: "list.bullet",
                                 color: .orange
                             )
@@ -108,6 +108,9 @@ struct WalletView: View {
             }
             .navigationTitle(L("wallet.title"))
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear{
+                transactionVM.fetchMonthlyTransactions(month: 11, year: 2025, reportType: .view)
+            }
         }
     }
     
@@ -127,10 +130,13 @@ struct WalletView: View {
                     .font(.caption2)
                     .foregroundColor(.white.opacity(0.7))
             }
-            
-            Text(value)
-                .font(.subheadline.weight(.bold))
-                .foregroundColor(.white)
+            if label.isEmpty {
+                ProgressView()
+            }else{
+                Text(value)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundColor(.white)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)

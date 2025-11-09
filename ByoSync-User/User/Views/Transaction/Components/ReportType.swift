@@ -1,39 +1,27 @@
-//
-//  ReportType.swift
-//  ByoSync
-//
-//  Created by Hari's Mac on 01.11.2025.
-//
-
 import Foundation
-// MARK: - Enums
 
+// MARK: - Report Type
 enum ReportType: String, CaseIterable {
-    case view = "VIEW"
-    case email = "EMAIL"
-    case download = "DOWNLOAD"
+    case view = "view"
     
     var displayName: String {
         switch self {
-        case .view: return "View"
-        case .email: return "Email"
-        case .download: return "Download"
-        }
-    }
-    
-    var buttonText: String {
-        switch self {
-        case .view: return "Fetch"
-        case .email: return "Email"
-        case .download: return "Download"
+        case .view:
+            return "View"
         }
     }
     
     var iconName: String {
         switch self {
-        case .view: return "arrow.clockwise"
-        case .email: return "envelope"
-        case .download: return "arrow.down.circle"
+        case .view:
+            return "eye.fill"
+        }
+    }
+    
+    var buttonText: String {
+        switch self {
+        case .view:
+            return "View Report"
         }
     }
 }
