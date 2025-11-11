@@ -398,6 +398,7 @@ struct HomeView: View {
                     }
                 } else {
                    Text("Sadly! No data in Leaderboard")
+                        .foregroundStyle(.black)
                 }
             }
             .padding(22)
@@ -473,8 +474,34 @@ struct HomeView: View {
                 
                 Spacer()
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 18)
+            .padding()
+            .frame(maxWidth: .infinity)
+            .frame(height: 80)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(hex:"4B548D").opacity(0.05),
+                                Color(hex:"4B548D").opacity(0.1),
+                                Color(hex:"4B548D").opacity(0.1)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [Color.white.opacity(0.4), Color.white.opacity(0.2)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.5
+                            )
+                    )
+            )
         }
     }
     

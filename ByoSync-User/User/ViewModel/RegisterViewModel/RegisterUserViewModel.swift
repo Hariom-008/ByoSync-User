@@ -11,7 +11,7 @@ final class RegisterUserViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var showError: Bool = false
     @Published var navigateToMainTab: Bool = false
-    @Published var deviceId: String = "123456c"
+    @Published var deviceId: String = "123456"
     @Published var deviceName: String = "iPhone 15"
     
     private let repository = RegisterUserRepository.shared

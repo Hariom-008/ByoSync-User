@@ -14,6 +14,7 @@ struct ProfileView: View {
     @State var openLocationTestingView: Bool = false
     @State var openSettingView: Bool = false
     @State private var hasLoadedProfilePicture = false // Prevent redundant loads
+    @State var openHashValueTesting:Bool = false
     
     let getUserData = GetUserDataRepository.shared
     @StateObject var EmailVerifyVM = EmailVerificationViewModel()
@@ -100,6 +101,12 @@ struct ProfileView: View {
                                     .fill(Color(hex: "4B548D").opacity(0.1))
                             )
                     }
+                    Button{
+                        openHashValueTesting.toggle()
+                    }label: {
+                        Text("Testing")
+                            .font(.caption2)
+                    }
                 }
 
             }
@@ -116,6 +123,9 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $openEncryptionSHATesting) {
             EncryptDecryptTestView()
+        }
+        .sheet(isPresented: $openHashValueTesting){
+            HashValueTesting()
         }
         .sheet(isPresented: $openLocationTestingView) {
             LocationTestView()

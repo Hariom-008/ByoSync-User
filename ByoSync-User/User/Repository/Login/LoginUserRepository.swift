@@ -2,18 +2,11 @@ import Foundation
 import Alamofire
 import SwiftUI
 
-// MARK: - Root Response
-//struct LoginResponse: Codable {
-//    let statusCode: Int
-//    let data: LoginData
-//    let message: String
-//    let success: Bool
-//}
-
 final class LoginUserRepository {
     
     static let shared = LoginUserRepository()
-    
+    let cryptoManager = CryptoManager()
+    let hmacGenerator = HMACGenerator.self
     private init() {}
 
     func login<T: Codable>(
@@ -24,7 +17,7 @@ final class LoginUserRepository {
     ) {
         let loginData = LoginRequest(
             name: name,
-            deviceKey: deviceKey,
+            deviceKeyHash: hmacGenerator.generateHMAC(jsonString: deviceKey),
             fcmToken: fcmToken
         )
         

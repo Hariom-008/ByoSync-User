@@ -9,13 +9,13 @@ import Foundation
 // MARK: - Login Request Model
 struct LoginRequest: Codable {
     let name: String
-    let deviceKey: String
+    let deviceKeyHash: String
     let fcmToken: String
     
     func asDictionary() -> [String: Any] {
         return [
             "name": name,
-            "deviceKey" : deviceKey,
+            "deviceKeyHash" : deviceKeyHash,
             "fcmToken" : fcmToken
         ]
     }

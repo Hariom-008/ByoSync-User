@@ -6,6 +6,8 @@ import Combine
 
 final class LoginViewModel: ObservableObject {
     
+    let cryptoManager = CryptoManager()
+    
     @Published var name: String = ""
     @Published var isLoading: Bool = false
     @Published var errorMessage: String = ""
@@ -15,7 +17,7 @@ final class LoginViewModel: ObservableObject {
     @Published var wallet: Int?
     @Published var fcmToken:String = ""
     
-    private let hardcodedDeviceId = "123456c"
+    private let hardcodedDeviceId = "123456"
 
     func login() async {
         guard !name.trimmingCharacters(in: .whitespaces).isEmpty else {
@@ -69,13 +71,13 @@ final class LoginViewModel: ObservableObject {
         
         // Convert to User model
         let user = User(
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            email: userData.email,
-            phoneNumber: userData.phoneNumber,
+            firstName: cryptoManager.decrypt(encryptedData:userData.firstName) ?? "nil" ,
+            lastName: cryptoManager.decrypt(encryptedData:userData.lastName) ?? "nil",
+            email: cryptoManager.decrypt(encryptedData:userData.email) ?? "nil",
+            phoneNumber: cryptoManager.decrypt(encryptedData:userData.phoneNumber) ?? "nil",
             deviceKey: deviceData.deviceKey,
             deviceName: deviceData.deviceName,
-            userId: deviceData.user,
+            userId: userData.id ,
             userDeviceId: deviceData.id
         )
         print("✅ Saved user with userId : \(deviceData.user)")
@@ -91,6 +93,7 @@ final class LoginViewModel: ObservableObject {
         // Save Account type
         UserDefaults.standard.set("user", forKey: "accountType")
         
+        #if DEBUG
         print("""
               ✅ User Login Complete:
               Name: \(userData.firstName) \(userData.lastName)
@@ -98,6 +101,6 @@ final class LoginViewModel: ObservableObject {
               Device: \(deviceData.deviceName)
               Primary: \(deviceData.isPrimary)
               """)
+        #endif
     }
-    
 }

@@ -398,6 +398,7 @@ private struct PodiumCard: View {
     let rank: Int
     let height: CGFloat
     let filterType: LeaderboardView.LeaderboardFilter
+    let cryptoManager = CryptoManager()
     
     private var rankColor: Color {
         switch rank {
@@ -472,7 +473,8 @@ private struct PodiumCard: View {
             )
             
             // Name
-            Text("\(user.firstName) \(user.lastName)")
+            
+            Text("\(cryptoManager.decrypt(encryptedData: user.firstName) ?? "nil") \(cryptoManager.decrypt(encryptedData: user.lastName) ?? "nil") ")
                 .font(.system(size: rank == 1 ? 16 : 14, weight: .bold))
                 .foregroundColor(.black)
                 .lineLimit(1)
@@ -501,6 +503,7 @@ private struct LeaderboardRowCard: View {
     let rank: Int
     let filterType: LeaderboardView.LeaderboardFilter
     let isCurrentUser: Bool
+    let cryptoManager = CryptoManager()
     
     private var statValue: String {
         switch filterType {
@@ -577,7 +580,7 @@ private struct LeaderboardRowCard: View {
             // User Info
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text("\(user.firstName) \(user.lastName)")
+                    Text("\(cryptoManager.decrypt(encryptedData: user.firstName) ?? "nil") \(cryptoManager.decrypt(encryptedData: user.lastName) ?? "nil") ")
                         .font(.system(size: isCurrentUser ? 8 : 12, weight: .semibold))
                         .foregroundColor(.white)
                     

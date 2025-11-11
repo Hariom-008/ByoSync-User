@@ -3,6 +3,7 @@ import Firebase
 import UIKit
 import FirebaseAuth
 import FirebaseMessaging
+import Combine
 
 @main
 struct ByoSync_UserApp: App {
@@ -10,29 +11,44 @@ struct ByoSync_UserApp: App {
     @StateObject var userSession = UserSession.shared
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var socketManager = SocketIOManager.shared
-    
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some Scene {
         WindowGroup {
-            ZStack{
+            ZStack {
                 RootView()
                     .environmentObject(userSession)
                     .id(languageManager.currentLanguageCode)
                     .environmentObject(languageManager)
                     .environment(\.locale, .init(identifier: languageManager.currentLanguageCode))
                     .preferredColorScheme(.light)
+
                 GlobalPaymentOverlayView()
             }
+            // Initial connect on app launch
             .onAppear {
-                // Connect socket when app launches
                 socketManager.connect()
             }
-            .onDisappear {
-                // Disconnect when app closes
-                socketManager.disconnect()
+            // Scene phase handling for background / inactive / foreground
+            .onChange(of: scenePhase) { phase in
+                switch phase {
+                case .active:
+                    print("🌱 App became active — ensure socket connected")
+                    socketManager.connectIfNeeded()
+                case .inactive:
+                    print("💤 App inactive — temporarily disconnecting socket")
+                    socketManager.disconnect()
+                case .background:
+                    print("📦 App in background — disconnect socket but keep manager ready")
+                    socketManager.disconnect()
+                @unknown default:
+                    break
+                }
             }
         }
     }
 }
+
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
     

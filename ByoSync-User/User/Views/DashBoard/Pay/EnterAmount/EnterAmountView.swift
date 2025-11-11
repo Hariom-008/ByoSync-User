@@ -1,176 +1,287 @@
 import SwiftUI
-import Combine
 
 struct EnterAmountView: View {
     @State private var amount: String = ""
-    @State private var isKeyboardVisible: Bool = false
     @FocusState private var isAmountFocused: Bool
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss) private var dismiss
     @Binding var hideTabBar: Bool
-
-    // MARK: - Validation
+    
+    // Animation states
+    @State private var showContent: Bool = false
+    
+    // Simple amount validation
     private var isValidAmount: Bool {
-        guard let amountValue = Int(amount), amountValue > 0 else {
-            print("DEBUG: Invalid amount - value: \(amount)")
-            return false
+        if let value = Int(amount), value > 0 {
+            print("✅ Valid amount entered: \(value)")
+            return true
         }
-        print("DEBUG: Valid amount - value: \(amountValue)")
-        return true
+        print("⚠️ Invalid amount: \(amount)")
+        return false
+    }
+    
+    // Formatted amount for display
+    private var formattedAmount: String {
+        if amount.isEmpty { return "0" }
+        if let value = Int(amount) {
+            return "\(value)"
+        }
+        return amount
     }
 
     var body: some View {
         NavigationStack {
             ZStack {
-                // Simple background
-                Color(hex: "F8F9FD")
-                    .ignoresSafeArea()
-
+                // MARK: - Background Gradient
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(hex: "F8F9FD"),
+                        Color(hex: "EEF0F8")
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+                
                 VStack(spacing: 0) {
-                    // MARK: - Top Navigation
+                    // MARK: - Header
                     HStack {
-                        Button(action: {
-                            print("DEBUG: Dismiss button tapped")
+                        Button {
+                            print("🔙 Close button tapped")
                             dismiss()
                             hideTabBar = false
-                        }) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.primary)
-                                .frame(width: 44, height: 44)
+                        } label: {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.white)
+                                    .frame(width: 40, height: 40)
+                                    .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 2)
+                                
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.primary)
+                            }
                         }
                         Spacer()
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
+                    .opacity(showContent ? 1 : 0)
+                    .offset(y: showContent ? 0 : -20)
 
                     Spacer()
 
-                    // MARK: - Amount Input Section (Centered)
-                    VStack(spacing: 24) {
-                        Text(String(localized: "enter_amount.enter_amount"))
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.secondary)
-
-                        ZStack{
-                            // Amount TextField
-                            TextField(String(localized: "enter_amount.amount_placeholder"), text: $amount)
-                                .font(.system(size: 56, weight: .bold, design: .rounded))
-                                .keyboardType(.numberPad)
-                                .foregroundColor(.primary)
-                                .focused($isAmountFocused)
-                                .multilineTextAlignment(.center)
-                                .frame(height: 80)
-                                .padding(.horizontal, 40)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .fill(Color.white)
-                                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
-                                )
-                                .padding(.horizontal, 40)
-                                .onChange(of: amount) { oldValue, newValue in
-                                    print("DEBUG: Amount changed from '\(oldValue)' to '\(newValue)'")
-                                    // Filter to allow only numbers
-                                    let filtered = newValue.filter { $0.isNumber }
-                                    if filtered != newValue {
-                                        amount = filtered
-                                        print("DEBUG: Amount filtered to '\(filtered)'")
-                                    }
-                                }
-                            
-                            VStack{
-                                Spacer()
-                                // Clear button
-                                if !amount.isEmpty {
-                                    Button(action: {
-                                        HapticManager.impact(style: .light)
-                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                            amount = ""
-                                        }
-                                    }) {
-                                        HStack(spacing: 6) {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .font(.system(size: 14))
-                                            Text("Clear")
-                                                .font(.system(size: 15, weight: .medium))
-                                        }
-                                        .foregroundColor(.secondary)
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 8)
-                                        .background(
-                                            Capsule()
-                                                .fill(Color.gray.opacity(0.1))
+                    // MARK: - Amount Input Section
+                    VStack(spacing: 32) {
+                        // Title with icon
+                        VStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color(hex: "4B548D").opacity(0.1))
+                                    .frame(width: 56, height: 56)
+                                
+                                Image(systemName: "dollarsign.circle.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            colors: [Color(hex: "4B548D"), Color(hex: "6B74A8")],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
                                         )
+                                    )
+                            }
+                            .scaleEffect(showContent ? 1 : 0.5)
+                            .opacity(showContent ? 1 : 0)
+                            
+                            Text("Enter Amount")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.primary)
+                        }
+                        .opacity(showContent ? 1 : 0)
+                        .offset(y: showContent ? 0 : 20)
+                        
+                        // Amount display
+                        VStack(spacing: 16) {
+                            HStack(alignment: .top, spacing: 4) {
+                                Image("byosync_coin")
+                                    .resizable()
+                                    .interpolation(.high)  // Better quality interpolation
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 60, height: 60)
+                                    .clipShape(Circle())
+                                TextField("0", text: $amount)
+                                    .keyboardType(.numberPad)
+                                    .focused($isAmountFocused)
+                                    .font(.system(size: 64, weight: .bold, design: .rounded))
+                                    .multilineTextAlignment(.leading)
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            colors: [Color(hex: "4B548D"), Color(hex: "6B74A8")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .onChange(of: amount) { newValue in
+                                        let filtered = newValue.filter(\.isNumber)
+                                        if filtered != newValue {
+                                            print("🔢 Filtered input from '\(newValue)' to '\(filtered)'")
+                                        }
+                                        amount = filtered
                                     }
-                                    .transition(.scale.combined(with: .opacity))
+                            }
+                            .padding(.horizontal, 40)
+                            .padding(.vertical, 24)
+                            .background(
+                                RoundedRectangle(cornerRadius: 24)
+                                    .fill(Color.white)
+                                    .shadow(color: Color(hex: "4B548D").opacity(0.08), radius: 20, x: 0, y: 8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 24)
+                                            .stroke(
+                                                isAmountFocused ?
+                                                LinearGradient(
+                                                    colors: [Color(hex: "4B548D").opacity(0.3), Color(hex: "6B74A8").opacity(0.3)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ) : LinearGradient(colors: [.clear], startPoint: .top, endPoint: .bottom),
+                                                lineWidth: 2
+                                            )
+                                    )
+                            )
+                            .scaleEffect(showContent ? 1 : 0.9)
+                            .opacity(showContent ? 1 : 0)
+                            
+                            // Quick amount suggestions
+                            if amount.isEmpty {
+                                HStack(spacing: 12) {
+                                    ForEach([50,100,200,500, 1000], id: \.self) { value in
+                                        Button {
+                                            print("💡 Quick amount selected: \(value)")
+                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                                amount = "\(value)"
+                                            }
+                                        } label: {
+                                            Text("\(value)")
+                                                .font(.system(size: 14, weight: .semibold))
+                                                .foregroundColor(Color(hex: "4B548D"))
+                                                .padding(.horizontal, 16)
+                                                .padding(.vertical, 10)
+                                                .background(
+                                                    Capsule()
+                                                        .fill(Color(hex: "4B548D").opacity(0.08))
+                                                )
+                                        }
+                                    }
                                 }
+                                .transition(.scale.combined(with: .opacity))
+                            }
+                            
+                            // Clear button
+                            if !amount.isEmpty {
+                                Button {
+                                    print("🗑️ Clear button tapped")
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        amount = ""
+                                    }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 14))
+                                        Text("Clear")
+                                            .font(.system(size: 15, weight: .medium))
+                                    }
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.gray.opacity(0.1))
+                                    )
+                                }
+                                .transition(.scale.combined(with: .opacity))
                             }
                         }
+                        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: amount.isEmpty)
                     }
-                    
+                    .padding(.horizontal, 20)
+
                     Spacer()
 
-                    // MARK: - Bottom Continue Button
-                    VStack(spacing: 0) {
-                        if isValidAmount {
-                            NavigationLink(destination: SortedUsersView(hideTabBar: $hideTabBar, amount: $amount)) {
+                    // MARK: - Continue Button
+                    VStack(spacing: 16) {
+                        NavigationLink(destination: SortedUsersView(hideTabBar: $hideTabBar, amount: $amount)) {
+                            HStack(spacing: 8) {
                                 Text("Continue")
                                     .font(.system(size: 17, weight: .semibold))
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 16)
-                                    .foregroundColor(.white)
-                                    .background(Color(hex: "4B548D"))
-                                    .cornerRadius(12)
                             }
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 20)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 18)
+                            .foregroundColor(.white)
+                            .background(
+                                Group {
+                                    if isValidAmount {
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color(hex: "4B548D")
+                                            ]),
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    } else {
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color.gray.opacity(0.3),
+                                                Color.gray.opacity(0.3)
+                                            ]),
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    }
+                                }
+                            )
+                            .cornerRadius(16)
+                            .shadow(
+                                color: isValidAmount ? Color(hex: "4B548D").opacity(0.3) : .clear,
+                                radius: 12,
+                                x: 0,
+                                y: 6
+                            )
+                            .scaleEffect(isValidAmount ? 1 : 0.98)
                         }
+                        .disabled(!isValidAmount)
+                        .simultaneousGesture(
+                            TapGesture().onEnded {
+                                if isValidAmount {
+                                    print("➡️ Continue button tapped with amount: \(amount)")
+                                }
+                            }
+                        )
                     }
-                    .animation(.easeInOut(duration: 0.25), value: isValidAmount)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 32)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.75), value: isValidAmount)
                 }
             }
-            .ignoresSafeArea(.keyboard, edges: .bottom)
             .navigationBarHidden(true)
             .onAppear {
-                print("DEBUG: EnterAmountView appeared")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                print("👁️ EnterAmountView appeared")
+                hideTabBar = true
+                
+                // Staggered animations
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.1)) {
+                    showContent = true
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    print("⌨️ Focusing on amount field")
                     isAmountFocused = true
-                    hideTabBar = true
-                    print("DEBUG: Keyboard focused and tab bar hidden")
-                }
-
-                // Keyboard observers
-                NotificationCenter.default.addObserver(
-                    forName: UIResponder.keyboardWillShowNotification,
-                    object: nil,
-                    queue: .main
-                ) { _ in
-                    print("DEBUG: Keyboard will show")
-                    withAnimation(.easeOut(duration: 0.25)) {
-                        isKeyboardVisible = true
-                    }
-                }
-
-                NotificationCenter.default.addObserver(
-                    forName: UIResponder.keyboardWillHideNotification,
-                    object: nil,
-                    queue: .main
-                ) { _ in
-                    print("DEBUG: Keyboard will hide")
-                    withAnimation(.easeOut(duration: 0.25)) {
-                        isKeyboardVisible = false
-                    }
                 }
             }
             .onDisappear {
-                print("DEBUG: EnterAmountView disappeared")
-                NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillShowNotification, object: nil)
-                NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillHideNotification, object: nil)
+                print("👋 EnterAmountView disappeared")
             }
         }
     }
 }
-
 #Preview {
     EnterAmountView(hideTabBar: .constant(false))
 }

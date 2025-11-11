@@ -102,6 +102,7 @@ struct LeaderboardPreviewItem: View {
     let rankColor: Color
     var isHighlighted: Bool = false
     var isFirstRank: Bool = false
+    let cryptoManager = CryptoManager()
     
     var body: some View {
         VStack(spacing: 10) {
@@ -120,7 +121,7 @@ struct LeaderboardPreviewItem: View {
             }
             
             VStack(spacing: 3) {
-                Text(name)
+                Text("\(cryptoManager.decrypt(encryptedData: name) ?? "You")")
                     .font(.system(size: 13, weight: isHighlighted ? .bold : .semibold))
                     .foregroundColor(.black)
                     .lineLimit(1)

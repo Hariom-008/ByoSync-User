@@ -8,11 +8,24 @@ struct RegisterUserResponse: Codable {
     let message: String
     let data: User?
 }
-
+struct RegisterUserRequest: Encodable {
+    let firstName: String
+    let lastName: String
+    let email: String
+    let emailHash: String
+    let phoneNumber: String
+    let phoneNumberHash: String
+    let deviceKey: String
+    let deviceKeyHash: String
+    let deviceName: String
+    let fcmToken: String
+    let referralCode: String?
+}
 final class RegisterUserRepository {
     
     static let shared = RegisterUserRepository()
-    
+    let cryptoManager = CryptoManager()
+    let hmacGenerator = HMACGenerator.self
     private init() {}
     
     func registerUser(
@@ -31,16 +44,17 @@ final class RegisterUserRepository {
             guard let token else { return }
             fcmToken = token
         }
-
-        let user = User(
-            firstName: firstName,
-            lastName: lastName,
-            email: email,
-            phoneNumber: phoneNumber,
+        let user = RegisterUserRequest(
+            firstName: cryptoManager.encrypt(text: firstName) ?? "",
+            lastName: cryptoManager.encrypt(text: lastName) ?? "",
+            email: cryptoManager.encrypt(text: email) ?? "",
+            emailHash: hmacGenerator.generateHMAC(jsonString: email),
+            phoneNumber: cryptoManager.encrypt(text: phoneNumber) ?? "",
+            phoneNumberHash: hmacGenerator.generateHMAC(jsonString: phoneNumber),
             deviceKey: deviceId,
+            deviceKeyHash: hmacGenerator.generateHMAC(jsonString: deviceId),
             deviceName: deviceName,
-            fcmToken: fcmToken
-        )
+            fcmToken: fcmToken, referralCode: "")
         
         // Encode User to JSON string with consistent formatting
         let encoder = JSONEncoder()
@@ -78,7 +92,7 @@ final class RegisterUserRepository {
     // MARK: - Handle Successful Registration
     private func handleSuccessfulRegistration(
         response: APIResponse<LoginData>,
-        originalData: User,
+        originalData: RegisterUserRequest,
         completion: @escaping (Result<APIResponse<LoginData>, APIError>) -> Void
     ) {
         let userData = response.data?.user
@@ -126,7 +140,7 @@ final class RegisterUserRepository {
         url: String,
         method: HTTPMethod,
         jsonString: String,
-        userData: User,
+        userData: RegisterUserRequest,
         completion: @escaping (Result<APIResponse<LoginData>, APIError>) -> Void
     ) {
         let timestamp = String(Int(Date().timeIntervalSince1970 * 1000))

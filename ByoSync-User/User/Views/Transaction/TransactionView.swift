@@ -19,16 +19,6 @@ struct TransactionView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // MARK: - Header
-//                headerSection
-//                    .background(
-//                        LinearGradient(
-//                            colors: [Color(hex: "4B548D"), Color(hex: "5E6BA8")],
-//                            startPoint: .topLeading,
-//                            endPoint: .bottomTrailing
-//                        )
-//                    )
-                
                 // MARK: - Main Content
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
@@ -87,37 +77,6 @@ struct TransactionView: View {
             }
         }
     }
-    
-    // MARK: - Header Section
-//    private var headerSection: some View {
-//        VStack(spacing: 16) {
-//            HStack {
-//                Image("byosync_image")
-//                    .resizable()
-//                    .scaledToFit()
-//                    .frame(height: 32)
-//                
-//                Spacer()
-//                
-//                HStack(spacing: 4) {
-//                    Circle()
-//                        .fill(Color.green)
-//                        .frame(width: 8, height: 8)
-//                    Text("Live")
-//                        .font(.caption)
-//                        .foregroundColor(.white.opacity(0.9))
-//                }
-//                .padding(.horizontal, 12)
-//                .padding(.vertical, 6)
-//                .background(Color.white.opacity(0.15))
-//                .cornerRadius(12)
-//            }
-//            .padding(.horizontal, 20)
-//            .padding(.top, 8)
-//        }
-//        .padding(.bottom, 24)
-//    }
-    
     // MARK: - Filter Section
     private var filterSection: some View {
         VStack(spacing: 12) {
@@ -372,7 +331,7 @@ struct TransactionView: View {
                 icon: "indianrupeesign.circle.fill",
                 iconColor: Color(hex: "5E6BA8"),
                 title: "Amount",
-                value: "₹\(String(format: "%.0f", viewModel.totalAmount))",
+                value: "\(String(format: "%.0f", viewModel.totalAmount))",
                 subtitle: "total spent"
             )
         }

@@ -41,6 +41,7 @@ class GetUserRankViewModel: ObservableObject {
     @Published var errorMessage: String = ""
     @Published var isLoading: Bool = false
     
+    let cryptoManager = CryptoManager()
     let getUserRank = GetUserRankBoardRepository.shared
     
     func fetchAllUsers() {

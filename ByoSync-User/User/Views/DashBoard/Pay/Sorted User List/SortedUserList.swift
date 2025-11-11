@@ -1,10 +1,3 @@
-//
-//  SortedUserList.swift
-//  ByoSync-User
-//
-//  Created by Hari's Mac on 08.11.2025.
-//
-
 import Foundation
 import SwiftUI
 
@@ -16,6 +9,8 @@ struct SortedUsersView: View {
     @Binding var amount: String
     @State private var selectedUser: UserData?
     @State private var openSelectedUserDetailsView: Bool = false
+    @State private var showContent: Bool = false
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         NavigationStack {
@@ -23,6 +18,12 @@ struct SortedUsersView: View {
                 backgroundGradient
                 
                 VStack(spacing: 0) {
+                    // Custom header
+                    customHeader
+                    
+                    // Amount display banner
+                    amountBanner
+                    
                     if showSearchBar {
                         searchBarView
                     }
@@ -30,11 +31,7 @@ struct SortedUsersView: View {
                     contentView
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    searchButton
-                }
-            }
+            .navigationBarHidden(true)
             .navigationDestination(isPresented: $openSelectedUserDetailsView) {
                 if let user = selectedUser {
                     PaymentConfirmationView(
@@ -45,70 +42,196 @@ struct SortedUsersView: View {
                 }
             }
             .task {
+                print("📱 SortedUsersView appeared, fetching users...")
                 await viewModel.fetchSortedUsers()
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.1)) {
+                    showContent = true
+                }
             }
             .alert("Error", isPresented: $viewModel.showError) {
                 Button("Retry") {
+                    print("🔄 Retry button tapped")
                     Task {
                         await viewModel.retry()
                     }
                 }
-                Button("Cancel", role: .cancel) {}
+                Button("Cancel", role: .cancel) {
+                    print("❌ Error alert cancelled")
+                }
             } message: {
                 Text(viewModel.errorMessage ?? "An unknown error occurred")
             }
         }
     }
     
+    // MARK: - Custom Header
+    private var customHeader: some View {
+        HStack(spacing: 16) {
+            Button {
+                print("🔙 Back button tapped")
+                dismiss()
+                hideTabBar = false
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 40, height: 40)
+                        .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 2)
+                    
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(Color(hex: "4B548D"))
+                }
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Send Money")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.primary)
+                
+                Text("Select a recipient")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            searchButton
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(Color(.systemBackground))
+        .opacity(showContent ? 1 : 0)
+        .offset(y: showContent ? 0 : -20)
+    }
+    
+    // MARK: - Amount Banner
+    private var amountBanner: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color(hex: "4B548D").opacity(0.1))
+                    .frame(width: 44, height: 44)
+                
+                Image("byosync_coin")
+                    .resizable()
+                    .interpolation(.high)  // Better quality interpolation
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 40, height: 40)
+                    .clipShape(Circle())
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Amount to Pay")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                Text("\(amount) Coin")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color(hex: "4B548D"), Color(hex: "6B74A8")],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+            }
+            
+            Spacer()
+            
+            // Optional: Show user count
+            if !viewModel.users.isEmpty {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(filteredUsers.count)")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(Color(hex: "4B548D"))
+                    
+                    Text("users")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: Color(hex: "4B548D").opacity(0.08), radius: 12, x: 0, y: 4)
+        )
+        .padding(.horizontal, 20)
+        .padding(.bottom, 16)
+        .scaleEffect(showContent ? 1 : 0.9)
+        .opacity(showContent ? 1 : 0)
+    }
+    
     // MARK: - Background
     private var backgroundGradient: some View {
         LinearGradient(
             gradient: Gradient(colors: [
-                Color(UIColor.systemGroupedBackground),
-                Color(UIColor.secondarySystemGroupedBackground)
+                Color(hex: "F8F9FD"),
+                Color(hex: "EEF0F8")
             ]),
-            startPoint: .top,
-            endPoint: .bottom
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
         )
         .ignoresSafeArea()
     }
     
     // MARK: - Search Bar
     private var searchBarView: some View {
-        HStack {
+        HStack(spacing: 12) {
             Image(systemName: "magnifyingglass")
+                .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.gray)
             
             TextField("Search by name, email or phone", text: $searchText)
                 .textFieldStyle(PlainTextFieldStyle())
+                .font(.system(size: 15))
             
             if !searchText.isEmpty {
-                Button(action: { searchText = "" }) {
+                Button(action: {
+                    print("🗑️ Clearing search text")
+                    searchText = ""
+                }) {
                     Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
                         .foregroundColor(.gray)
                 }
+                .transition(.scale.combined(with: .opacity))
             }
         }
-        .padding(12)
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .padding(.horizontal)
-        .padding(.vertical, 8)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color.white)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        )
+        .padding(.horizontal, 20)
+        .padding(.bottom, 12)
         .transition(.move(edge: .top).combined(with: .opacity))
     }
     
     private var searchButton: some View {
         Button(action: {
-            withAnimation(.spring(response: 0.3)) {
+            print("🔍 Search button toggled: \(!showSearchBar)")
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
                 showSearchBar.toggle()
                 if !showSearchBar {
                     searchText = ""
                 }
             }
         }) {
-            Image(systemName: showSearchBar ? "xmark" : "magnifyingglass")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(Color(hex: "4B548D"))
+            ZStack {
+                Circle()
+                    .fill(showSearchBar ? Color(hex: "4B548D").opacity(0.1) : Color.white)
+                    .frame(width: 40, height: 40)
+                    .shadow(color: showSearchBar ? .clear : .black.opacity(0.06), radius: 8, x: 0, y: 2)
+                
+                Image(systemName: showSearchBar ? "xmark" : "magnifyingglass")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(Color(hex: "4B548D"))
+                    .rotationEffect(.degrees(showSearchBar ? 90 : 0))
+            }
         }
     }
     
@@ -126,50 +249,100 @@ struct SortedUsersView: View {
     
     // MARK: - Loading View
     private var loadingView: some View {
-        VStack(spacing: 20) {
-            ProgressView()
-                .scaleEffect(1.5)
-                .tint(Color(hex: "4B548D"))
+        VStack(spacing: 24) {
+            ZStack {
+                Circle()
+                    .stroke(Color(hex: "4B548D").opacity(0.2), lineWidth: 4)
+                    .frame(width: 60, height: 60)
+                
+                Circle()
+                    .trim(from: 0, to: 0.7)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color(hex: "4B548D"), Color(hex: "6B74A8")],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                    )
+                    .frame(width: 60, height: 60)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.linear(duration: 1).repeatForever(autoreverses: false), value: viewModel.isLoading)
+            }
             
-            Text("Loading users...")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.gray)
+            VStack(spacing: 8) {
+                Text("Finding Users")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                Text("Please wait while we load available recipients")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 40)
     }
     
     // MARK: - Empty State
     private var emptyStateView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "person.2.slash")
-                .font(.system(size: 60))
-                .foregroundColor(.gray.opacity(0.5))
+        VStack(spacing: 24) {
+            ZStack {
+                Circle()
+                    .fill(Color(hex: "4B548D").opacity(0.1))
+                    .frame(width: 100, height: 100)
+                
+                Image(systemName: "person.2.slash")
+                    .font(.system(size: 48, weight: .medium))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color(hex: "4B548D"), Color(hex: "6B74A8")],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
             
-            Text("No Users Found")
-                .font(.system(size: 24, weight: .bold))
-                .foregroundColor(.primary)
-            
-            Text("There are no users available to send money to at the moment.")
-                .font(.system(size: 16))
-                .foregroundColor(.gray)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
+            VStack(spacing: 12) {
+                Text("No Users Found")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.primary)
+                
+                Text("There are no users available to send money to at the moment. Pull down to refresh.")
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+            }
             
             Button(action: {
+                print("🔄 Refresh button tapped")
                 Task {
                     await viewModel.retry()
                 }
             }) {
-                HStack {
+                HStack(spacing: 8) {
                     Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 14, weight: .semibold))
                     Text("Refresh")
+                        .font(.system(size: 16, weight: .semibold))
                 }
-                .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.white)
                 .padding(.horizontal, 32)
-                .padding(.vertical, 12)
-                .background(Color(hex: "4B548D"))
-                .cornerRadius(12)
+                .padding(.vertical, 14)
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color(hex: "4B548D"),
+                            Color(hex: "6B74A8")
+                        ]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(14)
+                .shadow(color: Color(hex: "4B548D").opacity(0.3), radius: 12, x: 0, y: 6)
             }
             .padding(.top, 8)
         }
@@ -179,55 +352,64 @@ struct SortedUsersView: View {
     private var usersList: some View {
         ScrollView {
             LazyVStack(spacing: 12) {
-                ForEach(filteredUsers) { user in
-                    if UserSession.shared.currentUser?.userId != user.id{
-                        UserCardView(user: user) {  // Pass the closure here
-                            print("DEBUG: User selected - \(user.firstName) \(user.lastName)")
-                            print("DEBUG: User ID - \(user.id)")
+                ForEach(Array(filteredUsers.enumerated()), id: \.element.id) { index, user in
+                    if UserSession.shared.currentUser?.userId != user.id {
+                        UserCardView(user: user) {
+                            print("✅ User selected - \(user.firstName) \(user.lastName)")
+                            print("🆔 User ID - \(user.id)")
                             selectedUser = user
                             openSelectedUserDetailsView = true
                         }
+                        .opacity(showContent ? 1 : 0)
+                        .offset(y: showContent ? 0 : 20)
+                        .animation(
+                            .spring(response: 0.6, dampingFraction: 0.8)
+                                .delay(Double(index) * 0.05),
+                            value: showContent
+                        )
                     }
                 }
             }
-            .padding()
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
         }
         .refreshable {
+            print("🔄 Pull to refresh triggered")
             await viewModel.fetchSortedUsers()
         }
     }
     
-    
     private var filteredUsers: [UserData] {
-        viewModel.filterUsers(by: searchText)
+        let filtered = viewModel.filterUsers(by: searchText)
+        print("🔎 Filtered users count: \(filtered.count) from search: '\(searchText)'")
+        return filtered
     }
 }
 
 // MARK: - User Card View
 struct UserCardView: View {
     let user: UserData
-    let onTap: () -> Void  // Add this closure
+    let onTap: () -> Void
     @State private var isPressed = false
     
     var body: some View {
-        HStack(spacing: 16) {
-            profileImage
-            userInfo
-            Spacer()
-            chevron
-        }
-        .padding(16)
-        .background(cardBackground)
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
-        .scaleEffect(isPressed ? 0.97 : 1.0)
-        .pressEvents(
-            onPress: { isPressed = true },
-            onRelease: {
-                isPressed = false
-                onTap()  // Call the tap action here
+        Button(action: {
+            print("👆 Card tapped for user: \(user.firstName) \(user.lastName)")
+            onTap()
+        }) {
+            HStack(spacing: 16) {
+                profileImage
+                userInfo
+                Spacer()
+                Selectbutton
             }
-        )
+            .padding(16)
+            .background(cardBackground)
+            .cornerRadius(16)
+            .shadow(color: .black.opacity(isPressed ? 0.08 : 0.04), radius: isPressed ? 4 : 8, x: 0, y: isPressed ? 2 : 4)
+            .scaleEffect(isPressed ? 0.97 : 1.0)
+        }
+        .buttonStyle(CardButtonStyle(isPressed: $isPressed))
     }
     
     private var profileImage: some View {
@@ -236,14 +418,24 @@ struct UserCardView: View {
                 AsyncImage(url: url) { phase in
                     switch phase {
                     case .empty:
-                        ProgressView()
-                            .frame(width: 60, height: 60)
+                        ZStack {
+                            Circle()
+                                .fill(Color.gray.opacity(0.1))
+                                .frame(width: 56, height: 56)
+                            
+                            ProgressView()
+                                .tint(Color(hex: "4B548D"))
+                        }
                     case .success(let image):
                         image
                             .resizable()
                             .scaledToFill()
-                            .frame(width: 60, height: 60)
+                            .frame(width: 56, height: 56)
                             .clipShape(Circle())
+                            .overlay(
+                                Circle()
+                                    .stroke(Color(hex: "4B548D").opacity(0.1), lineWidth: 2)
+                            )
                     case .failure:
                         initialsView
                     @unknown default:
@@ -259,61 +451,98 @@ struct UserCardView: View {
     private var initialsView: some View {
         ZStack {
             Circle()
-                .fill(Color(hex: "4B548D").opacity(0.15))
-                .frame(width: 60, height: 60)
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color(hex: "4B548D").opacity(0.15),
+                            Color(hex: "6B74A8").opacity(0.15)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 56, height: 56)
             
             Text(user.initials)
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundColor(Color(hex: "4B548D"))
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Color(hex: "4B548D"), Color(hex: "6B74A8")],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
         }
     }
     
     private var userInfo: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("\(user.firstName) \(user.lastName)")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundColor(.primary)
-            
-            Text(user.email)
-                .font(.system(size: 14, weight: .regular))
-                .foregroundColor(.gray)
-                .lineLimit(1)
+        HStack{
+            VStack(alignment: .leading, spacing: 6) {
+                Text("\(user.firstName) \(user.lastName)")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                
+                HStack{
+                    Text(user.email)
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                    Spacer()
+                    
+                    HStack(spacing: 6){
+                        Text("Txn Recieved : \(user.noOfTransactionsReceived)")
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundColor(.black)
+                            .lineLimit(1)
+                        Text("Total Paid : \(user.noOfTransactions)")
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+            }
         }
     }
     
-    private var chevron: some View {
-        Image(systemName: "chevron.right")
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundColor(.gray.opacity(0.5))
+    private var Selectbutton: some View {
+        ZStack {
+            Text("Select")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(Color(hex: "4B548D"))
+        }
     }
     
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 16)
-            .fill(Color(.systemBackground))
+            .fill(Color.white)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color(hex: "4B548D").opacity(0.05),
+                                Color(hex: "6B74A8").opacity(0.05)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             )
     }
 }
 
-// MARK: - Press Events View Modifier
-extension View {
-    func pressEvents(onPress: @escaping () -> Void, onRelease: @escaping () -> Void) -> some View {
-        self.modifier(PressEventsModifier(onPress: onPress, onRelease: onRelease))
-    }
-}
-
-struct PressEventsModifier: ViewModifier {
-    let onPress: () -> Void
-    let onRelease: () -> Void
+// MARK: - Custom Button Style
+struct CardButtonStyle: ButtonStyle {
+    @Binding var isPressed: Bool
     
-    func body(content: Content) -> some View {
-        content
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { _ in onPress() }
-                    .onEnded { _ in onRelease() }
-            )
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .onChange(of: configuration.isPressed) { newValue in
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                    isPressed = newValue
+                }
+            }
     }
 }

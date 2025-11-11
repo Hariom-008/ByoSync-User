@@ -5,7 +5,6 @@ struct LoginView: View {
     @StateObject private var viewModel = LoginViewModel()
     @State private var navigateToNextScreen: NavigationStep?
     @Environment(\.dismiss) var dismiss
-    @StateObject var SocketVM = SocketIOManager()
     
     enum NavigationStep {
         case userConsent
