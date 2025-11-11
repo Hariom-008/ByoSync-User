@@ -559,14 +559,6 @@ struct HomeView: View {
         }
     }
 }
-
-// MARK: - Shimmer Effect for Loading
-extension View {
-    func shimmer() -> some View {
-        self.modifier(ShimmerModifier())
-    }
-}
-
 #Preview {
     HomeView(hideTabBar: .constant(false))
         .environmentObject(LanguageManager.shared)

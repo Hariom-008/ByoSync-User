@@ -3,7 +3,6 @@ import SwiftUI
 struct WalletView: View {
     @Environment(\.dismiss) var dismiss
     @AppStorage("creditAvailable") private var creditAvailable: Double = 0.0
-    @StateObject private var discountManager = DiscountTransactionManager()
     @State private var selectedTabIndex: Int = 0
     @StateObject var transactionVM = TransactionViewModel()
     @EnvironmentObject var languageManager: LanguageManager

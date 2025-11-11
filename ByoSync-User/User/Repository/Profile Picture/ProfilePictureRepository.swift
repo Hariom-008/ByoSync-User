@@ -8,17 +8,6 @@ struct ChangeProfilePicRequest: Codable {
 struct ChangeProfilePicResponse: Codable {
     let message: String?
 }
-
-//struct ProfilePicResponse: Codable {
-//    let statusCode: Int
-//    let message: String
-//    let data: ProfilePicData?
-//    
-//    struct ProfilePicData: Codable {
-//        let profilePic: String
-//    }
-//}
-
 protocol ProfilePictureRepositoryProtocol {
     func changeProfilePicture(imageUrl: String) async throws -> String
 }

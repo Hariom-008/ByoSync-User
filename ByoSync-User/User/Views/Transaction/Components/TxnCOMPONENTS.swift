@@ -1,12 +1,38 @@
-////
-////  TransactionRow.swift
-////  ByoSync
-////
-////  Created by Hari's Mac on 01.11.2025.
-////
 //
+//  TxnComponents.swift
+//  ByoSync-User
+//
+//  Created by Hari's Mac on 11.11.2025.
+//
+
 import Foundation
 import SwiftUI
+
+// MARK: - Report Type
+enum ReportType: String, CaseIterable {
+    case view = "view"
+    
+    var displayName: String {
+        switch self {
+        case .view:
+            return "View"
+        }
+    }
+    
+    var iconName: String {
+        switch self {
+        case .view:
+            return "eye.fill"
+        }
+    }
+    
+    var buttonText: String {
+        switch self {
+        case .view:
+            return "View Report"
+        }
+    }
+}
 
 
 struct TransactionRow: View {
@@ -100,5 +126,102 @@ struct TransactionRow: View {
         let displayFormatter = DateFormatter()
         displayFormatter.dateFormat = "MMM dd, h:mm a"
         return displayFormatter.string(from: date)
+    }
+}
+
+struct RoundedCorner: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+    
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: corners,
+            cornerRadii: CGSize(width: radius, height: radius)
+        )
+        return Path(path.cgPath)
+    }
+}
+
+//MARK: - Summary Card
+struct CompactSummaryCard: View {
+    var icon: String
+    var title: String
+    var value: String
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 22))
+                .foregroundColor(.white.opacity(0.9))
+            
+            Text(value)
+                .font(.headline)
+                .fontWeight(.bold)
+                .foregroundColor(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            
+            Text(title)
+                .font(.caption2)
+                .foregroundColor(.white.opacity(0.7))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.15))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                )
+        )
+        .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
+    }
+}
+
+
+// MARK: - Supporting Views
+
+struct StatCard: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let value: String
+    let subtitle: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.system(size: 18))
+                    .foregroundColor(iconColor)
+                    .frame(width: 36, height: 36)
+                    .background(iconColor.opacity(0.1))
+                    .cornerRadius(8)
+                
+                Spacer()
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Text(value)
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
     }
 }

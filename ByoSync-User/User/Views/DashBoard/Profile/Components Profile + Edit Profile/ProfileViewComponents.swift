@@ -1,12 +1,173 @@
-//
-//  SlideToLogoutButton.swift
-//  ByoSync-User
-//
-//  Created by Hari's Mac on 07.11.2025.
-//  Performance optimized version
-//
-
+import Foundation
 import SwiftUI
+
+// MARK: - Edit Field Row Component
+struct EditFieldRow: View {
+    let icon: String
+    let label: String
+    @Binding var text: String
+    var keyboardType: UIKeyboardType = .default
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(label)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.secondary)
+            
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.body)
+                    .foregroundColor(Color(hex: "4B548D"))
+                    .frame(width: 24)
+                
+                TextField("", text: $text)
+                    .font(.subheadline)
+                    .keyboardType(keyboardType)
+                    .autocapitalization(keyboardType == .emailAddress ? .none : .words)
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .background(Color(hex: "F5F7FA"))
+            .cornerRadius(12)
+        }
+    }
+}
+
+struct MenuOptionRow: View {
+    let icon: String
+    let title: String
+    let color: Color
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(0.1))
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: icon)
+                        .font(.body)
+                        .foregroundColor(color)
+                }
+                
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(16)
+            .background(Color.white)
+            .cornerRadius(16)
+            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+        }
+    }
+}
+
+
+// MARK: - Profile Info Row Component
+struct ProfileInfoRow: View {
+    let icon: String
+    let label: String
+    let value: String
+    var iconColor: Color = Color(hex: "4B548D")
+    @State private var openEmailOTPView: Bool = false
+    
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundColor(Color(hex: "4B548D"))
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: 3) {
+                Text(label)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Text(value)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+            }
+            
+            Spacer()
+            
+            // ✅ Show verify button only if email is not verified and this is the email row
+            if !UserSession.shared.isEmailVerified && label == "Email Address" {
+                Button {
+                    openEmailOTPView.toggle()
+                } label: {
+                    Text("Verify Email")
+                        .foregroundStyle(.black)
+                        .font(.caption2)
+                        .fontWeight(.bold)
+                        .padding(8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(Color.black, lineWidth: 1)
+                        )
+                }
+            }
+        }
+        .sheet(isPresented: $openEmailOTPView) {
+            EmailVerificationView()
+        }
+    }
+}
+
+
+// MARK: - Rewards + Invite row
+ struct RewardsInviteRow: View {
+    var body: some View {
+        HStack(spacing: 14) {
+            HStack(spacing: 12){
+                Image("celebrationPeople")
+                    .resizable()
+                    .frame(width: 120, height: 120)
+                VStack{
+                    Text("₹1066")
+                        .font(.headline).bold()
+                        .foregroundColor(.black)
+                    Text("Rewards Earned!")
+                        .font(.caption)
+                        .foregroundColor(.black.opacity(0.5))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color.black.opacity(0.05))
+            )
+            .frame(height: 120)
+            
+            // Invite friends
+            VStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(Color(hex: "4B548D"))
+                Text("Invite\nfriends")
+                    .font(.caption)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.black)
+            }
+            .frame(width: 110, height: 120)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color.black.opacity(0.05))
+            )
+        }
+    }
+}
+
 
 struct SlideToLogoutButton: View {
     let isDisabled: Bool
@@ -165,19 +326,5 @@ struct SlideToLogoutButton: View {
         } else {
             return progress > 0.8 ? .green : .red
         }
-    }
-}
-
-#Preview {
-    VStack(spacing: 30) {
-        SlideToLogoutButton(isDisabled: false) {
-            print("Logged out!")
-        }
-        .padding()
-        
-        SlideToLogoutButton(isDisabled: true) {
-            print("This won't trigger")
-        }
-        .padding()
     }
 }

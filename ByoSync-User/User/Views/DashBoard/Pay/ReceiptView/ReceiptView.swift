@@ -137,18 +137,6 @@ struct ReceiptView: View {
                     .font(.system(size: 48, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
             }
-            
-//            HStack(spacing: 6) {
-//                Image(systemName: String(localized: "icon.gift_fill"))
-//                    .font(.system(size: 12))
-//                Text(String(format: String(localized: "receipt.cashback_earned"), cashback))
-//                    .font(.system(size: 14, weight: .semibold))
-//            }
-//            .foregroundColor(Color(hex: "4CAF50"))
-//            .padding(.horizontal, 14)
-//            .padding(.vertical, 8)
-//            .background(Color(hex: "4CAF50").opacity(0.12))
-//            .clipShape(Capsule())
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)

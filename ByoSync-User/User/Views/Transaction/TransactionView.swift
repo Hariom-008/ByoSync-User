@@ -556,50 +556,6 @@ struct TransactionView: View {
     }
 }
 
-// MARK: - Supporting Views
-
-struct StatCard: View {
-    let icon: String
-    let iconColor: Color
-    let title: String
-    let value: String
-    let subtitle: String
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: icon)
-                    .font(.system(size: 18))
-                    .foregroundColor(iconColor)
-                    .frame(width: 36, height: 36)
-                    .background(iconColor.opacity(0.1))
-                    .cornerRadius(8)
-                
-                Spacer()
-            }
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                Text(value)
-                    .font(.title3)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
-                
-                Text(subtitle)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Color.white)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
-    }
-}
 #Preview {
     NavigationStack {
         TransactionView(hideTabBar: .constant(false))
