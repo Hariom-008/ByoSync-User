@@ -1,24 +1,41 @@
-//
-//  CryptoManager.swift
-//  ByoSync
-//
-//  Created by Hari's Mac on 24.10.2025.
-//
 import Foundation
 import CryptoKit
 import CommonCrypto
-import SwiftUI
+import Combine
 
-class CryptoManager {
-    private let PASSWORD = "ByoSyncPayWithFace"
-    private let SALT = "ByoSync"
-    private let iterations: UInt32 = 65536
-    private let keyLength = 32 // 256 bits for AES-256
+// ✅ Protocol inherits from ObservableObject
+protocol CryptoService: ObservableObject {
+    func encrypt(text: String) -> String?
+    func decrypt(encryptedData: String) -> String?
+}
+
+// ✅ Now conforms to CryptoService which includes ObservableObject
+final class CryptoManager: CryptoService {
     
-    // MARK: - Generate Key using PBKDF2
+    // MARK: - Properties
+    private let password: String
+    private let salt: String
+    private let iterations: UInt32
+    private let keyLength: Int
+    
+    // MARK: - Initialization
+    init(
+        password: String = "ByoSyncPayWithFace",
+        salt: String = "ByoSync",
+        iterations: UInt32 = 65536,
+        keyLength: Int = 32
+    ) {
+        self.password = password
+        self.salt = salt
+        self.iterations = iterations
+        self.keyLength = keyLength
+    }
+    
+    // ... rest of your implementation stays the same
+    
     private func generateKey() -> Data? {
-        guard let passwordData = PASSWORD.data(using: .utf8),
-              let saltData = SALT.data(using: .utf8) else {
+        guard let passwordData = password.data(using: .utf8),
+              let saltData = salt.data(using: .utf8) else {
             return nil
         }
         
@@ -44,14 +61,12 @@ class CryptoManager {
         return derivationStatus == kCCSuccess ? derivedKeyData : nil
     }
     
-    // MARK: - Encrypt Function
     func encrypt(text: String) -> String? {
         guard let key = generateKey(),
               let textData = text.data(using: .utf8) else {
             return nil
         }
         
-        // Generate random IV (16 bytes)
         var iv = Data(count: 16)
         let result = iv.withUnsafeMutableBytes {
             SecRandomCopyBytes(kSecRandomDefault, 16, $0.baseAddress!)
@@ -59,7 +74,6 @@ class CryptoManager {
         
         guard result == errSecSuccess else { return nil }
         
-        // Perform encryption
         let bufferSize = textData.count + kCCBlockSizeAES128
         var buffer = Data(count: bufferSize)
         var numBytesEncrypted = 0
@@ -90,11 +104,9 @@ class CryptoManager {
         
         buffer.removeSubrange(numBytesEncrypted..<buffer.count)
         
-        // Return in format: IV:EncryptedData (both in hex)
         return iv.hexString + ":" + buffer.hexString
     }
     
-    // MARK: - Decrypt Function
     func decrypt(encryptedData: String) -> String? {
         let components = encryptedData.split(separator: ":")
         guard components.count == 2,
@@ -104,7 +116,6 @@ class CryptoManager {
             return nil
         }
         
-        // Perform decryption
         let bufferSize = encryptedBytes.count + kCCBlockSizeAES128
         var buffer = Data(count: bufferSize)
         var numBytesDecrypted = 0
@@ -139,7 +150,7 @@ class CryptoManager {
     }
 }
 
-// MARK: - Data Extension for Hex Conversion
+// MARK: - Data Extensions
 extension Data {
     var hexString: String {
         return map { String(format: "%02x", $0) }.joined()
@@ -163,156 +174,8 @@ extension Data {
         
         self = data
     }
-}
-
-extension Data {
+    
     var bytes: [UInt8] {
         return [UInt8](self)
-    }
-}
-
-
-
-// MARK: - SwiftUI View Example
-struct EncryptDecryptTestView: View {
-    @State private var inputText = "Deepak Yadav"
-    @State private var encryptedText = ""
-    @State private var decryptedText = ""
-    
-    // For decrypting pre-encrypted values
-    @State private var pastedEncryptedText = ""
-    @State private var pastedDecryptedText = ""
-    
-    let cryptoManager = CryptoManager()
-    
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                Text("AES-256 Encryption Demo")
-                    .font(.title)
-                    .padding()
-                
-                // MARK: - Encryption Section
-                VStack(spacing: 15) {
-                    Text("Encrypt Text")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    TextField("Enter text to encrypt", text: $inputText)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                    
-                    Button("Encrypt") {
-                        if let encrypted = cryptoManager.encrypt(text: inputText) {
-                            encryptedText = encrypted
-                            print("Encrypted: \(encrypted)")
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    
-                    if !encryptedText.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Encrypted:")
-                                .font(.headline)
-                            Text(encryptedText)
-                                .font(.caption)
-                                .padding()
-                                .background(Color.gray.opacity(0.1))
-                                .cornerRadius(8)
-                                .textSelection(.enabled)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        
-                        Button("Decrypt This") {
-                            if let decrypted = cryptoManager.decrypt(encryptedData: encryptedText) {
-                                decryptedText = decrypted
-                                print("Decrypted: \(decrypted)")
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                        
-                        if !decryptedText.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Decrypted:")
-                                    .font(.headline)
-                                Text(decryptedText)
-                                    .foregroundColor(.green)
-                                    .font(.title3)
-                                    .padding()
-                                    .background(Color.green.opacity(0.1))
-                                    .cornerRadius(8)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-                }
-                .padding()
-                .background(Color.blue.opacity(0.05))
-                .cornerRadius(12)
-                
-                Divider()
-                    .padding(.vertical)
-                
-                // MARK: - Decrypt Pre-encrypted Values Section
-                VStack(spacing: 15) {
-                    Text("Decrypt Encrypted Value")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    Text("Paste your encrypted text (IV:EncryptedData format)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    TextEditor(text: $pastedEncryptedText)
-                        .frame(height: 100)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.gray.opacity(0.5), lineWidth: 1)
-                        )
-                        .font(.caption)
-                    
-                    Button("Decrypt Pasted Value") {
-                        if !pastedEncryptedText.isEmpty {
-                            if let decrypted = cryptoManager.decrypt(encryptedData: pastedEncryptedText) {
-                                pastedDecryptedText = decrypted
-                                print("Decrypted pasted value: \(decrypted)")
-                            } else {
-                                pastedDecryptedText = "❌ Decryption failed. Check format."
-                            }
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.orange)
-                    .disabled(pastedEncryptedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    
-                    if !pastedDecryptedText.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Result:")
-                                .font(.headline)
-                            Text(pastedDecryptedText)
-                                .foregroundColor(pastedDecryptedText.contains("❌") ? .red : .green)
-                                .font(.title3)
-                                .padding()
-                                .background(pastedDecryptedText.contains("❌") ? Color.red.opacity(0.1) : Color.green.opacity(0.1))
-                                .cornerRadius(8)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        
-                        Button("Clear") {
-                            pastedEncryptedText = ""
-                            pastedDecryptedText = ""
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(.gray)
-                    }
-                }
-                .padding()
-                .background(Color.orange.opacity(0.05))
-                .cornerRadius(12)
-                
-                Spacer()
-            }
-            .padding()
-        }
     }
 }

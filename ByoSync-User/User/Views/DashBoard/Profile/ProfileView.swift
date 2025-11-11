@@ -10,7 +10,6 @@ struct ProfileView: View {
     @State private var showEditProfile: Bool = false
     @State var openTestinLinkedDeviceView = false
     @State var profilePic: URL?
-    @State var openEncryptionSHATesting: Bool = false
     @State var openLocationTestingView: Bool = false
     @State var openSettingView: Bool = false
     @State private var hasLoadedProfilePicture = false // Prevent redundant loads
@@ -120,9 +119,6 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $openTestinLinkedDeviceView) {
             LinkedDevicesView()
-        }
-        .sheet(isPresented: $openEncryptionSHATesting) {
-            EncryptDecryptTestView()
         }
         .sheet(isPresented: $openHashValueTesting){
             HashValueTesting()

@@ -264,16 +264,16 @@ struct HomeView: View {
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
-                    // Promotions
-                    promotionsSection
+                    // Transaction History Button
+                    transactionHistoryButton
                         .padding(.horizontal, 20)
                     
                     // Leaderboard Card
                     leaderboardCard
                         .padding(.horizontal, 20)
                     
-                    // Transaction History Button
-                    transactionHistoryButton
+                    // Promotions
+                    promotionsSection
                         .padding(.horizontal, 20)
                         .padding(.bottom, 50)
 

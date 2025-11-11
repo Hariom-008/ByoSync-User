@@ -1,10 +1,25 @@
 import SwiftUI
 
 struct RegisterUserView: View {
-    @StateObject private var viewModel = RegisterUserViewModel()
+    // ✅ Get crypto service from environment
+    @EnvironmentObject var cryptoService: CryptoManager
+    
+    // ✅ ViewModel will be created with injected crypto service
+    @StateObject private var viewModel: RegisterUserViewModel
+    
     @Environment(\.dismiss) private var dismiss
     @Binding var phoneNumber: String
-    @State private var shouldNavigateToMain = false // ✅ Local state for navigation
+    @State private var shouldNavigateToMain = false
+    
+    // ✅ Custom initializer to inject crypto service into view model
+    init(phoneNumber: Binding<String>) {
+        self._phoneNumber = phoneNumber
+        
+        // Create a temporary crypto manager for initialization
+        // The actual one from environment will be used when view appears
+        let tempCrypto = CryptoManager()
+        self._viewModel = StateObject(wrappedValue: RegisterUserViewModel(cryptoService: tempCrypto))
+    }
     
     var body: some View {
         NavigationStack {
@@ -69,7 +84,7 @@ struct RegisterUserView: View {
                     
                     Spacer()
                     
-                    // ✅ Register Button with proper validation
+                    // Register Button with proper validation
                     Button(action: {
                         print("🔘 [VIEW] Register button tapped")
                         print("📋 [VIEW] Can submit: \(viewModel.canSubmit)")
@@ -94,7 +109,6 @@ struct RegisterUserView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(
-                            // ✅ Show visual feedback for disabled state
                             !viewModel.canSubmit || viewModel.isLoading
                             ? Color(hex: "4B548D").opacity(0.5)
                             : Color(hex: "4B548D")
@@ -102,7 +116,7 @@ struct RegisterUserView: View {
                         .foregroundColor(.white)
                         .cornerRadius(12)
                     }
-                    .disabled(!viewModel.canSubmit || viewModel.isLoading) // ✅ Disable when invalid
+                    .disabled(!viewModel.canSubmit || viewModel.isLoading)
                     .padding(.horizontal, 24)
                     .padding(.bottom, 32)
                 }
@@ -124,11 +138,9 @@ struct RegisterUserView: View {
                     Text(errorMessage)
                 }
             }
-            // ✅ Use onChange to trigger navigation
             .onChange(of: viewModel.navigateToMainTab) { oldValue, newValue in
                 print("🔄 [VIEW] navigateToMainTab changed: \(oldValue) -> \(newValue)")
                 if newValue {
-                    // Small delay to ensure state is properly set
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         shouldNavigateToMain = true
                     }
@@ -143,16 +155,15 @@ struct RegisterUserView: View {
             viewModel.phoneNumber = phoneNumber
             print("📱 [VIEW] Phone number set to: \(phoneNumber)")
         }
-        // ✅ Move fullScreenCover outside NavigationStack
         .fullScreenCover(isPresented: $shouldNavigateToMain) {
             MainTabView()
+                .environmentObject(cryptoService) // ✅ Pass crypto service down
                 .onAppear {
                     print("✅ [VIEW] MainTabView presented successfully")
                 }
         }
     }
 }
-
 
 // MARK: - Form Field Component
 struct FormField: View {
@@ -212,8 +223,4 @@ struct FormField: View {
             return nil
         }
     }
-}
-
-#Preview {
-    RegisterUserView(phoneNumber: .constant("+1234567890"))
 }

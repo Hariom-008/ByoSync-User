@@ -7,6 +7,7 @@ import Combine
 
 @main
 struct ByoSync_UserApp: App {
+    @StateObject private var cryptoManager = CryptoManager()
     @StateObject private var languageManager = LanguageManager.shared
     @StateObject var userSession = UserSession.shared
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
@@ -22,6 +23,7 @@ struct ByoSync_UserApp: App {
                     .environmentObject(languageManager)
                     .environment(\.locale, .init(identifier: languageManager.currentLanguageCode))
                     .preferredColorScheme(.light)
+                    .environmentObject(cryptoManager)
 
                 GlobalPaymentOverlayView()
             }

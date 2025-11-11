@@ -14,8 +14,15 @@ final class RegisterUserViewModel: ObservableObject {
     @Published var deviceId: String = "123456"
     @Published var deviceName: String = "iPhone 15"
     
-    private let repository = RegisterUserRepository.shared
+    // ✅ Inject repository via initializer instead of using singleton
+    private let repository: RegisterUserRepository
     private var cancellables = Set<AnyCancellable>()
+    
+    // ✅ Dependency injection
+    init(cryptoService: CryptoService) {
+        self.repository = RegisterUserRepository(cryptoService: cryptoService)
+        print("🎯 [VM] Initialized with injected crypto service")
+    }
     
     // MARK: - Computed Properties
     var allFieldsFilled: Bool {

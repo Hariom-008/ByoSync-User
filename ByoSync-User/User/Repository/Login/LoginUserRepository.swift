@@ -4,10 +4,15 @@ import SwiftUI
 
 final class LoginUserRepository {
     
-    static let shared = LoginUserRepository()
-    let cryptoManager = CryptoManager()
-    let hmacGenerator = HMACGenerator.self
-    private init() {}
+    // ✅ Remove singleton, use dependency injection
+    private let cryptoService: any CryptoService
+    private let hmacGenerator = HMACGenerator.self
+    
+    // ✅ Inject crypto service via initializer
+    init(cryptoService: any CryptoService) {
+        self.cryptoService = cryptoService
+        print("🔐 [REPO] LoginUserRepository initialized with crypto service")
+    }
 
     func login<T: Codable>(
         name: String,
@@ -21,10 +26,10 @@ final class LoginUserRepository {
             fcmToken: fcmToken
         )
         
-        print("📤 Logging In:")
-        print("URL: \(UserAPIEndpoint.Auth.logIn)")
-        print("name: \(name)")
-        print("deviceId: \(deviceKey)")
+        print("📤 [REPO] Logging In:")
+        print("   URL: \(UserAPIEndpoint.Auth.logIn)")
+        print("   name: \(name)")
+        print("   deviceId: \(deviceKey)")
         
         APIClient.shared.request(
             UserAPIEndpoint.Auth.logIn,
@@ -34,13 +39,12 @@ final class LoginUserRepository {
         ) { (result: Result<APIResponse<T>, APIError>) in
             switch result {
             case .success(let response):
-                print("✅ Login successful")
-                print("✅ Response: \(response.message)")
+                print("✅ [REPO] Login successful")
+                print("✅ [REPO] Response: \(response.message)")
                 completion(.success(response))
             
-                
             case .failure(let error):
-                print("❌ Login failed: \(error.localizedDescription)")
+                print("❌ [REPO] Login failed: \(error.localizedDescription)")
                 completion(.failure(error))
             }
         }
@@ -50,10 +54,9 @@ final class LoginUserRepository {
     func loginUser(
         name: String,
         deviceKey: String,
-        fcmToken : String,
+        fcmToken: String,
         completion: @escaping (Result<APIResponse<LoginData>, APIError>) -> Void
     ) {
-    
-        login(name: name, deviceKey: deviceKey,fcmToken: fcmToken ,completion: completion)
+        login(name: name, deviceKey: deviceKey, fcmToken: fcmToken, completion: completion)
     }
 }

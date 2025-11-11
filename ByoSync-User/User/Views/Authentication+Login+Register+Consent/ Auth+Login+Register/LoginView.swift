@@ -2,13 +2,27 @@ import SwiftUI
 import Foundation
 
 struct LoginView: View {
-    @StateObject private var viewModel = LoginViewModel()
+    @EnvironmentObject var cryptoManager: CryptoManager
+    @StateObject private var viewModel: LoginViewModel
     @State private var navigateToNextScreen: NavigationStep?
     @Environment(\.dismiss) var dismiss
     
-    enum NavigationStep {
+    // ✅ Make enum conform to Identifiable
+    enum NavigationStep: Identifiable {
         case userConsent
         case mainTab
+        
+        var id: String {
+            switch self {
+            case .userConsent: return "userConsent"
+            case .mainTab: return "mainTab"
+            }
+        }
+    }
+    
+    init() {
+        let tempCrypto = CryptoManager()
+        self._viewModel = StateObject(wrappedValue: LoginViewModel(cryptoService: tempCrypto))
     }
     
     var body: some View {
@@ -89,12 +103,17 @@ struct LoginView: View {
                 Spacer()
                 
                 Button {
+                    print("🔘 [VIEW] Login button tapped")
                     Task {
-                        // Completion style:
                         FCMTokenManager.shared.getFCMToken { token in
-                            guard let token else { return }
+                            guard let token else {
+                                print("⚠️ [VIEW] No FCM token available")
+                                return
+                            }
+                            print("🔔 [VIEW] FCM token received")
                             viewModel.fcmToken = token
                         }
+                        
                         await viewModel.login()
                     }
                 } label: {
@@ -102,6 +121,8 @@ struct LoginView: View {
                         if viewModel.isLoading {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            Text("Logging in...")
+                                .font(.system(size: 17, weight: .semibold))
                         } else {
                             Text(L("continue"))
                                 .font(.system(size: 17, weight: .semibold))
@@ -112,6 +133,7 @@ struct LoginView: View {
                     .foregroundColor(.white)
                     .cornerRadius(12)
                 }
+                .disabled(viewModel.isLoading)
                 .padding(.bottom, 32)
                 
                 HStack(spacing: 6) {
@@ -126,9 +148,37 @@ struct LoginView: View {
             }
         }
         .alert(L("login_failed"), isPresented: $viewModel.showError) {
-            Button("OK", role: .cancel) {}
+            Button("OK", role: .cancel) {
+                print("⚠️ [VIEW] Error alert dismissed")
+            }
         } message: {
             Text(viewModel.errorMessage)
         }
+        .onChange(of: viewModel.loginSuccess) { oldValue, newValue in
+            if newValue {
+                print("✅ [VIEW] Login successful, navigating to main tab")
+                navigateToNextScreen = .mainTab
+            }
+        }
+        // ✅ Now this will work because NavigationStep is Identifiable
+        .fullScreenCover(item: $navigateToNextScreen) { step in
+            switch step {
+            case .userConsent:
+                Text("User Consent View")
+                    .environmentObject(cryptoManager)
+                
+            case .mainTab:
+                MainTabView()
+                    .environmentObject(cryptoManager)
+            }
+        }
+        .onAppear {
+            print("👀 [VIEW] LoginView appeared")
+        }
     }
+}
+
+#Preview {
+    LoginView()
+        .environmentObject(CryptoManager())
 }

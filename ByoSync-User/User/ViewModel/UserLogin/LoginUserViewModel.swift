@@ -2,11 +2,11 @@ import Foundation
 import SwiftUI
 import Combine
 
-// MARK: - Updated User Login ViewModel
-
 final class LoginViewModel: ObservableObject {
     
-    let cryptoManager = CryptoManager()
+    // ✅ Inject crypto service instead of creating instance
+    private let cryptoService: any CryptoService
+    private let repository: LoginUserRepository
     
     @Published var name: String = ""
     @Published var isLoading: Bool = false
@@ -15,9 +15,16 @@ final class LoginViewModel: ObservableObject {
     @Published var loginSuccess: Bool = false
     @Published var role: String = ""
     @Published var wallet: Int?
-    @Published var fcmToken:String = ""
+    @Published var fcmToken: String = ""
     
     private let hardcodedDeviceId = "123456"
+    
+    // ✅ Dependency injection via initializer
+    init(cryptoService: any CryptoService) {
+        self.cryptoService = cryptoService
+        self.repository = LoginUserRepository(cryptoService: cryptoService)
+        print("🎯 [VM] LoginViewModel initialized with crypto service")
+    }
 
     func login() async {
         guard !name.trimmingCharacters(in: .whitespaces).isEmpty else {
@@ -32,7 +39,9 @@ final class LoginViewModel: ObservableObject {
             showError = false
         }
         
-        LoginUserRepository.shared.loginUser(
+        print("🚀 [VM] Starting login for: \(name)")
+        
+        repository.loginUser(
             name: name,
             deviceKey: hardcodedDeviceId,
             fcmToken: fcmToken
@@ -44,17 +53,17 @@ final class LoginViewModel: ObservableObject {
                 
                 switch result {
                 case .success(let response):
-                    print("✅ Login successful: \(response.message)")
+                    print("✅ [VM] Login successful: \(response.message)")
                     
                     self.updateUserSession(response: response)
                     self.loginSuccess = true
                     SocketIOManager.shared.connect()
-                    print("✅ Socket is Connected")
+                    print("✅ [VM] Socket is Connected")
                     UserDefaults.standard.set(response.data?.device.token ?? "", forKey: "token")
-                    print("✅ Token Saved in UserDefaults")
+                    print("✅ [VM] Token Saved in UserDefaults")
                     
                 case .failure(let error):
-                    print("❌ Login failed: \(error.localizedDescription)")
+                    print("❌ [VM] Login failed: \(error.localizedDescription)")
                     self.errorMessage = error.localizedDescription
                     self.showError = true
                 }
@@ -65,22 +74,26 @@ final class LoginViewModel: ObservableObject {
     private func updateUserSession(response: APIResponse<LoginData>) {
         guard let userData = response.data?.user,
               let deviceData = response.data?.device else {
-            print("⚠️ No data found in response")
+            print("⚠️ [VM] No data found in response")
             return
         }
         
-        // Convert to User model
+        print("🔓 [VM] Decrypting user data...")
+        
+        // ✅ Use injected crypto service for decryption
         let user = User(
-            firstName: cryptoManager.decrypt(encryptedData:userData.firstName) ?? "nil" ,
-            lastName: cryptoManager.decrypt(encryptedData:userData.lastName) ?? "nil",
-            email: cryptoManager.decrypt(encryptedData:userData.email) ?? "nil",
-            phoneNumber: cryptoManager.decrypt(encryptedData:userData.phoneNumber) ?? "nil",
+            firstName: cryptoService.decrypt(encryptedData: userData.firstName) ?? "nil",
+            lastName: cryptoService.decrypt(encryptedData: userData.lastName) ?? "nil",
+            email: cryptoService.decrypt(encryptedData: userData.email) ?? "nil",
+            phoneNumber: cryptoService.decrypt(encryptedData: userData.phoneNumber) ?? "nil",
             deviceKey: deviceData.deviceKey,
             deviceName: deviceData.deviceName,
-            userId: userData.id ,
+            userId: userData.id,
             userDeviceId: deviceData.id
         )
-        print("✅ Saved user with userId : \(deviceData.user)")
+        
+        print("✅ [VM] User data decrypted successfully")
+        print("✅ [VM] Saved user with userId: \(deviceData.user)")
         
         // Save to session
         UserSession.shared.saveUser(user)
@@ -95,9 +108,9 @@ final class LoginViewModel: ObservableObject {
         
         #if DEBUG
         print("""
-              ✅ User Login Complete:
-              Name: \(userData.firstName) \(userData.lastName)
-              Email: \(userData.email)
+              ✅ [VM] User Login Complete:
+              Name: \(user.firstName) \(user.lastName)
+              Email: \(user.email)
               Device: \(deviceData.deviceName)
               Primary: \(deviceData.isPrimary)
               """)

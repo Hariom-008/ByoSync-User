@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Alamofire
 import CryptoKit
 
@@ -8,6 +9,7 @@ struct RegisterUserResponse: Codable {
     let message: String
     let data: User?
 }
+
 struct RegisterUserRequest: Encodable {
     let firstName: String
     let lastName: String
@@ -21,12 +23,17 @@ struct RegisterUserRequest: Encodable {
     let fcmToken: String
     let referralCode: String?
 }
+
 final class RegisterUserRepository {
     
-    static let shared = RegisterUserRepository()
-    let cryptoManager = CryptoManager()
-    let hmacGenerator = HMACGenerator.self
-    private init() {}
+    // ✅ Remove singleton, use dependency injection instead
+    private let cryptoService: CryptoService
+    private let hmacGenerator = HMACGenerator.self
+    
+    // ✅ Inject dependencies via initializer
+    init(cryptoService: CryptoService) {
+        self.cryptoService = cryptoService
+    }
     
     func registerUser(
         firstName: String,
@@ -44,17 +51,21 @@ final class RegisterUserRepository {
             guard let token else { return }
             fcmToken = token
         }
+        
+        // ✅ Use injected cryptoService instead of @EnvironmentObject
         let user = RegisterUserRequest(
-            firstName: cryptoManager.encrypt(text: firstName) ?? "",
-            lastName: cryptoManager.encrypt(text: lastName) ?? "",
-            email: cryptoManager.encrypt(text: email) ?? "",
+            firstName: cryptoService.encrypt(text: firstName) ?? "",
+            lastName: cryptoService.encrypt(text: lastName) ?? "",
+            email: cryptoService.encrypt(text: email) ?? "",
             emailHash: hmacGenerator.generateHMAC(jsonString: email),
-            phoneNumber: cryptoManager.encrypt(text: phoneNumber) ?? "",
+            phoneNumber: cryptoService.encrypt(text: phoneNumber) ?? "",
             phoneNumberHash: hmacGenerator.generateHMAC(jsonString: phoneNumber),
             deviceKey: deviceId,
             deviceKeyHash: hmacGenerator.generateHMAC(jsonString: deviceId),
             deviceName: deviceName,
-            fcmToken: fcmToken, referralCode: "")
+            fcmToken: fcmToken,
+            referralCode: ""
+        )
         
         // Encode User to JSON string with consistent formatting
         let encoder = JSONEncoder()
@@ -80,7 +91,6 @@ final class RegisterUserRepository {
             case .success(let response):
                 print("✅ [API] Registration successful")
                 self.handleSuccessfulRegistration(response: response, originalData: user, completion: completion)
-                
                 
             case .failure(let error):
                 print("❌ [API] Registration failed: \(error.localizedDescription)")
