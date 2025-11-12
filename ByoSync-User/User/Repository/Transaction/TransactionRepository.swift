@@ -1,7 +1,5 @@
 import Foundation
 import Alamofire
-import Foundation
-
 
 struct TransactionAPIResponse: Codable {
     let statusCode: Int
@@ -33,7 +31,7 @@ struct Transaction: Codable, Identifiable, Equatable {
     }
 }
 
-struct MerchantInfo: Codable,Equatable {
+struct MerchantInfo: Codable, Equatable {
     let id: String
     let merchantName: String
     let merchantProfilePic: String
@@ -45,7 +43,7 @@ struct MerchantInfo: Codable,Equatable {
     }
 }
 
-struct TxUser: Codable,Equatable{
+struct TxUser: Codable, Equatable {
     let id: String
     let firstName: String
     let lastName: String
@@ -59,9 +57,50 @@ struct TxUser: Codable,Equatable{
     }
 }
 
-final class TransactionRepository {
-    static let shared = TransactionRepository()
-    private init() {}
+// MARK: - Protocol for Testability
+protocol TransactionRepositoryProtocol {
+    func fetchDailyReport(
+        date: String,
+        type: String,
+        completion: @escaping (Result<[Transaction], APIError>) -> Void
+    )
+    
+    func fetchCustomReport(
+        startDate: String,
+        endDate: String,
+        type: String,
+        completion: @escaping (Result<[Transaction], APIError>) -> Void
+    )
+    
+    func fetchMonthlyReport(
+        month: String,
+        year: String,
+        type: String,
+        completion: @escaping (Result<[Transaction], APIError>) -> Void
+    )
+    
+    func downloadDailyReport(
+        date: String,
+        completion: @escaping (Result<URL, APIError>) -> Void
+    )
+    
+    func emailDailyReport(
+        date: String,
+        completion: @escaping (Result<String, APIError>) -> Void
+    )
+}
+
+final class TransactionRepository: TransactionRepositoryProtocol {
+    
+    // MARK: - Initialization (No Singleton)
+    init() {
+        print("🏗️ [REPO] TransactionRepository initialized")
+    }
+    
+    // MARK: - Private Helper: Get Auth Headers
+    private func getAuthHeaders() -> HTTPHeaders {
+        return getHeader.shared.getAuthHeaders()
+    }
     
     // MARK: - Daily Report
     func fetchDailyReport(
@@ -70,10 +109,11 @@ final class TransactionRepository {
         completion: @escaping (Result<[Transaction], APIError>) -> Void
     ) {
         let endpoint = UserAPIEndpoint.TransactionAPI.dailyReport(date: date, type: type)
-        let headers = getHeader.shared.getAuthHeaders()
+        let headers = getAuthHeaders()
         
-        print("📅 Fetching Daily Report for \(date) [type: \(type)]")
-        print("🔗 Endpoint: \(endpoint)")
+        print("📤 [REPO] Fetching Daily Report")
+        print("📅 [REPO] Date: \(date), Type: \(type)")
+        print("📍 [REPO] Endpoint: \(endpoint)")
         
         APIClient.shared.request(
             endpoint,
@@ -82,18 +122,20 @@ final class TransactionRepository {
         ) { (result: Result<TransactionAPIResponse, APIError>) in
             switch result {
             case .success(let response):
-                print("✅ Status Code: \(response.statusCode)")
-                print("✅ Message: \(response.message)")
-                print("✅ Data Count: \(response.data.count)")
+                print("✅ [REPO] Daily report fetched successfully")
+                print("📊 [REPO] Status Code: \(response.statusCode)")
+                print("💬 [REPO] Message: \(response.message)")
+                print("📈 [REPO] Data Count: \(response.data.count)")
                 
                 if (200...299).contains(response.statusCode) {
                     completion(.success(response.data))
                 } else {
+                    print("❌ [REPO] Invalid status code: \(response.statusCode)")
                     completion(.failure(.custom(response.message)))
                 }
                 
             case .failure(let error):
-                print("❌ Error: \(error)")
+                print("❌ [REPO] Failed to fetch daily report: \(error.localizedDescription)")
                 completion(.failure(error))
             }
         }
@@ -107,24 +149,32 @@ final class TransactionRepository {
         completion: @escaping (Result<[Transaction], APIError>) -> Void
     ) {
         let endpoint = UserAPIEndpoint.TransactionAPI.customReport(startDate: startDate, endDate: endDate, type: type)
-        let headers = getHeader.shared.getAuthHeaders()
+        let headers = getAuthHeaders()
         
-        print("📊 Fetching Custom Report [\(startDate) → \(endDate)] [type: \(type)]")
+        print("📤 [REPO] Fetching Custom Report")
+        print("📅 [REPO] Period: \(startDate) → \(endDate), Type: \(type)")
+        print("📍 [REPO] Endpoint: \(endpoint)")
         
         APIClient.shared.request(
             endpoint,
             method: .get,
             headers: headers
-        ) { (result: Result<TransactionAPIResponse, APIError>) in  // Changed this to use TransactionAPIResponse
+        ) { (result: Result<TransactionAPIResponse, APIError>) in
             switch result {
             case .success(let response):
+                print("✅ [REPO] Custom report fetched successfully")
+                print("📊 [REPO] Status Code: \(response.statusCode)")
+                print("📈 [REPO] Data Count: \(response.data.count)")
+                
                 if (200...299).contains(response.statusCode) {
                     completion(.success(response.data))
                 } else {
+                    print("❌ [REPO] Invalid status code: \(response.statusCode)")
                     completion(.failure(.custom(response.message)))
                 }
+                
             case .failure(let error):
-                print("❌ Error: \(error)")
+                print("❌ [REPO] Failed to fetch custom report: \(error.localizedDescription)")
                 completion(.failure(error))
             }
         }
@@ -138,9 +188,11 @@ final class TransactionRepository {
         completion: @escaping (Result<[Transaction], APIError>) -> Void
     ) {
         let endpoint = UserAPIEndpoint.TransactionAPI.monthlyReport(month: month, year: year, type: type)
-        let headers = getHeader.shared.getAuthHeaders()
+        let headers = getAuthHeaders()
         
-        print("📆 Fetching Monthly Report for \(month)-\(year) [type: \(type)]")
+        print("📤 [REPO] Fetching Monthly Report")
+        print("📅 [REPO] Month: \(month), Year: \(year), Type: \(type)")
+        print("📍 [REPO] Endpoint: \(endpoint)")
         
         APIClient.shared.request(
             endpoint,
@@ -150,11 +202,16 @@ final class TransactionRepository {
             switch result {
             case .success(let response):
                 if response.success ?? false, let transactions = response.data {
+                    print("✅ [REPO] Monthly report fetched successfully")
+                    print("📈 [REPO] Data Count: \(transactions.count)")
                     completion(.success(transactions))
                 } else {
+                    print("❌ [REPO] Failed: \(response.message)")
                     completion(.failure(.custom(response.message)))
                 }
+                
             case .failure(let error):
+                print("❌ [REPO] Failed to fetch monthly report: \(error.localizedDescription)")
                 completion(.failure(error))
             }
         }
@@ -166,10 +223,11 @@ final class TransactionRepository {
         completion: @escaping (Result<URL, APIError>) -> Void
     ) {
         let endpoint = UserAPIEndpoint.TransactionAPI.dailyReport(date: date, type: "DOWNLOAD")
-        let headers = getHeader.shared.getAuthHeaders()
+        let headers = getAuthHeaders()
         
-        print("📥 Downloading Daily Report for \(date)")
-        print("🔗 Endpoint: \(endpoint)")
+        print("📤 [REPO] Downloading Daily Report")
+        print("📅 [REPO] Date: \(date)")
+        print("📍 [REPO] Endpoint: \(endpoint)")
         
         APIClient.shared.downloadFile(
             endpoint,
@@ -178,26 +236,29 @@ final class TransactionRepository {
         ) { result in
             switch result {
             case .success(let fileURL):
-                print("✅ Report downloaded to: \(fileURL.path)")
+                print("✅ [REPO] Report downloaded successfully")
+                print("📂 [REPO] File path: \(fileURL.path)")
                 completion(.success(fileURL))
+                
             case .failure(let error):
-                print("❌ Download failed: \(error.localizedDescription)")
+                print("❌ [REPO] Download failed: \(error.localizedDescription)")
                 completion(.failure(error))
             }
         }
     }
 
-    // MARK: - Email Daily Report (Returns message only)
+    // MARK: - Email Daily Report
     func emailDailyReport(
         date: String,
         completion: @escaping (Result<String, APIError>) -> Void
     ) {
         let endpoint = UserAPIEndpoint.TransactionAPI.dailyReport(date: date, type: "EMAIL")
-        let headers = getHeader.shared.getAuthHeaders()
+        let headers = getAuthHeaders()
         
-        print("📧 Sending Daily Report via Email for \(date)")
+        print("📤 [REPO] Sending Daily Report via Email")
+        print("📅 [REPO] Date: \(date)")
+        print("📍 [REPO] Endpoint: \(endpoint)")
         
-        // For EMAIL type, backend probably sends email and returns a success message
         APIClient.shared.request(
             endpoint,
             method: .get,
@@ -206,14 +267,22 @@ final class TransactionRepository {
             switch result {
             case .success(let response):
                 if (200...299).contains(response.statusCode) {
+                    print("✅ [REPO] Email sent successfully")
+                    print("💬 [REPO] Message: \(response.message)")
                     completion(.success(response.message))
                 } else {
+                    print("❌ [REPO] Email failed: \(response.message)")
                     completion(.failure(.custom(response.message)))
                 }
+                
             case .failure(let error):
+                print("❌ [REPO] Failed to send email: \(error.localizedDescription)")
                 completion(.failure(error))
             }
         }
     }
+    
+    deinit {
+        print("♻️ [REPO] TransactionRepository deallocated")
+    }
 }
-

@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import Combine
 
+@MainActor
 final class UpdateProfileViewModel: ObservableObject {
     @Published var firstName: String = ""
     @Published var lastName: String = ""
@@ -12,46 +13,65 @@ final class UpdateProfileViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var isSuccess: Bool = false
     
-    // 👇 Store original email to detect change
-    private var originalEmail: String = UserSession.shared.currentUser?.email ?? ""
+    // Dependencies
+    private let repository: ProfileUpdateRepositoryProtocol
+    private let userSession: UserSession
+    
+    // Store original email to detect change
+    private var originalEmail: String = ""
+    
+    // MARK: - Initialization with Dependency Injection
+    init(
+        repository: ProfileUpdateRepositoryProtocol = ProfileUpdateRepository(),
+        userSession: UserSession = .shared
+    ) {
+        self.repository = repository
+        self.userSession = userSession
+        self.originalEmail = userSession.currentUser?.email ?? ""
+        print("🏗️ [VM] UpdateProfileViewModel initialized")
+    }
     
     func updateProfile() {
         print("\n" + String(repeating: "=", count: 50))
-        print("🧪 Starting Updating UserProfile")
+        print("🧪 [VM] Starting Updating UserProfile")
         print(String(repeating: "=", count: 50))
         
         guard let token = UserDefaults.standard.string(forKey: "token") else {
-            print("❌ NO TOKEN FOUND - API will fail!")
+            print("❌ [VM] NO TOKEN FOUND - API will fail!")
             alertTitle = "Error"
             alertMessage = "No token found. Please login first."
             showAlert = true
             return
         }
         
-        print("✅ Token found: \(token.prefix(20))...")
+        print("✅ [VM] Token found: \(token.prefix(20))...")
         isLoading = true
         
-        ProfileUpdateRepository.shared.updateProfile(
+        repository.updateProfile(
             firstName: firstName,
             lastName: lastName,
             email: email
-        ) { result in
-            DispatchQueue.main.async { [self] in
+        ) { [weak self] result in
+            guard let self = self else { return }
+            
+            Task { @MainActor in
+                self.isLoading = false
+                
                 switch result {
                 case .success(let response):
-                    print("✅ UPDATE SUCCESS!")
-                    print("Status Code: \(response.statusCode)")
-                    print("Message: \(response.message)")
-                    print("User: \(response.data.firstName) \(response.data.lastName)")
-                    print("Email: \(response.data.email)")
+                    print("✅ [VM] UPDATE SUCCESS!")
+                    print("📊 [VM] Status Code: \(response.statusCode)")
+                    print("💬 [VM] Message: \(response.message)")
+                    print("👤 [VM] User: \(response.data.firstName) \(response.data.lastName)")
+                    print("📧 [VM] Email: \(response.data.email)")
                     
-                    // ✅ Check if email actually changed
-                    let oldEmail = originalEmail.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                    let newEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    // Check if email actually changed
+                    let oldEmail = self.originalEmail.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    let newEmail = self.email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
                     
                     if oldEmail != newEmail {
-                        UserSession.shared.setEmailVerified(false)
-                        print("📧 Email changed — verification reset to false")
+                        self.userSession.setEmailVerified(false)
+                        print("📧 [VM] Email changed — verification reset to false")
                     }
                     
                     self.alertTitle = "Success ✅"
@@ -64,30 +84,32 @@ final class UpdateProfileViewModel: ObservableObject {
                     self.showAlert = true
                     self.isSuccess = true
                     
-                    // ✅ Update user session
-                    UserSession.shared.saveUser(
+                    // Update user session
+                    self.userSession.saveUser(
                         User(
-                            firstName: firstName,
-                            lastName: lastName,
-                            email: email,
-                            phoneNumber: UserSession.shared.currentUser?.phoneNumber,
-                            deviceKey: UserSession.shared.currentUser?.deviceKey,
-                            deviceName: UserSession.shared.currentUser?.deviceName
+                            firstName: self.firstName,
+                            lastName: self.lastName,
+                            email: self.email,
+                            phoneNumber: self.userSession.currentUser?.phoneNumber,
+                            deviceKey: self.userSession.currentUser?.deviceKey,
+                            deviceName: self.userSession.currentUser?.deviceName
                         )
                     )
-                    print("✅ Updated the user on backend and UserSession.")
+                    print("✅ [VM] Updated the user on backend and UserSession.")
                     
                 case .failure(let error):
-                    print("❌ UPDATE FAILED!")
-                    print("Error: \(error.localizedDescription)")
+                    print("❌ [VM] UPDATE FAILED!")
+                    print("🔥 [VM] Error: \(error.localizedDescription)")
                     
                     self.alertTitle = "Error ❌"
                     self.alertMessage = error.localizedDescription
                     self.showAlert = true
                 }
-                
-                self.isLoading = false
             }
         }
+    }
+    
+    deinit {
+        print("♻️ [VM] UpdateProfileViewModel deallocated")
     }
 }

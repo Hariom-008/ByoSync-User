@@ -14,7 +14,8 @@ struct MerchantProfileResponse: Codable {
     let data: MerchantData  // ✅ Direct UserData, not nested
     let message: String
 }
- //For GET /get-user-data and POST /login (returns user and device nested)
+
+// For GET /get-user-data and POST /login (returns user and device nested)
 struct ProfileUpdateResponse: Codable {
     let statusCode: Int
     let data: ProfileUpdateData
@@ -65,11 +66,23 @@ struct MerchantData: Codable {
     }
 }
 
-
-final class ProfileUpdateRepository {
-    static let shared = ProfileUpdateRepository()
+protocol ProfileUpdateRepositoryProtocol {
+    func updateProfile(
+        firstName: String,
+        lastName: String,
+        email: String,
+        completion: @escaping (Result<MerchantProfileResponse, APIError>) -> Void
+    )
     
-    private init() {}
+    func getProfile(completion: @escaping (Result<ProfileUpdateResponse, APIError>) -> Void)
+}
+
+final class ProfileUpdateRepository: ProfileUpdateRepositoryProtocol {
+    
+    // MARK: - Initialization (No Singleton)
+    init() {
+        print("🏗️ [REPO] ProfileUpdateRepository initialized")
+    }
     
     // MARK: - Private Helper: Get Auth Headers
     private func getAuthHeaders() -> HTTPHeaders {
@@ -79,10 +92,14 @@ final class ProfileUpdateRepository {
         // Retrieve token from UserDefaults
         if let token = UserDefaults.standard.string(forKey: "token"), !token.isEmpty {
             headers.add(name: "Authorization", value: "Bearer \(token)")
-            print("🔒 Retrieved auth token from UserDefaults")
-            print("🔑 Token: \(token.prefix(30))...")
+            #if DEBUG
+            print("🔒 [REPO] Retrieved auth token from UserDefaults")
+            print("🔑 [REPO] Token: \(token.prefix(30))...")
+            #endif
         } else {
-            print("⚠️ No auth token found in UserDefaults")
+            #if DEBUG
+            print("⚠️ [REPO] No auth token found in UserDefaults")
+            #endif
         }
         return headers
     }
@@ -101,13 +118,13 @@ final class ProfileUpdateRepository {
         ]
         
         let headers = getAuthHeaders()
-        
-        print("\n📤 UPDATE PROFILE REQUEST:")
-        print("URL: \(UserAPIEndpoint.EditProfile.changeDetails)")
-        print("Method: PATCH")
-        print("Headers: \(headers)")
-        print("Parameters: \(parameters)")
-        
+        #if DEBUG
+        print("\n📤 [REPO] UPDATE PROFILE REQUEST:")
+        print("📍 [REPO] URL: \(UserAPIEndpoint.EditProfile.changeDetails)")
+        print("📝 [REPO] Method: PATCH")
+        print("📦 [REPO] Parameters: \(parameters)")
+        #endif
+    
         APIClient.shared.request(
             UserAPIEndpoint.EditProfile.changeDetails,
             method: .patch,
@@ -121,10 +138,11 @@ final class ProfileUpdateRepository {
     func getProfile(completion: @escaping (Result<ProfileUpdateResponse, APIError>) -> Void) {
         let headers = getAuthHeaders()
         
-        print("\n📥 GET PROFILE REQUEST:")
-        print("URL: \(UserAPIEndpoint.EditProfile.changeDetails)")
-        print("Method: GET")
-        print("Headers: \(headers)")
+        #if DEBUG
+        print("\n📥 [REPO] GET PROFILE REQUEST:")
+        print("📍 [REPO] URL: \(UserAPIEndpoint.EditProfile.changeDetails)")
+        print("📝 [REPO] Method: GET")
+        #endif
         
         APIClient.shared.request(
             UserAPIEndpoint.EditProfile.changeDetails,
@@ -132,5 +150,11 @@ final class ProfileUpdateRepository {
             headers: headers,
             completion: completion
         )
+    }
+    
+    deinit {
+        #if DEBUG
+        print("♻️ [REPO] ProfileUpdateRepository deallocated")
+        #endif
     }
 }

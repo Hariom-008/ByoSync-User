@@ -1,16 +1,39 @@
 import Foundation
 import Alamofire
 
-final class LogOutRepository {
-    static let shared = LogOutRepository()
+// MARK: - Protocol for Testability
+protocol LogOutRepositoryProtocol {
+    func logOut(completion: @escaping (Result<Void, APIError>) -> Void)
+}
+
+final class LogOutRepository: LogOutRepositoryProtocol {
     
+    // MARK: - Initialization (No Singleton)
+    init() {
+        print("🏗️ [REPO] LogOutRepository initialized")
+    }
+    
+    // MARK: - Private Helper: Get Auth Headers
+    private func getAuthHeaders() -> HTTPHeaders {
+        return getHeader.shared.getAuthHeaders()
+    }
+    
+    // MARK: - Logout
     func logOut(
         completion: @escaping (Result<Void, APIError>) -> Void
     ) {
-        print("📤 Logging Out User...")
-        print("🔗 URL: \(UserAPIEndpoint.Auth.logOut)")
+        print("📤 [REPO] Logging Out User...")
+        print("📍 [REPO] URL: \(UserAPIEndpoint.Auth.logOut)")
         
-        let headers = getHeader.shared.getAuthHeaders() // ✅ include token here
+        let headers = getAuthHeaders()
+        
+        // Log token presence (first few characters only for security)
+        if let authHeader = headers.dictionary["Authorization"] {
+            let tokenPreview = String(authHeader.prefix(30))
+            print("🔑 [REPO] Token present: \(tokenPreview)...")
+        } else {
+            print("⚠️ [REPO] No auth token found in headers")
+        }
         
         APIClient.shared.requestWithoutResponse(
             UserAPIEndpoint.Auth.logOut,
@@ -19,18 +42,41 @@ final class LogOutRepository {
         ) { (result: Result<Void, APIError>) in
             
             switch result {
-            case .success(let response):
-                print("✅ User logged out successfully")
+            case .success:
+                print("✅ [REPO] User logged out successfully on backend")
+                
                 // Clear local session
                 UserSession.shared.clearUser()
-                UserDefaults.standard.removeObject(forKey: "token") // ✅ clear token too
+                print("✅ [REPO] UserSession cleared")
                 
-                completion(.success(response))
+                // Clear stored tokens
+                UserDefaults.standard.removeObject(forKey: "token")
+                UserDefaults.standard.removeObject(forKey: "deviceToken")
+                print("✅ [REPO] Tokens removed from UserDefaults")
+                
+                completion(.success(()))
                 
             case .failure(let error):
-                print("❌ Logout failed: \(error.localizedDescription)")
-                completion(.failure(error))
+                print("❌ [REPO] Logout failed: \(error.localizedDescription)")
+                
+                // Even if backend logout fails, we might want to clear local data
+                // depending on the error type
+                switch error {
+                case .unauthorized:
+                    print("⚠️ [REPO] Unauthorized error - clearing local session anyway")
+                    UserSession.shared.clearUser()
+                    UserDefaults.standard.removeObject(forKey: "token")
+                    UserDefaults.standard.removeObject(forKey: "deviceToken")
+                    // Still return success since we cleared local data
+                    completion(.success(()))
+                default:
+                    completion(.failure(error))
+                }
             }
         }
+    }
+    
+    deinit {
+        print("♻️ [REPO] LogOutRepository deallocated")
     }
 }

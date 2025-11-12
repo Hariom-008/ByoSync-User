@@ -9,9 +9,48 @@ import Foundation
 import SwiftUI
 import Alamofire
 
-final class SummaryTransactionRepository {
-    static let shared = SummaryTransactionRepository()
-    private init() {}
+// MARK: - Protocol for Testability
+protocol SummaryTransactionRepositoryProtocol {
+    func fetchDailySummary(
+        date: String,
+        completion: @escaping (Result<SummaryTransactionData, APIError>) -> Void
+    )
+    
+    func fetchMonthlySummary(
+        month: String,
+        year: String,
+        completion: @escaping (Result<SummaryTransactionData, APIError>) -> Void
+    )
+    
+    func fetchCustomSummary(
+        startDate: String,
+        endDate: String,
+        completion: @escaping (Result<SummaryTransactionData, APIError>) -> Void
+    )
+    
+    func fetchWeeklySummary(
+        startDate: String,
+        endDate: String,
+        completion: @escaping (Result<SummaryTransactionData, APIError>) -> Void
+    )
+    
+    func fetchYearlySummary(
+        year: String,
+        completion: @escaping (Result<SummaryTransactionData, APIError>) -> Void
+    )
+}
+
+final class SummaryTransactionRepository: SummaryTransactionRepositoryProtocol {
+    
+    // MARK: - Initialization (No Singleton)
+    init() {
+        print("🏗️ [REPO] SummaryTransactionRepository initialized")
+    }
+    
+    // MARK: - Private Helper: Get Auth Headers
+    private func getAuthHeaders() -> HTTPHeaders {
+        return getHeader.shared.getAuthHeaders()
+    }
     
     // MARK: - Fetch Daily Summary
     func fetchDailySummary(
@@ -24,23 +63,24 @@ final class SummaryTransactionRepository {
             "type": "daily"
         ]
         
-        let token = getHeader.shared.getAuthHeaders()
+        print("📤 [REPO] Fetching Daily Summary")
+        print("📍 [REPO] URL: \(endpoint)")
+        print("📅 [REPO] Date: \(date)")
         
-        let headers = [
-            "Authorization": "Bearer \(token)",
-            "Content-Type": "application/json"
-        ]
+        let headers = getAuthHeaders()
         
         APIClient.shared.request(
             endpoint,
             method: .post,
             parameters: parameters,
-            headers: HTTPHeaders(headers)
+            headers: headers
         ) { (result: Result<SummaryTransactionResponse, APIError>) in
             switch result {
             case .success(let response):
+                print("✅ [REPO] Daily summary fetched successfully")
                 completion(.success(response.data))
             case .failure(let error):
+                print("❌ [REPO] Failed to fetch daily summary: \(error.localizedDescription)")
                 completion(.failure(error))
             }
         }
@@ -59,23 +99,24 @@ final class SummaryTransactionRepository {
             "type": "monthly"
         ]
         
-        let token = getHeader.shared.getAuthHeaders()
+        print("📤 [REPO] Fetching Monthly Summary")
+        print("📍 [REPO] URL: \(endpoint)")
+        print("📅 [REPO] Month: \(month), Year: \(year)")
         
-        let headers = [
-            "Authorization": "Bearer \(token)",
-            "Content-Type": "application/json"
-        ]
+        let headers = getAuthHeaders()
         
         APIClient.shared.request(
             endpoint,
             method: .post,
             parameters: parameters,
-            headers: HTTPHeaders(headers)
+            headers: headers
         ) { (result: Result<SummaryTransactionResponse, APIError>) in
             switch result {
             case .success(let response):
+                print("✅ [REPO] Monthly summary fetched successfully")
                 completion(.success(response.data))
             case .failure(let error):
+                print("❌ [REPO] Failed to fetch monthly summary: \(error.localizedDescription)")
                 completion(.failure(error))
             }
         }
@@ -94,24 +135,24 @@ final class SummaryTransactionRepository {
             "type": "custom"
         ]
         
-        let token = getHeader.shared.getAuthHeaders()
+        print("📤 [REPO] Fetching Custom Summary")
+        print("📍 [REPO] URL: \(endpoint)")
+        print("📅 [REPO] Start Date: \(startDate), End Date: \(endDate)")
         
-        
-        let headers = [
-            "Authorization": "Bearer \(token)",
-            "Content-Type": "application/json"
-        ]
+        let headers = getAuthHeaders()
         
         APIClient.shared.request(
             endpoint,
             method: .post,
             parameters: parameters,
-            headers: HTTPHeaders(headers)
+            headers: headers
         ) { (result: Result<SummaryTransactionResponse, APIError>) in
             switch result {
             case .success(let response):
+                print("✅ [REPO] Custom summary fetched successfully")
                 completion(.success(response.data))
             case .failure(let error):
+                print("❌ [REPO] Failed to fetch custom summary: \(error.localizedDescription)")
                 completion(.failure(error))
             }
         }
@@ -123,6 +164,8 @@ final class SummaryTransactionRepository {
         endDate: String,
         completion: @escaping (Result<SummaryTransactionData, APIError>) -> Void
     ) {
+        print("📤 [REPO] Fetching Weekly Summary (using custom)")
+        print("📅 [REPO] Week: \(startDate) to \(endDate)")
         fetchCustomSummary(startDate: startDate, endDate: endDate, completion: completion)
     }
     
@@ -137,26 +180,30 @@ final class SummaryTransactionRepository {
             "type": "yearly"
         ]
         
-        let token = getHeader.shared.getAuthHeaders()
+        print("📤 [REPO] Fetching Yearly Summary")
+        print("📍 [REPO] URL: \(endpoint)")
+        print("📅 [REPO] Year: \(year)")
         
-        
-        let headers = [
-            "Authorization": "Bearer \(token)",
-            "Content-Type": "application/json"
-        ]
+        let headers = getAuthHeaders()
         
         APIClient.shared.request(
             endpoint,
             method: .post,
             parameters: parameters,
-            headers: HTTPHeaders(headers)
+            headers: headers
         ) { (result: Result<SummaryTransactionResponse, APIError>) in
             switch result {
             case .success(let response):
+                print("✅ [REPO] Yearly summary fetched successfully")
                 completion(.success(response.data))
             case .failure(let error):
+                print("❌ [REPO] Failed to fetch yearly summary: \(error.localizedDescription)")
                 completion(.failure(error))
             }
         }
+    }
+    
+    deinit {
+        print("♻️ [REPO] SummaryTransactionRepository deallocated")
     }
 }

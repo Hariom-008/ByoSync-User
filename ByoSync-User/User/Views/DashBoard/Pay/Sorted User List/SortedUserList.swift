@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 struct SortedUsersView: View {
-    @StateObject private var viewModel = SortedUsersViewModel()
+    @StateObject private var viewModel: SortedUsersViewModel
     @State private var searchText = ""
     @State private var showSearchBar = false
     @Binding var hideTabBar: Bool
@@ -11,6 +11,24 @@ struct SortedUsersView: View {
     @State private var openSelectedUserDetailsView: Bool = false
     @State private var showContent: Bool = false
     @Environment(\.dismiss) private var dismiss
+    
+    // MARK: - Initialization with Dependency Injection
+    init(
+        hideTabBar: Binding<Bool>,
+        amount: Binding<String>,
+        repository: SortedUsersRepositoryProtocol = SortedUsersRepository(),
+        cryptoManager: CryptoManager = CryptoManager()
+    ) {
+        self._hideTabBar = hideTabBar
+        self._amount = amount
+        _viewModel = StateObject(
+            wrappedValue: SortedUsersViewModel(
+                repository: repository,
+                cryptoManager: cryptoManager
+            )
+        )
+        print("🏗️ [VIEW] SortedUsersView initialized")
+    }
     
     var body: some View {
         NavigationStack {
@@ -42,7 +60,7 @@ struct SortedUsersView: View {
                 }
             }
             .task {
-                print("📱 SortedUsersView appeared, fetching users...")
+                print("📱 [VIEW] SortedUsersView appeared, fetching users...")
                 await viewModel.fetchSortedUsers()
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.1)) {
                     showContent = true
@@ -50,17 +68,20 @@ struct SortedUsersView: View {
             }
             .alert("Error", isPresented: $viewModel.showError) {
                 Button("Retry") {
-                    print("🔄 Retry button tapped")
+                    print("🔄 [VIEW] Retry button tapped")
                     Task {
                         await viewModel.retry()
                     }
                 }
                 Button("Cancel", role: .cancel) {
-                    print("❌ Error alert cancelled")
+                    print("❌ [VIEW] Error alert cancelled")
                 }
             } message: {
                 Text(viewModel.errorMessage ?? "An unknown error occurred")
             }
+        }
+        .onDisappear {
+            print("👋 [VIEW] SortedUsersView disappeared")
         }
     }
     
@@ -68,7 +89,7 @@ struct SortedUsersView: View {
     private var customHeader: some View {
         HStack(spacing: 16) {
             Button {
-                print("🔙 Back button tapped")
+                print("🔙 [VIEW] Back button tapped")
                 dismiss()
                 hideTabBar = false
             } label: {
@@ -115,7 +136,7 @@ struct SortedUsersView: View {
                 
                 Image("byosync_coin")
                     .resizable()
-                    .interpolation(.high)  // Better quality interpolation
+                    .interpolation(.high)
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 40, height: 40)
                     .clipShape(Circle())
@@ -139,7 +160,7 @@ struct SortedUsersView: View {
             
             Spacer()
             
-            // Optional: Show user count
+            // Show user count
             if !viewModel.users.isEmpty {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("\(filteredUsers.count)")
@@ -190,7 +211,7 @@ struct SortedUsersView: View {
             
             if !searchText.isEmpty {
                 Button(action: {
-                    print("🗑️ Clearing search text")
+                    print("🗑️ [VIEW] Clearing search text")
                     searchText = ""
                 }) {
                     Image(systemName: "xmark.circle.fill")
@@ -213,7 +234,7 @@ struct SortedUsersView: View {
     
     private var searchButton: some View {
         Button(action: {
-            print("🔍 Search button toggled: \(!showSearchBar)")
+            print("🔍 [VIEW] Search button toggled: \(!showSearchBar)")
             withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
                 showSearchBar.toggle()
                 if !showSearchBar {
@@ -317,7 +338,7 @@ struct SortedUsersView: View {
             }
             
             Button(action: {
-                print("🔄 Refresh button tapped")
+                print("🔄 [VIEW] Refresh button tapped")
                 Task {
                     await viewModel.retry()
                 }
@@ -355,8 +376,8 @@ struct SortedUsersView: View {
                 ForEach(Array(filteredUsers.enumerated()), id: \.element.id) { index, user in
                     if UserSession.shared.currentUser?.userId != user.id {
                         UserCardView(user: user) {
-                            print("✅ User selected - \(user.firstName) \(user.lastName)")
-                            print("🆔 User ID - \(user.id)")
+                            print("✅ [VIEW] User selected - \(user.firstName) \(user.lastName)")
+                            print("🆔 [VIEW] User ID - \(user.id)")
                             selectedUser = user
                             openSelectedUserDetailsView = true
                         }
@@ -374,14 +395,14 @@ struct SortedUsersView: View {
             .padding(.vertical, 12)
         }
         .refreshable {
-            print("🔄 Pull to refresh triggered")
+            print("🔄 [VIEW] Pull to refresh triggered")
             await viewModel.fetchSortedUsers()
         }
     }
     
     private var filteredUsers: [UserData] {
         let filtered = viewModel.filterUsers(by: searchText)
-        print("🔎 Filtered users count: \(filtered.count) from search: '\(searchText)'")
+        print("🔎 [VIEW] Filtered users count: \(filtered.count) from search: '\(searchText)'")
         return filtered
     }
 }
@@ -394,7 +415,7 @@ struct UserCardView: View {
     
     var body: some View {
         Button(action: {
-            print("👆 Card tapped for user: \(user.firstName) \(user.lastName)")
+            print("👆 [CARD] Card tapped for user: \(user.firstName) \(user.lastName)")
             onTap()
         }) {
             HStack(spacing: 16) {
@@ -476,21 +497,21 @@ struct UserCardView: View {
     }
     
     private var userInfo: some View {
-        HStack{
+        HStack {
             VStack(alignment: .leading, spacing: 6) {
                 Text("\(user.firstName) \(user.lastName)")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.primary)
                     .lineLimit(1)
                 
-                HStack{
+                HStack {
                     Text(user.email)
                         .font(.system(size: 13, weight: .regular))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                     Spacer()
                     
-                    HStack(spacing: 6){
+                    HStack(spacing: 6) {
                         Text("Txn Recieved : \(user.noOfTransactionsReceived)")
                             .font(.system(size: 11, weight: .regular))
                             .foregroundColor(.black)
@@ -539,7 +560,7 @@ struct CardButtonStyle: ButtonStyle {
     
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .onChange(of: configuration.isPressed) { newValue in
+            .onChange(of: configuration.isPressed) { oldValue, newValue in
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                     isPressed = newValue
                 }

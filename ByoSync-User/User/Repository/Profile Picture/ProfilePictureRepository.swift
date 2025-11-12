@@ -8,21 +8,25 @@ struct ChangeProfilePicRequest: Codable {
 struct ChangeProfilePicResponse: Codable {
     let message: String?
 }
+
 protocol ProfilePictureRepositoryProtocol {
     func changeProfilePicture(imageUrl: String) async throws -> String
 }
 
-
 final class ProfilePictureRepository: ProfilePictureRepositoryProtocol {
     private let apiClient = APIClient.shared
+    
+    init() {
+        print("🏗️ [REPO] ProfilePictureRepository initialized")
+    }
 
     func changeProfilePicture(imageUrl: String) async throws -> String {
         let endpoint = UserAPIEndpoint.EditProfile.changeProfilePic
         let request = ChangeProfilePicRequest(profilePicUrl: imageUrl)
         let headers: HTTPHeaders = getHeader.shared.getAuthHeaders()
         
-        print("📤 PATCH request to: \(endpoint)")
-        print("📦 Body: \(request.profilePicUrl)")
+        print("📤 [REPO] PATCH request to: \(endpoint)")
+        print("📦 [REPO] Body: \(request.profilePicUrl)")
         
         return try await withCheckedThrowingContinuation { continuation in
             apiClient.request(
@@ -34,14 +38,18 @@ final class ProfilePictureRepository: ProfilePictureRepositoryProtocol {
                 switch result {
                 case .success(let response):
                     let message = response.message ?? "Profile picture updated successfully!"
-                    print("✅ Backend response: \(message)")
+                    print("✅ [REPO] Backend response: \(message)")
                     continuation.resume(returning: message)
                 case .failure(let error):
-                    print("❌ API Error: \(error.localizedDescription)")
+                    print("❌ [REPO] API Error: \(error.localizedDescription)")
                     continuation.resume(throwing: error)
                 }
             }
         }
+    }
+    
+    deinit {
+        print("♻️ [REPO] ProfilePictureRepository deallocated")
     }
 }
 

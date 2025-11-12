@@ -2,23 +2,34 @@ import SwiftUI
 
 struct ProfileView: View {
     @Environment(\.dismiss) private var dismiss
-    @State var userSession = UserSession.shared
-    @State private var isLoadingUserData: Bool = false
-    @State private var showAlert: Bool = false
-    @State private var alertMessage: String = ""
-    @State private var alertTitle: String = ""
-    @State private var showEditProfile: Bool = false
-    @State var openTestinLinkedDeviceView = false
-    @State var profilePic: URL?
-    @State var openLocationTestingView: Bool = false
-    @State var openSettingView: Bool = false
-    @State private var hasLoadedProfilePicture = false // Prevent redundant loads
-    @State var openHashValueTesting:Bool = false
+    @ObservedObject private var userSession = UserSession.shared
     
-    let getUserData = GetUserDataRepository.shared
-    @StateObject var EmailVerifyVM = EmailVerificationViewModel()
-    let logOutRepo = LogOutRepository.shared
+    @StateObject private var viewModel: ProfileViewModel
+    @State private var showEditProfile: Bool = false
+    @State private var openTestinLinkedDeviceView = false
+    @State private var openLocationTestingView: Bool = false
+    @State private var openSettingView: Bool = false
+    @State private var openHashValueTesting: Bool = false
+    @State private var hasLoadedProfilePicture = false
+    
     @EnvironmentObject private var languageManager: LanguageManager
+    
+    @State var testingLogs:Bool = false
+    
+    
+    // MARK: - Initialization with Dependency Injection
+    init(
+        getUserDataRepository: GetUserDataRepositoryProtocol = GetUserDataRepository(),
+        logOutRepository: LogOutRepositoryProtocol = LogOutRepository()
+    ) {
+        _viewModel = StateObject(
+            wrappedValue: ProfileViewModel(
+                getUserDataRepository: getUserDataRepository,
+                logOutRepository: logOutRepository
+            )
+        )
+        print("🏗️ [VIEW] ProfileView initialized")
+    }
     
     var body: some View {
         ZStack {
@@ -35,7 +46,6 @@ struct ProfileView: View {
             
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
-                   // headerSection
                     profileHeaderCard
                     personalInfoCard
                     menuSection
@@ -43,8 +53,8 @@ struct ProfileView: View {
                 .padding(.bottom, 100)
             }
             
-            // Simplified loading overlay
-            if isLoadingUserData {
+            // Loading overlay
+            if viewModel.isLoading {
                 Color.black.opacity(0.4)
                     .ignoresSafeArea()
                     .overlay(
@@ -70,10 +80,11 @@ struct ProfileView: View {
         }
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar{
-            ToolbarItem(placement: .navigationBarTrailing){
-                HStack{
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                HStack {
                     Button {
+                        print("📱 [VIEW] Linked devices button tapped")
                         openTestinLinkedDeviceView.toggle()
                     } label: {
                         HStack(spacing: 6) {
@@ -88,7 +99,9 @@ struct ProfileView: View {
                                 .fill(Color(hex: "4B548D").opacity(0.1))
                         )
                     }
+                    
                     Button {
+                        print("⚙️ [VIEW] Settings button tapped")
                         openSettingView.toggle()
                     } label: {
                         Image(systemName: "gearshape.fill")
@@ -100,27 +113,27 @@ struct ProfileView: View {
                                     .fill(Color(hex: "4B548D").opacity(0.1))
                             )
                     }
-                    Button{
-                        openHashValueTesting.toggle()
-                    }label: {
+                    
+                    Button {
+                        print("🧪 [VIEW] Testing button tapped")
+                        testingLogs.toggle()
+                    } label: {
                         Text("Testing")
                             .font(.caption2)
                     }
                 }
-
             }
         }
         .sheet(isPresented: $showEditProfile) {
             EditProfileView()
-                .onDisappear {
-                    // Reload profile picture only after editing
-                    loadProfilePicture()
-                }
         }
         .sheet(isPresented: $openTestinLinkedDeviceView) {
             LinkedDevicesView()
         }
-        .sheet(isPresented: $openHashValueTesting){
+        .sheet(isPresented: $testingLogs){
+            LogsTestingView()
+        }
+        .sheet(isPresented: $openHashValueTesting) {
             HashValueTesting()
         }
         .sheet(isPresented: $openLocationTestingView) {
@@ -129,25 +142,35 @@ struct ProfileView: View {
         .fullScreenCover(isPresented: $openSettingView) {
             SettingsView()
         }
-        .alert(alertTitle, isPresented: $showAlert) {
+        .alert(viewModel.alertTitle, isPresented: $viewModel.showAlert) {
             Button(L("ok"), role: .cancel) {}
         } message: {
-            Text(alertMessage)
+            Text(viewModel.alertMessage)
+        }
+        // ✅ React to profile picture changes
+        .onChange(of: userSession.userProfilePicture) { oldValue, newValue in
+            print("🖼️ [VIEW] Profile picture changed: \(newValue)")
+            viewModel.loadProfilePicture()
+        }
+        // ✅ React to user data changes
+        .onChange(of: userSession.currentUser?.email) { oldValue, newValue in
+            print("📧 [VIEW] User email changed")
         }
         .onAppear {
-            // Only load once per view lifecycle
+            print("📱 [VIEW] ProfileView appeared")
             if !hasLoadedProfilePicture {
-                loadProfilePicture()
+                viewModel.loadProfilePicture()
                 hasLoadedProfilePicture = true
             }
         }
     }
+    
     // MARK: - Profile Header Card
     private var profileHeaderCard: some View {
         VStack(spacing: 20) {
             // Profile Picture with better styling
             ZStack(alignment: .bottomTrailing) {
-                AsyncImage(url: profilePic) { phase in
+                AsyncImage(url: viewModel.profilePic) { phase in
                     switch phase {
                     case .empty:
                         Circle()
@@ -190,7 +213,7 @@ struct ProfileView: View {
                 }
 
                 // Verified badge
-                if UserSession.shared.isEmailVerified {
+                if userSession.isEmailVerified {
                     ZStack {
                         Circle()
                             .fill(Color.white)
@@ -241,6 +264,7 @@ struct ProfileView: View {
             
             // Edit Profile Button
             Button {
+                print("✏️ [VIEW] Edit profile button tapped")
                 showEditProfile = true
             } label: {
                 HStack(spacing: 8) {
@@ -351,13 +375,14 @@ struct ProfileView: View {
             SlideToLogoutButton(
                 isDisabled: userSession.thisDeviceIsPrimary
             ) {
-                performLogout()
+                print("🚪 [VIEW] Logout initiated")
+                viewModel.performLogout()
             }
             
             if userSession.thisDeviceIsPrimary {
-                HStack{
+                HStack {
                     Image(systemName: "hand.raised.fill")
-                        .font(.system(size: 13,weight: .bold))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(.red)
                     Text("Cannot log out from primary device")
                         .font(.system(size: 13))
@@ -367,82 +392,6 @@ struct ProfileView: View {
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 20)
-    }
-    
-    // MARK: - Logout Handler (optimized)
-    private func performLogout() {
-        // Perform logout on background thread
-        Task {
-            do {
-                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                    logOutRepo.logOut { result in
-                        switch result {
-                        case .success:
-                            continuation.resume()
-                        case .failure(let error):
-                            continuation.resume(throwing: error)
-                        }
-                    }
-                }
-                
-                // Success - update UI on main thread
-                await MainActor.run {
-                    print("✅ User logged out successfully")
-                    UserSession.shared.clearUser()
-                    UserDefaults.standard.removeObject(forKey: "token")
-                }
-            } catch {
-                await MainActor.run {
-                    print("❌ Logout failed: \(error.localizedDescription)")
-                    alertTitle = "Error"
-                    alertMessage = "Logout failed: \(error.localizedDescription)"
-                    showAlert = true
-                }
-            }
-        }
-    }
-    
-    // MARK: - Fetch User Data
-    private func fetchUserData() {
-        isLoadingUserData = true
-        
-        getUserData.getUserData { result in
-            DispatchQueue.main.async {
-                isLoadingUserData = false
-                
-                switch result {
-                case .success(let response):
-                    alertTitle = L("success")
-                    alertMessage = """
-                    \(L("profile_refreshed"))
-
-                    Name: \(response.data?.user.firstName ?? "nil") \(response.data?.user.lastName ?? "nil")
-                    Email: \(response.data?.user.email ?? "nil email")
-                    Phone: \(response.data?.user.phoneNumber ?? "nil phone")
-                    """
-                    showAlert = true
-                    
-                    // Reload profile picture after data refresh
-                    loadProfilePicture()
-                    
-                case .failure(let error):
-                    alertTitle = L("error_refresh")
-                    alertMessage = "\(L("refresh_failed"))\n\(error.localizedDescription)"
-                    showAlert = true
-                }
-            }
-        }
-    }
-    
-    private func loadProfilePicture() {
-        if let url = URL(string: UserSession.shared.userProfilePicture),
-           !UserSession.shared.userProfilePicture.isEmpty {
-            profilePic = url
-            print("✅ Loaded profile picture URL: \(url)")
-        } else {
-            profilePic = nil
-            print("⚠️ No valid profile picture URL found.")
-        }
     }
 }
 

@@ -13,8 +13,8 @@ final class EmailVerificationRepository {
     ) {
         let headers = getHeader.shared.getAuthHeaders()
         
-        print("📤 Sending Email OTP:")
-        print("URL: \(UserAPIEndpoint.Auth.sendEmail)")
+        print("📤 [REPO] Sending Email OTP:")
+        print("📍 [REPO] URL: \(UserAPIEndpoint.Auth.sendEmail)")
         
         APIClient.shared.request(
             UserAPIEndpoint.Auth.sendEmail,
@@ -24,14 +24,14 @@ final class EmailVerificationRepository {
             switch result {
             case .success(let response):
                 if response.success ?? false {
-                    print("✅ Email OTP sent successfully: \(response.message)")
+                    print("✅ [REPO] Email OTP sent successfully: \(response.message)")
                     completion(.success(response))
                 } else {
-                    print("❌ Failed to send OTP: \(response.message)")
+                    print("❌ [REPO] Failed to send OTP: \(response.message)")
                     completion(.failure(.custom(response.message)))
                 }
             case .failure(let error):
-                print("❌ API failure sending email OTP: \(error)")
+                print("❌ [REPO] API failure sending email OTP: \(error)")
                 completion(.failure(error))
             }
         }
@@ -45,9 +45,9 @@ final class EmailVerificationRepository {
         let parameters: [String: Any] = ["otp": otp]
         let headers = getHeader.shared.getAuthHeaders()
         
-        print("📤 Verifying Email OTP:")
-        print("URL: \(UserAPIEndpoint.Auth.emailOtpVerification)")
-        print("OTP: \(otp)")
+        print("📤 [REPO] Verifying Email OTP:")
+        print("📍 [REPO] URL: \(UserAPIEndpoint.Auth.emailOtpVerification)")
+        print("🔢 [REPO] OTP: \(otp)")
         
         APIClient.shared.request(
             UserAPIEndpoint.Auth.emailOtpVerification,
@@ -58,19 +58,22 @@ final class EmailVerificationRepository {
             switch result {
             case .success(let response):
                 if response.success ?? false {
-                    print("✅ Email OTP verified successfully: \(response.message)")
+                    print("✅ [REPO] Email OTP verified successfully: \(response.message)")
                     
+                    // Update UserSession
                     if let currentUser = UserSession.shared.currentUser {
-                        print("✅ Email verified for user: \(currentUser.email)")
+                        print("✅ [REPO] Email verified for user: \(currentUser.email)")
+                        UserSession.shared.setEmailVerified(true)
                     }
+                    
                     completion(.success(response))
                 } else {
-                    print("❌ OTP verification failed: \(response.message)")
+                    print("❌ [REPO] OTP verification failed: \(response.message)")
                     completion(.failure(.custom(response.message)))
                 }
                 
             case .failure(let error):
-                print("❌ Network or decoding error verifying OTP: \(error)")
+                print("❌ [REPO] Network or decoding error verifying OTP: \(error)")
                 completion(.failure(error))
             }
         }

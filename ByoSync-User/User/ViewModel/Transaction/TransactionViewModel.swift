@@ -3,6 +3,7 @@ import SwiftUI
 import Combine
 import UIKit
 
+@MainActor
 final class TransactionViewModel: ObservableObject {
     @Published var transactions: [Transaction] = []
     @Published var isLoading = false
@@ -12,6 +13,9 @@ final class TransactionViewModel: ObservableObject {
     @Published var totalAmount: Double = 0.0
 
     @AppStorage("transactionCount") var savedTransactionCount: Int = 0
+    
+    // Dependencies
+    private let repository: TransactionRepositoryProtocol
     
     // Computed properties
     var transactionCount: Int {
@@ -24,6 +28,12 @@ final class TransactionViewModel: ObservableObject {
     
     var formattedTotalAmount: String {
         "₹\(String(format: "%.2f", totalAmount))"
+    }
+    
+    // MARK: - Initialization with Dependency Injection
+    init(repository: TransactionRepositoryProtocol = TransactionRepository()) {
+        self.repository = repository
+        print("🏗️ [VM] TransactionViewModel initialized")
     }
     
     // MARK: - Sort Transactions
@@ -45,6 +55,9 @@ final class TransactionViewModel: ObservableObject {
     
     // MARK: - Fetch Daily Transactions
     func fetchTransactions(for date: Date, reportType: ReportType) {
+        print("📡 [VM] fetchTransactions called")
+        print("📅 [VM] Date: \(formattedDate(date)), Type: \(reportType.displayName)")
+        
         let dateString = formattedDate(date)
         
         switch reportType {
@@ -55,6 +68,9 @@ final class TransactionViewModel: ObservableObject {
     
     // MARK: - Fetch Monthly Transactions
     func fetchMonthlyTransactions(month: Int, year: Int, reportType: ReportType) {
+        print("📡 [VM] fetchMonthlyTransactions called")
+        print("📅 [VM] Month: \(month), Year: \(year), Type: \(reportType.displayName)")
+        
         let monthString = String(format: "%02d", month)
         let yearString = String(year)
         
@@ -66,6 +82,9 @@ final class TransactionViewModel: ObservableObject {
     
     // MARK: - Fetch Custom Period Transactions
     func fetchCustomTransactions(startDate: Date, endDate: Date, reportType: ReportType) {
+        print("📡 [VM] fetchCustomTransactions called")
+        print("📅 [VM] Period: \(formattedDate(startDate)) → \(formattedDate(endDate))")
+        
         let startDateString = formattedDate(startDate)
         let endDateString = formattedDate(endDate)
         
@@ -82,12 +101,17 @@ final class TransactionViewModel: ObservableObject {
         successMessage = nil
         transactions = []
         
-        TransactionRepository.shared.fetchDailyReport(date: date, type: "VIEW") { [weak self] result in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
+        print("⏳ [VM] Loading daily report...")
+        
+        repository.fetchDailyReport(date: date, type: "VIEW") { [weak self] result in
+            guard let self = self else { return }
+            
+            Task { @MainActor in
                 self.isLoading = false
+                
                 switch result {
                 case .success(let data):
+                    print("✅ [VM] Daily report loaded: \(data.count) transactions")
                     self.transactions = data
                     self.calculateTotalAmount(from: data)
                     self.savedTransactionCount = data.count
@@ -95,6 +119,7 @@ final class TransactionViewModel: ObservableObject {
                     self.hideSuccessMessageAfterDelay()
                     
                 case .failure(let error):
+                    print("❌ [VM] Failed to load daily report: \(error.localizedDescription)")
                     self.errorMessage = error.localizedDescription
                 }
             }
@@ -106,15 +131,22 @@ final class TransactionViewModel: ObservableObject {
         errorMessage = nil
         successMessage = nil
         
-        TransactionRepository.shared.emailDailyReport(date: date) { [weak self] result in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
+        print("📧 [VM] Sending email report...")
+        
+        repository.emailDailyReport(date: date) { [weak self] result in
+            guard let self = self else { return }
+            
+            Task { @MainActor in
                 self.isLoading = false
+                
                 switch result {
                 case .success(let message):
+                    print("✅ [VM] Email sent: \(message)")
                     self.successMessage = "✓ \(message)"
                     self.hideSuccessMessageAfterDelay()
+                    
                 case .failure(let error):
+                    print("❌ [VM] Failed to send email: \(error.localizedDescription)")
                     self.errorMessage = error.localizedDescription
                 }
             }
@@ -126,16 +158,23 @@ final class TransactionViewModel: ObservableObject {
         errorMessage = nil
         successMessage = nil
         
-        TransactionRepository.shared.downloadDailyReport(date: date) { [weak self] result in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
+        print("📥 [VM] Downloading report...")
+        
+        repository.downloadDailyReport(date: date) { [weak self] result in
+            guard let self = self else { return }
+            
+            Task { @MainActor in
                 self.isLoading = false
+                
                 switch result {
                 case .success(let fileURL):
+                    print("✅ [VM] Report downloaded: \(fileURL.path)")
                     self.downloadedFileURL = fileURL
                     self.successMessage = "✓ Report downloaded successfully"
                     self.hideSuccessMessageAfterDelay()
+                    
                 case .failure(let error):
+                    print("❌ [VM] Download failed: \(error.localizedDescription)")
                     self.errorMessage = error.localizedDescription
                 }
             }
@@ -149,18 +188,25 @@ final class TransactionViewModel: ObservableObject {
         successMessage = nil
         transactions = []
         
-        TransactionRepository.shared.fetchMonthlyReport(month: month, year: year, type: "VIEW") { [weak self] result in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
+        print("⏳ [VM] Loading monthly report...")
+        
+        repository.fetchMonthlyReport(month: month, year: year, type: "VIEW") { [weak self] result in
+            guard let self = self else { return }
+            
+            Task { @MainActor in
                 self.isLoading = false
+                
                 switch result {
                 case .success(let data):
+                    print("✅ [VM] Monthly report loaded: \(data.count) transactions")
                     self.transactions = data
                     self.calculateTotalAmount(from: data)
                     self.savedTransactionCount = data.count
                     self.successMessage = "✓ Loaded \(data.count) transaction\(data.count != 1 ? "s" : "")"
                     self.hideSuccessMessageAfterDelay()
+                    
                 case .failure(let error):
+                    print("❌ [VM] Failed to load monthly report: \(error.localizedDescription)")
                     self.errorMessage = error.localizedDescription
                 }
             }
@@ -171,6 +217,8 @@ final class TransactionViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         successMessage = nil
+        
+        print("⚠️ [VM] Monthly email not yet implemented")
         
         // TODO: Implement monthly email endpoint when available
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -184,6 +232,8 @@ final class TransactionViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         successMessage = nil
+        
+        print("⚠️ [VM] Monthly download not yet implemented")
         
         // TODO: Implement monthly download endpoint when available
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -199,18 +249,25 @@ final class TransactionViewModel: ObservableObject {
         successMessage = nil
         transactions = []
         
-        TransactionRepository.shared.fetchCustomReport(startDate: startDate, endDate: endDate, type: "VIEW") { [weak self] result in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
+        print("⏳ [VM] Loading custom report...")
+        
+        repository.fetchCustomReport(startDate: startDate, endDate: endDate, type: "VIEW") { [weak self] result in
+            guard let self = self else { return }
+            
+            Task { @MainActor in
                 self.isLoading = false
+                
                 switch result {
                 case .success(let data):
+                    print("✅ [VM] Custom report loaded: \(data.count) transactions")
                     self.transactions = data
                     self.calculateTotalAmount(from: data)
                     self.savedTransactionCount = data.count
                     self.successMessage = "✓ Loaded \(data.count) transaction\(data.count != 1 ? "s" : "")"
                     self.hideSuccessMessageAfterDelay()
+                    
                 case .failure(let error):
+                    print("❌ [VM] Failed to load custom report: \(error.localizedDescription)")
                     self.errorMessage = error.localizedDescription
                 }
             }
@@ -221,6 +278,8 @@ final class TransactionViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         successMessage = nil
+        
+        print("⚠️ [VM] Custom email not yet implemented")
         
         // TODO: Implement custom email endpoint when available
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -235,6 +294,8 @@ final class TransactionViewModel: ObservableObject {
         errorMessage = nil
         successMessage = nil
         
+        print("⚠️ [VM] Custom download not yet implemented")
+        
         // TODO: Implement custom download endpoint when available
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             self.isLoading = false
@@ -248,15 +309,18 @@ final class TransactionViewModel: ObservableObject {
         let total = transactions.reduce(0.0) { $0 + Double($1.coins ?? 0) }
         totalAmount = total
         
-        print("📊 Amount Calculation:")
+        print("📊 [VM] Amount Calculation:")
         print("   Total Amount: ₹\(String(format: "%.2f", total))")
         print("   Number of transactions: \(transactions.count)")
     }
 
     // MARK: - Share Downloaded File
     func shareFile(url: URL) {
+        print("📤 [VM] Sharing file: \(url.path)")
+        
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let rootViewController = windowScene.windows.first?.rootViewController else {
+            print("⚠️ [VM] Could not find root view controller")
             return
         }
         
@@ -295,5 +359,9 @@ final class TransactionViewModel: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM dd, yyyy"
         return formatter.string(from: date)
+    }
+    
+    deinit {
+        print("♻️ [VM] TransactionViewModel deallocated")
     }
 }

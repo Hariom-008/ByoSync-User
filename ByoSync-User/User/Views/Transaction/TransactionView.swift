@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct TransactionView: View {
-    @StateObject private var viewModel = TransactionViewModel()
+    @StateObject private var viewModel: TransactionViewModel
     @State private var selectedPeriodType: PeriodType = .daily
     @State private var selectedReportType: ReportType = .view
     @State private var selectedDate: Date = Date()
@@ -11,6 +11,18 @@ struct TransactionView: View {
     @State private var customEndDate: Date = Date()
     @Binding var hideTabBar: Bool
     @Environment(\.dismiss) var dismiss
+    
+    // MARK: - Initialization with Dependency Injection
+    init(
+        hideTabBar: Binding<Bool>,
+        repository: TransactionRepositoryProtocol = TransactionRepository()
+    ) {
+        self._hideTabBar = hideTabBar
+        _viewModel = StateObject(
+            wrappedValue: TransactionViewModel(repository: repository)
+        )
+        print("🏗️ [VIEW] TransactionView initialized")
+    }
     
     var body: some View {
         ZStack {
@@ -50,6 +62,7 @@ struct TransactionView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
+                    print("🔙 [VIEW] Back button tapped")
                     dismiss()
                     hideTabBar.toggle()
                 } label: {
@@ -66,17 +79,23 @@ struct TransactionView: View {
             }
         }
         .onAppear {
+            print("📱 [VIEW] TransactionView appeared")
             fetchInitialData()
+        }
+        .onDisappear {
+            print("👋 [VIEW] TransactionView disappeared")
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.isLoading)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.transactions.count)
         .animation(.easeInOut(duration: 0.3), value: viewModel.successMessage)
-        .onChange(of: viewModel.downloadedFileURL) { newValue in
+        .onChange(of: viewModel.downloadedFileURL) { oldValue, newValue in
             if let url = newValue {
+                print("📁 [VIEW] File downloaded, initiating share")
                 viewModel.shareFile(url: url)
             }
         }
     }
+    
     // MARK: - Filter Section
     private var filterSection: some View {
         VStack(spacing: 12) {
@@ -101,6 +120,7 @@ struct TransactionView: View {
         Menu {
             ForEach(PeriodType.allCases, id: \.self) { type in
                 Button {
+                    print("📅 [VIEW] Period type changed to: \(type.displayName)")
                     withAnimation(.spring(response: 0.3)) {
                         selectedPeriodType = type
                     }
@@ -141,6 +161,7 @@ struct TransactionView: View {
         Menu {
             ForEach(ReportType.allCases, id: \.self) { type in
                 Button {
+                    print("📊 [VIEW] Report type changed to: \(type.displayName)")
                     withAnimation(.spring(response: 0.3)) {
                         selectedReportType = type
                     }
@@ -285,7 +306,10 @@ struct TransactionView: View {
             }
             
             // Fetch Button
-            Button(action: fetchData) {
+            Button(action: {
+                print("🔍 [VIEW] Fetch button tapped")
+                fetchData()
+            }) {
                 HStack(spacing: 8) {
                     if viewModel.isLoading {
                         ProgressView()
@@ -410,7 +434,10 @@ struct TransactionView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
             
-            Button(action: fetchData) {
+            Button(action: {
+                print("🔄 [VIEW] Try again button tapped")
+                fetchData()
+            }) {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.clockwise")
                     Text("Try Again")
@@ -516,6 +543,7 @@ struct TransactionView: View {
     
     // MARK: - Helper Methods
     private func fetchInitialData() {
+        print("🔄 [VIEW] Fetching initial data")
         fetchData()
     }
     

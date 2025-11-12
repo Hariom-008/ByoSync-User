@@ -23,6 +23,7 @@ final class EmailVerificationViewModel: ObservableObject {
     @Published var showAlert: Bool = false
     @Published var alertMessage: String = ""
     @Published var alertTitle: String = ""
+    @Published var alertType: AlertType = .info
     
     @Published var otpSent: Bool = false
     @Published var emailVerified: Bool = false
@@ -31,6 +32,13 @@ final class EmailVerificationViewModel: ObservableObject {
     @Published var canResendOTP: Bool = true
     @Published var resendTimer: Int = 0
     private var timer: Timer?
+    
+    // MARK: - Alert Type
+    enum AlertType {
+        case success
+        case error
+        case info
+    }
     
     // MARK: - Private Properties
     private let repository = EmailVerificationRepository.shared
@@ -41,7 +49,7 @@ final class EmailVerificationViewModel: ObservableObject {
         // Load email from UserSession if available
         if let currentUser = userSession.currentUser {
             self.email = currentUser.email
-            print("✅ Loaded email from UserSession: \(currentUser.email)")
+            print("✅ [VM] Loaded email from UserSession: \(currentUser.email)")
         }
     }
     
@@ -62,19 +70,23 @@ final class EmailVerificationViewModel: ObservableObject {
     
     // MARK: - Send Email OTP
     func sendOTP() {
+        print("📤 [VM] sendOTP called")
+        
         // Validate email
         guard !email.trimmingCharacters(in: .whitespaces).isEmpty else {
-            showAlertMessage(title: "Invalid Input", message: "Please enter your email")
+            showAlertMessage(title: "Invalid Input", message: "Please enter your email", type: .error)
             return
         }
         
         guard isValidEmail(email) else {
-            showAlertMessage(title: "Invalid Email", message: "Please enter a valid email address")
+            showAlertMessage(title: "Invalid Email", message: "Please enter a valid email address", type: .error)
             return
         }
         
         isSendingOTP = true
         isLoading = true
+        
+        print("⏳ [VM] Sending OTP to: \(email)")
         
         repository.sendEmailOTP() { [weak self] result in
             guard let self = self else { return }
@@ -87,11 +99,17 @@ final class EmailVerificationViewModel: ObservableObject {
                 case .success(let response):
                     self.otpSent = true
                     self.startResendTimer()
-                    print("✅ OTP sent successfully: \(response.message)")
-                    // Don't show alert for successful OTP send, just start timer
+                    print("✅ [VM] OTP sent successfully: \(response.message)")
+                    // Show success feedback
+                    self.showAlertMessage(
+                        title: "OTP Sent",
+                        message: "Please check your email for the verification code",
+                        type: .success
+                    )
                     
                 case .failure(let error):
                     self.otpSent = false
+                    print("❌ [VM] Failed to send OTP: \(error)")
                     self.handleError(error, errorTitle: "Failed to Send OTP")
                 }
             }
@@ -100,21 +118,25 @@ final class EmailVerificationViewModel: ObservableObject {
     
     // MARK: - Verify Email OTP
     func verifyOTP() {
+        print("🔍 [VM] verifyOTP called")
+        
         // Validate OTP
         guard !otp.trimmingCharacters(in: .whitespaces).isEmpty else {
-            showAlertMessage(title: "Invalid Input", message: "Please enter the OTP")
+            showAlertMessage(title: "Invalid Input", message: "Please enter the OTP", type: .error)
             return
         }
         
         guard otp.count == 6 else {
-            showAlertMessage(title: "Invalid OTP", message: "OTP must be 6 digits")
+            showAlertMessage(title: "Invalid OTP", message: "OTP must be 6 digits", type: .error)
             return
         }
         
         isVerifyingOTP = true
         isLoading = true
         
-        // ✅ Only send OTP, not email (matching Android implementation)
+        print("⏳ [VM] Verifying OTP: \(otp)")
+        
+        // Only send OTP, not email (matching Android implementation)
         repository.verifyEmailOTP(
             otp: otp.trimmingCharacters(in: .whitespaces)
         ) { [weak self] result in
@@ -126,19 +148,21 @@ final class EmailVerificationViewModel: ObservableObject {
                 
                 switch result {
                 case .success(let response):
+                    print("✅ [VM] Email verified successfully: \(response.message)")
                     self.emailVerified = true
                     self.stopResendTimer()
                     
-                    // ✅ UPDATE EMAIL VERIFICATION STATUS IN USER SESSION
+                    // Update email verification status in UserSession
                     self.userSession.setEmailVerified(true)
                     
                     self.showAlertMessage(
                         title: "Email Verified",
-                        message: response.message
+                        message: response.message,
+                        type: .success
                     )
-                    print("✅ Email verified successfully: \(response.message)")
                     
                 case .failure(let error):
+                    print("❌ [VM] Email verification failed: \(error)")
                     self.emailVerified = false
                     self.handleError(error, errorTitle: "Verification Failed")
                 }
@@ -148,13 +172,60 @@ final class EmailVerificationViewModel: ObservableObject {
     
     // MARK: - Resend OTP
     func resendOTP() {
-        guard canResendOTP else { return }
+        print("🔄 [VM] resendOTP called")
+        guard canResendOTP else {
+            print("⚠️ [VM] Cannot resend OTP yet, timer active")
+            return
+        }
         otp = "" // Clear previous OTP
         sendOTP()
+    }
+    // MARK: - Helper Methods
+    private func handleError(_ error: APIError, errorTitle: String) {
+        var message = "Something went wrong"
+        
+        switch error {
+        case .custom(let customMessage):
+            message = customMessage
+        case .networkError(let networkError):
+            message = networkError
+        case .decodingError:
+            message = "Failed to process server response"
+        case .unauthorized:
+            message = "Unauthorized access"
+        case .serverError(let statusCode):
+            message = "Server error (Code: \(statusCode))"
+        default:
+            message = "An unexpected error occurred"
+        }
+        
+        showAlertMessage(title: errorTitle, message: message, type: .error)
+        print("❌ [VM] Error: \(message)")
+    }
+    
+    private func showAlertMessage(title: String, message: String, type: AlertType) {
+        alertTitle = title
+        alertMessage = message
+        alertType = type
+        showAlert = true
+    }
+    
+    // MARK: - Reset
+    func reset() {
+        print("🔄 [VM] Resetting view model")
+        email = ""
+        otp = ""
+        otpSent = false
+        emailVerified = false
+        alertMessage = ""
+        alertTitle = ""
+        showAlert = false
+        stopResendTimer()
     }
     
     // MARK: - Timer Management
     private func startResendTimer() {
+        print("⏱️ [VM] Starting resend timer (60s)")
         canResendOTP = false
         resendTimer = 60 // 60 seconds
         
@@ -170,41 +241,19 @@ final class EmailVerificationViewModel: ObservableObject {
             }
         }
     }
-    
+
     private func stopResendTimer() {
+        print("⏱️ [VM] Stopping resend timer")
         timer?.invalidate()
         timer = nil
         canResendOTP = true
         resendTimer = 0
     }
-    
-    // MARK: - Helper Methods
-    private func handleError(_ error: APIError, errorTitle: String) {
-        var message = "Something went wrong"
-        
-        showAlertMessage(title: errorTitle, message: message)
-        print("❌ Error: \(message)")
+
+    // ✅ Fixed deinit - no MainActor isolation needed
+    nonisolated deinit {
+        print("♻️ [VM] EmailVerificationViewModel deallocated")
+        // Direct timer cleanup without calling MainActor-isolated method
+        timer?.invalidate()
     }
-    
-    private func showAlertMessage(title: String, message: String) {
-        alertTitle = title
-        alertMessage = message
-        showAlert = true
-    }
-    
-    // MARK: - Reset
-    func reset() {
-        email = ""
-        otp = ""
-        otpSent = false
-        emailVerified = false
-        alertMessage = ""
-        alertTitle = ""
-        showAlert = false
-        stopResendTimer()
-    }
-    
-//    deinit {
-//        stopResendTimer()
-//    }
 }

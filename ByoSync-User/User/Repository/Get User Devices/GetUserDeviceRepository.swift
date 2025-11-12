@@ -2,13 +2,19 @@ import Foundation
 import Alamofire
 
 final class UserDevicesRepository {
-    static let shared = UserDevicesRepository()
-    private init() {}
+    
+    // MARK: - Initialization (No Singleton)
+    init() {
+        print("🏗️ [REPO] UserDevicesRepository initialized")
+    }
 
     // MARK: - Get Linked Devices
     func getUserDevices(completion: @escaping (Result<[GetDeviceData], APIError>) -> Void) {
         let endpoint = UserAPIEndpoint.UserDeviceManagement.getLinkedDevices
         let headers = getHeader.shared.getAuthHeaders()
+        
+        print("📤 [REPO] Fetching user devices")
+        print("📍 [REPO] URL: \(endpoint)")
         
         APIClient.shared.request(
             endpoint,
@@ -18,11 +24,14 @@ final class UserDevicesRepository {
             switch result {
             case .success(let response):
                 if response.success ?? false, let devices = response.data {
+                    print("✅ [REPO] Fetched \(devices.count) devices successfully")
                     completion(.success(devices))
                 } else {
+                    print("❌ [REPO] Failed to fetch devices: \(response.message)")
                     completion(.failure(.custom(response.message)))
                 }
             case .failure(let error):
+                print("❌ [REPO] API failure fetching devices: \(error)")
                 completion(.failure(error))
             }
         }
@@ -34,7 +43,8 @@ final class UserDevicesRepository {
         let headers = getHeader.shared.getAuthHeaders()
         let params: [String: Any] = ["deviceId": deviceId]
 
-        print("🔄 Attempting to change primary device to: \(deviceId)")
+        print("📤 [REPO] Changing primary device")
+        print("📍 [REPO] Device ID: \(deviceId)")
         
         APIClient.shared.requestWithoutValidation(
             endpoint,
@@ -46,12 +56,14 @@ final class UserDevicesRepository {
             switch result {
             case .success(let response):
                 if response.success ?? false {
+                    print("✅ [REPO] Primary device changed successfully: \(response.message)")
                     completion(.success(response.message))
                 } else {
+                    print("❌ [REPO] Failed to change primary device: \(response.message)")
                     completion(.failure(.custom(response.message)))
                 }
             case .failure(let error):
-                print("❌ Change primary device failed: \(error.localizedDescription)")
+                print("❌ [REPO] API failure changing primary device: \(error)")
                 completion(.failure(error))
             }
         }
@@ -64,11 +76,15 @@ final class UserDevicesRepository {
         let currentDeviceId = UserSession.shared.currentUserDeviceID
         
         guard !currentDeviceId.isEmpty else {
+            print("❌ [REPO] No device ID found")
             completion(.failure(.custom("No device ID found.")))
             return
         }
 
         let params: [String: Any] = ["deviceId": currentDeviceId]
+        
+        print("📤 [REPO] Unlinking other devices")
+        print("📍 [REPO] Current Device ID: \(currentDeviceId)")
         
         APIClient.shared.request(
             endpoint,
@@ -79,11 +95,14 @@ final class UserDevicesRepository {
             switch result {
             case .success(let response):
                 if response.success ?? false {
+                    print("✅ [REPO] Other devices unlinked successfully: \(response.message)")
                     completion(.success(response.message))
                 } else {
+                    print("❌ [REPO] Failed to unlink other devices: \(response.message)")
                     completion(.failure(.custom(response.message)))
                 }
             case .failure(let error):
+                print("❌ [REPO] API failure unlinking other devices: \(error)")
                 completion(.failure(error))
             }
         }
@@ -95,6 +114,9 @@ final class UserDevicesRepository {
         let headers = getHeader.shared.getAuthHeaders()
         let params: [String: Any] = ["deviceId": deviceId]
         
+        print("📤 [REPO] Unlinking device")
+        print("📍 [REPO] Device ID: \(deviceId)")
+        
         APIClient.shared.request(
             endpoint,
             method: .post,
@@ -104,13 +126,20 @@ final class UserDevicesRepository {
             switch result {
             case .success(let response):
                 if response.success ?? false {
+                    print("✅ [REPO] Device unlinked successfully: \(response.message)")
                     completion(.success(response.message))
                 } else {
+                    print("❌ [REPO] Failed to unlink device: \(response.message)")
                     completion(.failure(.custom(response.message)))
                 }
             case .failure(let error):
+                print("❌ [REPO] API failure unlinking device: \(error)")
                 completion(.failure(error))
             }
         }
+    }
+    
+    deinit {
+        print("♻️ [REPO] UserDevicesRepository deallocated")
     }
 }

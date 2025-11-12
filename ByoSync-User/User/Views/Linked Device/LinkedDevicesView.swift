@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LinkedDevicesView: View {
-    @StateObject private var viewModel = GetDevicesViewModel()
+    @StateObject private var viewModel: LinkedDevicesViewModel
     @ObservedObject private var userSession = UserSession.shared
     @Namespace private var animation
     
@@ -11,6 +11,12 @@ struct LinkedDevicesView: View {
     @State private var alertMessage = ""
     @State private var showUnlinkConfirm = false
     @State private var deviceToUnlink: GetDeviceData?
+    
+    // MARK: - Initialization with Dependency Injection
+    init(repository: UserDevicesRepository = UserDevicesRepository()) {
+        _viewModel = StateObject(wrappedValue: LinkedDevicesViewModel(repository: repository))
+        print("🏗️ [VIEW] LinkedDevicesView initialized")
+    }
     
     private var sessionProvider: SessionProvider {
         SessionProvider(userSession: userSession)
@@ -40,6 +46,7 @@ struct LinkedDevicesView: View {
             .navigationTitle("Devices")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
+                print("📱 [VIEW] LinkedDevicesView appeared")
                 viewModel.fetchUserDevices()
             }
             .refreshable {
@@ -58,6 +65,7 @@ struct LinkedDevicesView: View {
                 Button("Unlink", role: .destructive) {
                     HapticManager.notification(type: .warning)
                     if let device = deviceToUnlink {
+                        print("🔗 [VIEW] Unlinking device: \(device.deviceName)")
                         viewModel.unlinkOtherDevice(deviceId: device.id)
                     }
                 }
@@ -66,18 +74,27 @@ struct LinkedDevicesView: View {
                     Text("'\(device.deviceName)' will be removed. You'll need to sign in again on that device.")
                 }
             }
+            // ✅ Use onChange to react to success/error messages
             .onChange(of: viewModel.successMessage) { oldValue, newValue in
-                if let message = newValue {
+                if let message = newValue, !message.isEmpty {
+                    print("✅ [VIEW] Success message received: \(message)")
                     HapticManager.notification(type: .success)
                     showMessageAlert(title: "Success", message: message)
-                    viewModel.successMessage = nil
+                    // Clear the message after showing
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        viewModel.successMessage = nil
+                    }
                 }
             }
             .onChange(of: viewModel.errorMessage) { oldValue, newValue in
-                if let message = newValue {
+                if let message = newValue, !message.isEmpty {
+                    print("❌ [VIEW] Error message received: \(message)")
                     HapticManager.notification(type: .error)
                     showMessageAlert(title: "Error", message: message)
-                    viewModel.errorMessage = nil
+                    // Clear the message after showing
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        viewModel.errorMessage = nil
+                    }
                 }
             }
         }
@@ -136,12 +153,14 @@ struct LinkedDevicesView: View {
                                     isThisDevicePrimary: sessionProvider.isThisDevicePrimary(),
                                     onMakePrimary: {
                                         HapticManager.impact(style: .medium)
+                                        print("🔄 [VIEW] Making device primary: \(device.deviceName)")
                                         withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                                             viewModel.changePrimaryDevice(to: device.id)
                                         }
                                     },
                                     onUnlink: {
                                         HapticManager.impact(style: .light)
+                                        print("🔗 [VIEW] Preparing to unlink device: \(device.deviceName)")
                                         deviceToUnlink = device
                                         showUnlinkConfirm = true
                                     }
@@ -259,6 +278,7 @@ struct LinkedDevicesView: View {
         showAlert = true
     }
 }
+
 #Preview {
     LinkedDevicesView()
 }

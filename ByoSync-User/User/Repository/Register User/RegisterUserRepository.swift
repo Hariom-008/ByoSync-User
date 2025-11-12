@@ -27,11 +27,11 @@ struct RegisterUserRequest: Encodable {
 final class RegisterUserRepository {
     
     // ✅ Remove singleton, use dependency injection instead
-    private let cryptoService: CryptoService
+    private let cryptoService: any CryptoService
     private let hmacGenerator = HMACGenerator.self
     
     // ✅ Inject dependencies via initializer
-    init(cryptoService: CryptoService) {
+    init(cryptoService: any CryptoService) {
         self.cryptoService = cryptoService
     }
     

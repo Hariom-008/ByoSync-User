@@ -89,7 +89,10 @@ struct CommonEndpoint{
     static let summaryTransactionData = "\(baseURL)/api/v1/recons/merchant-and-user-summary"
     
     static let CreateOrder = "\(baseURL)/api/v1/orders/create"
-    
-    
 }
 
+struct LogEndpoint{
+    static let baseURL = "https://byo-sync-backend-testing.vercel.app"
+    
+    static let createLogs = "\(baseURL)/api/v1/logs/create"
+}

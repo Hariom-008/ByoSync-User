@@ -1,6 +1,12 @@
 import SwiftUI
 
 struct PaymentConfirmationView: View {
+    // ✅ Get crypto manager from environment
+    @EnvironmentObject var cryptoManager: CryptoManager
+    
+    // ✅ ViewModel will be injected with crypto service
+    @StateObject private var createOrderVM: CreateOrderViewModel
+    
     @State private var isProcessing = false
     @State private var navigateToRecieptView = false
     @State private var showErrorAlert = false
@@ -8,12 +14,22 @@ struct PaymentConfirmationView: View {
     @State private var showContent = false
     @State private var coinScale: CGFloat = 1.0
     @Environment(\.dismiss) var dismiss
+    
     @Binding var hideTabBar: Bool
     @Binding var selectedUser: UserData
 
-    @StateObject private var createOrderVM = CreateOrderViewModel()
-
     let amount: String
+    
+    // ✅ Custom initializer to inject crypto service
+    init(hideTabBar: Binding<Bool>, selectedUser: Binding<UserData>, amount: String) {
+        self._hideTabBar = hideTabBar
+        self._selectedUser = selectedUser
+        self.amount = amount
+        
+        // Create temporary instance for initialization
+        let tempCrypto = CryptoManager()
+        self._createOrderVM = StateObject(wrappedValue: CreateOrderViewModel(cryptoService: tempCrypto))
+    }
 
     var body: some View {
         ZStack {
@@ -40,9 +56,7 @@ struct PaymentConfirmationView: View {
 
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 32) {
-                            // Coin animation at top
                             coinHeader
-                            
                             paymentDetailsSection
                             recipientSection
                             actionButtonsSection
@@ -64,6 +78,7 @@ struct PaymentConfirmationView: View {
                 orderId: $createOrderVM.orderId,
                 amount: Int(amount) ?? 0
             )
+            .environmentObject(cryptoManager) // ✅ Pass crypto manager down
         }
         .alert("Payment Failed", isPresented: $showErrorAlert) {
             Button("Retry") {
@@ -88,9 +103,37 @@ struct PaymentConfirmationView: View {
                 showContent = true
             }
             
-            // Coin pulse animation
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
                 coinScale = 1.1
+            }
+        }
+        // ✅ Add these onChange modifiers to react to ViewModel changes
+        .onChange(of: createOrderVM.orderId) { oldValue, newValue in
+            if !newValue.isEmpty {
+                print("✅ [VIEW] Order Created Successfully!")
+                print("📝 [VIEW] Order ID: \(newValue)")
+                
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    isProcessing = false
+                }
+                
+                // Small delay for smooth transition
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    print("➡️ [VIEW] Navigating to receipt view")
+                    navigateToRecieptView = true
+                }
+            }
+        }
+        .onChange(of: createOrderVM.errorMessage) { oldValue, newValue in
+            if let error = newValue, !error.isEmpty {
+                print("❌ [VIEW] Order Creation Failed: \(error)")
+                
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    isProcessing = false
+                }
+                
+                errorMessage = error
+                showErrorAlert = true
             }
         }
     }
@@ -163,7 +206,6 @@ struct PaymentConfirmationView: View {
     // MARK: - Payment Details
     private var paymentDetailsSection: some View {
         VStack(spacing: 20) {
-            // Amount display with coins
             HStack(alignment: .top, spacing: 8) {
                 Image("byosync_coin")
                     .resizable()
@@ -224,9 +266,7 @@ struct PaymentConfirmationView: View {
             }
             
             VStack(spacing: 16) {
-                // Recipient info with profile
                 HStack(spacing: 16) {
-                    // Profile image or initials
                     Group {
                         if let url = URL(string: selectedUser.profilePic) {
                             AsyncImage(url: url) { phase in
@@ -298,7 +338,6 @@ struct PaymentConfirmationView: View {
                         .shadow(color: Color(hex: "4B548D").opacity(0.08), radius: 12, x: 0, y: 4)
                 )
                 
-                // Transaction details
                 VStack(spacing: 14) {
                     detailRow(
                         icon: "calendar",
@@ -372,7 +411,6 @@ struct PaymentConfirmationView: View {
             
             VStack(spacing: 28) {
                 ZStack {
-                    // Rotating rings
                     ForEach(0..<2) { index in
                         Circle()
                             .trim(from: 0, to: 0.7)
@@ -396,7 +434,6 @@ struct PaymentConfirmationView: View {
                             )
                     }
                     
-                    // Coin in center
                     ZStack {
                         Circle()
                             .fill(
@@ -429,7 +466,6 @@ struct PaymentConfirmationView: View {
                         .foregroundColor(.white.opacity(0.8))
                         .multilineTextAlignment(.center)
                     
-                    // Progress dots
                     HStack(spacing: 8) {
                         ForEach(0..<3) { index in
                             Circle()
@@ -501,65 +537,42 @@ struct PaymentConfirmationView: View {
 
     // MARK: - Confirm Action
     private func handleConfirmPayment() {
-        print("✅ Confirm payment button pressed")
+        print("✅ [VIEW] Confirm payment button pressed")
         print("👤 Receiver ID - \(selectedUser.id)")
-        
-        let senderId = UserDefaults.standard.string(forKey: "user_id") ?? ""
-        let senderDeviceId = UserDefaults.standard.string(forKey: "device_id") ?? ""
-        
-        print("👤 Sender ID - \(senderId)")
-        print("📱 Sender Device ID - \(senderDeviceId)")
         print("💰 Amount - \(amount) coins")
 
         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
             isProcessing = true
         }
         
-        Task {
-            do {
-                let order = try await createOrderVM.createOrder(
-                    receiverId: selectedUser.id,
-                    amount: Int(amount) ?? 0
-                )
+        createOrderVM.createOrder(
+            receiverId: selectedUser.id,
+            amount: Int(amount) ?? 0
+        )
+        
+        // Listen for success/error from ViewModel
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if !createOrderVM.orderId.isEmpty {
+                print("✅ [VIEW] Order Created Successfully!")
+                print("📝 [VIEW] Order ID: \(createOrderVM.orderId)")
                 
-                print("✅ Order Created Successfully!")
-                
-                await MainActor.run {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        isProcessing = false
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        print("➡️ Navigating to receipt view")
-                        navigateToRecieptView = true
-                    }
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    isProcessing = false
                 }
-            } catch {
-                print("❌ Order Creation Failed: \(error.localizedDescription)")
                 
-                await MainActor.run {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        isProcessing = false
-                    }
-                    
-                    if let urlError = error as? URLError {
-                        switch urlError.code {
-                        case .notConnectedToInternet:
-                            errorMessage = "No internet connection. Please check your network and try again."
-                        case .timedOut:
-                            errorMessage = "Request timed out. Please try again."
-                        default:
-                            errorMessage = "Network error occurred. Please try again."
-                        }
-                    } else if error.localizedDescription.contains("insufficient") {
-                        errorMessage = "Insufficient coin balance. Please earn more coins to continue."
-                    } else if error.localizedDescription.contains("Invalid") {
-                        errorMessage = "Invalid payment details. Please check and try again."
-                    } else {
-                        errorMessage = "Payment failed: \(error.localizedDescription)"
-                    }
-                    
-                    showErrorAlert = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    print("➡️ [VIEW] Navigating to receipt view")
+                    navigateToRecieptView = true
                 }
+            } else if let error = createOrderVM.errorMessage {
+                print("❌ [VIEW] Order Creation Failed: \(error)")
+                
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    isProcessing = false
+                }
+                
+                errorMessage = error
+                showErrorAlert = true
             }
         }
     }
@@ -569,9 +582,8 @@ struct PaymentConfirmationView: View {
 extension PaymentConfirmationView {
     var actionButtonsSection: some View {
         VStack(spacing: 16) {
-            // Confirm button
             Button(action: {
-                print("💳 Confirm payment button tapped")
+                print("💳 [VIEW] Confirm payment button tapped")
                 handleConfirmPayment()
             }) {
                 HStack(spacing: 10) {
@@ -597,13 +609,12 @@ extension PaymentConfirmationView {
                 .cornerRadius(16)
                 .shadow(color: Color(hex: "4B548D").opacity(0.4), radius: 16, x: 0, y: 8)
             }
-            .disabled(isProcessing)
-            .opacity(isProcessing ? 0.6 : 1.0)
+            .disabled(isProcessing || createOrderVM.isLoading)
+            .opacity(isProcessing || createOrderVM.isLoading ? 0.6 : 1.0)
             .scaleEffect(showContent ? 1 : 0.9)
 
-            // Cancel button
             Button(action: {
-                print("❌ Cancel payment button tapped")
+                print("❌ [VIEW] Cancel payment button tapped")
                 dismiss()
                 hideTabBar = false
             }) {
@@ -624,8 +635,8 @@ extension PaymentConfirmationView {
                         .stroke(Color(hex: "FF3B30").opacity(0.3), lineWidth: 1.5)
                 )
             }
-            .disabled(isProcessing)
-            .opacity(isProcessing ? 0.6 : 1.0)
+            .disabled(isProcessing || createOrderVM.isLoading)
+            .opacity(isProcessing || createOrderVM.isLoading ? 0.6 : 1.0)
             .scaleEffect(showContent ? 1 : 0.9)
         }
         .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.3), value: showContent)

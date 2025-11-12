@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LeaderboardView: View {
-    @StateObject private var viewModel = GetUserRankViewModel()
+    @StateObject private var viewModel: GetUserRankViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var animateTopThree = false
     @State private var animateList = false
@@ -12,6 +12,20 @@ struct LeaderboardView: View {
         case transactions = "Transactions"
         case coins = "Coins"
         case wallet = "Wallet"
+    }
+    
+    // MARK: - Initialization with Dependency Injection
+    init(
+        repository: GetUserRankBoardRepositoryProtocol = GetUserRankBoardRepository(),
+        cryptoManager: CryptoManager = CryptoManager()
+    ) {
+        _viewModel = StateObject(
+            wrappedValue: GetUserRankViewModel(
+                repository: repository,
+                cryptoManager: cryptoManager
+            )
+        )
+        print("🏗️ [VIEW] LeaderboardView initialized")
     }
     
     var body: some View {
@@ -70,27 +84,27 @@ struct LeaderboardView: View {
                         }
                     }
                     .refreshable {
-                        print("------- Refreshed Leaderboard List --------")
-                        viewModel.fetchAllUsers()
+                        print("🔄 [VIEW] Refreshed Leaderboard List")
+                        await refreshData()
                     }
                 }
             }
         }
         .navigationBarHidden(true)
         .onAppear {
-            print("🏆 ========== LEADERBOARD VIEW APPEARED ==========")
+            print("🏆 [VIEW] ========== LEADERBOARD VIEW APPEARED ==========")
             if !hasAppeared {
                 hasAppeared = true
-                print("🔄 First appearance - Triggering API call")
+                print("🔄 [VIEW] First appearance - Triggering API call")
                 loadData()
             } else {
-                print("⚠️ View already appeared before")
+                print("⚠️ [VIEW] View already appeared before")
             }
         }
         .task {
             // This is another way to ensure the API call happens
             if viewModel.users.isEmpty && !viewModel.isLoading {
-                print("📱 Task modifier triggered - Loading data")
+                print("📱 [VIEW] Task modifier triggered - Loading data")
                 loadData()
             }
         }
@@ -98,20 +112,32 @@ struct LeaderboardView: View {
     
     // MARK: - Load Data
     private func loadData() {
-        print("📡 loadData() called")
-        print("📊 Current users count: \(viewModel.users.count)")
-        print("⏳ Is loading: \(viewModel.isLoading)")
+        print("📡 [VIEW] loadData() called")
+        print("📊 [VIEW] Current users count: \(viewModel.users.count)")
+        print("⏳ [VIEW] Is loading: \(viewModel.isLoading)")
         
         viewModel.fetchAllUsers()
         
         // Animate elements after a short delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            print("🎬 Starting animations")
+            print("🎬 [VIEW] Starting animations")
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                 animateTopThree = true
             }
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.2)) {
                 animateList = true
+            }
+        }
+    }
+    
+    // MARK: - Refresh Data
+    private func refreshData() async {
+        print("🔄 [VIEW] refreshData() called")
+        await withCheckedContinuation { continuation in
+            viewModel.fetchAllUsers()
+            // Give a small delay for the API call to complete
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                continuation.resume()
             }
         }
     }
@@ -122,20 +148,20 @@ struct LeaderboardView: View {
         switch selectedFilter {
         case .transactions:
             sorted = viewModel.users.sorted { $0.noOfTransactions > $1.noOfTransactions }
-            print("📊 Sorted by transactions: \(sorted.count) users")
+            print("📊 [VIEW] Sorted by transactions: \(sorted.count) users")
         case .coins:
             sorted = viewModel.users.sorted { $0.transactionCoins > $1.transactionCoins }
-            print("🪙 Sorted by coins: \(sorted.count) users")
+            print("🪙 [VIEW] Sorted by coins: \(sorted.count) users")
         case .wallet:
             sorted = viewModel.users.sorted { $0.wallet > $1.wallet }
-            print("💰 Sorted by wallet: \(sorted.count) users")
+            print("💰 [VIEW] Sorted by wallet: \(sorted.count) users")
         }
         return sorted
     }
     
     // MARK: - Navigation Bar
     private var navigationBar: some View {
-        ZStack{
+        ZStack {
             Spacer()
             
             Text("Leaderboard")
@@ -143,23 +169,24 @@ struct LeaderboardView: View {
                 .foregroundColor(.white)
             
             Spacer()
-        HStack {
-            Button {
-                print("⬅️ Back button tapped")
-                dismiss()
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 16, weight: .semibold))
-                }
-                .foregroundColor(.white)
-            }
             
-            Spacer()
-             filterSection
+            HStack {
+                Button {
+                    print("⬅️ [VIEW] Back button tapped")
+                    dismiss()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                }
+                
+                Spacer()
+                filterSection
+            }
         }
     }
-}
     
     // MARK: - Loading View
     private var loadingView: some View {
@@ -197,7 +224,7 @@ struct LeaderboardView: View {
                 .padding(.horizontal, 40)
             
             Button {
-                print("🔄 Retry button tapped")
+                print("🔄 [VIEW] Retry button tapped")
                 viewModel.fetchAllUsers()
             } label: {
                 Text("Try Again")
@@ -230,7 +257,7 @@ struct LeaderboardView: View {
                 .foregroundColor(.white.opacity(0.7))
             
             Button {
-                print("🔄 Refresh button in empty state tapped")
+                print("🔄 [VIEW] Refresh button in empty state tapped")
                 viewModel.fetchAllUsers()
             } label: {
                 Text("Refresh")
@@ -250,21 +277,20 @@ struct LeaderboardView: View {
     // MARK: - Filter Section
     private var filterSection: some View {
         HStack(spacing: 12) {
-            Menu{
+            Menu {
                 ForEach(LeaderboardFilter.allCases, id: \.self) { filter in
-                    
                     FilterButton(
                         title: filter.rawValue,
                         isSelected: selectedFilter == filter
                     ) {
-                        print("🔄 Filter changed to: \(filter.rawValue)")
+                        print("🔄 [VIEW] Filter changed to: \(filter.rawValue)")
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                             selectedFilter = filter
                         }
                     }
                 }
-            }label: {
-                HStack{
+            } label: {
+                HStack {
                     Image(systemName: "list.dash")
                         .font(.system(size: 16))
                         .foregroundStyle(.white)
@@ -391,7 +417,6 @@ private struct FilterButton: View {
     }
 }
 
-
 // MARK: - Podium Card
 private struct PodiumCard: View {
     let user: UserData
@@ -473,8 +498,7 @@ private struct PodiumCard: View {
             )
             
             // Name
-            
-            Text("\(cryptoManager.decrypt(encryptedData: user.firstName) ?? "nil") \(cryptoManager.decrypt(encryptedData: user.lastName) ?? "nil") ")
+            Text("\(cryptoManager.decrypt(encryptedData: user.firstName) ?? "nil") \(cryptoManager.decrypt(encryptedData: user.lastName) ?? "nil")")
                 .font(.system(size: rank == 1 ? 16 : 14, weight: .bold))
                 .foregroundColor(.black)
                 .lineLimit(1)
@@ -580,7 +604,7 @@ private struct LeaderboardRowCard: View {
             // User Info
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text("\(cryptoManager.decrypt(encryptedData: user.firstName) ?? "nil") \(cryptoManager.decrypt(encryptedData: user.lastName) ?? "nil") ")
+                    Text("\(cryptoManager.decrypt(encryptedData: user.firstName) ?? "nil") \(cryptoManager.decrypt(encryptedData: user.lastName) ?? "nil")")
                         .font(.system(size: isCurrentUser ? 8 : 12, weight: .semibold))
                         .foregroundColor(.white)
                     
@@ -593,7 +617,7 @@ private struct LeaderboardRowCard: View {
                 
                 HStack(spacing: 0) {
                     Text("\(user.noOfTransactions) sent • \(user.noOfTransactionsReceived) received")
-                        .font(.system(size:8, weight: .medium))
+                        .font(.system(size: 8, weight: .medium))
                         .foregroundColor(.white.opacity(0.7))
                 }
             }
