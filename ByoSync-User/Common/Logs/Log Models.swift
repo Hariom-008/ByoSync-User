@@ -40,7 +40,7 @@ struct BackendLogEntry: Codable, Sendable {
 }
 
 // MARK: - Log Create Response
-struct LogCreateResponse: Codable,Sendable {
+struct LogCreateResponse: Decodable,Sendable {
     let success: Bool
     let message: String
     let statusCode: Int?

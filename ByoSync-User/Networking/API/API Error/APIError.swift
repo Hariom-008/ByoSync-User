@@ -1,7 +1,7 @@
 import Foundation
 import Alamofire
 
-enum APIError: Error {
+enum APIError: Error,Sendable{
         case networkError(String)
         case serverError(Int, String)
         case decodingError(String)
