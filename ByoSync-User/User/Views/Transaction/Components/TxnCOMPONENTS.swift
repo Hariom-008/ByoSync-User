@@ -36,15 +36,22 @@ enum ReportType: String, CaseIterable {
 
 
 struct TransactionRow: View {
+    @EnvironmentObject var cryptoManager: CryptoManager
     let transaction: Transaction
-    var currentUser:Bool {
-        return UserSession.shared.currentUser?.userId == transaction.receiverId?.id
+    
+    private var receiver: TxUser? {
+        transaction.receiverId
+    }
+    
+    private var currentUser: Bool {
+        UserSession.shared.currentUser?.userId == receiver?.id
     }
     
     var body: some View {
         HStack(spacing: 12) {
+            
             // Profile Image
-            AsyncImage(url: URL(string: transaction.receiverId?.userProfilePic ?? "")) { image in
+            AsyncImage(url: profileImageURL) { image in
                 image
                     .resizable()
                     .scaledToFill()
@@ -52,7 +59,7 @@ struct TransactionRow: View {
                 Circle()
                     .fill(Color(hex: "4B548D").opacity(0.1))
                     .overlay(
-                        Text("\(transaction.receiverId?.firstName.prefix(1) ?? "nil")")
+                        Text(initialLetter)
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(Color(hex: "4B548D"))
                     )
@@ -62,21 +69,24 @@ struct TransactionRow: View {
             
             // Transaction Details
             VStack(alignment: .leading, spacing: 4) {
-                Text("\(transaction.receiverId?.firstName ?? "nil") \(transaction.receiverId?.lastName ?? "nil")")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
+                
+                // Decrypted Name
+                HStack(spacing: 4) {
+                    Text(decrypted(receiver?.firstName))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    
+                    Text(decrypted(receiver?.lastName))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                }
                 
                 HStack(spacing: 8) {
-                    if currentUser{
-                      Text("Recieved")
-                            .font(.caption2)
-                            .foregroundStyle(.green)
-                    }else{
-                        Text("Sent")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
+                    Text(currentUser ? "Received" : "Sent")
+                        .font(.caption2)
+                        .foregroundColor(currentUser ? .green : .secondary)
                     
                     Circle()
                         .fill(Color.secondary.opacity(0.3))
@@ -99,18 +109,37 @@ struct TransactionRow: View {
                 
                 HStack(spacing: 4) {
                     Circle()
-                        .fill(transaction.status.uppercased() == "SUCCESS" ? Color.green : Color.orange)
+                        .fill(statusColor)
                         .frame(width: 6, height: 6)
                     
                     Text(transaction.status.capitalized)
                         .font(.caption2)
-                        .foregroundColor(transaction.status.uppercased() == "SUCCESS" ? .green : .orange)
+                        .foregroundColor(statusColor)
                 }
             }
         }
         .padding(12)
         .background(Color(hex: "F8F9FD"))
         .cornerRadius(12)
+    }
+    
+    private var profileImageURL: URL? {
+        guard let urlString = receiver?.userProfilePic else { return nil }
+        return URL(string: urlString)
+    }
+    
+    private var initialLetter: String {
+        let first = receiver?.firstName.first.map { String($0) } ?? "?"
+        return first
+    }
+    
+    private var statusColor: Color {
+        transaction.status.uppercased() == "SUCCESS" ? .green : .orange
+    }
+    
+    private func decrypted(_ value: String?) -> String {
+        guard let value else { return "-" }
+        return cryptoManager.decrypt(encryptedData: value) ?? "-"
     }
     
     private func formattedDate(_ dateString: String) -> String {
@@ -128,6 +157,7 @@ struct TransactionRow: View {
         return displayFormatter.string(from: date)
     }
 }
+
 
 struct RoundedCorner: Shape {
     var radius: CGFloat = .infinity

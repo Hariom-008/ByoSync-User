@@ -11,6 +11,7 @@ struct SortedUsersView: View {
     @State private var openSelectedUserDetailsView: Bool = false
     @State private var showContent: Bool = false
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var cryptoManager:CryptoManager
     
     // MARK: - Initialization with Dependency Injection
     init(
@@ -27,6 +28,8 @@ struct SortedUsersView: View {
                 cryptoManager: cryptoManager
             )
         )
+        // Add this line to initialize the @StateObject
+        _cryptoManager = StateObject(wrappedValue: cryptoManager)
         print("🏗️ [VIEW] SortedUsersView initialized")
     }
     
@@ -163,7 +166,7 @@ struct SortedUsersView: View {
             // Show user count
             if !viewModel.users.isEmpty {
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(filteredUsers.count)")
+                    Text("\(filteredUsers.count - 1)")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(Color(hex: "4B548D"))
                     
@@ -270,37 +273,13 @@ struct SortedUsersView: View {
     
     // MARK: - Loading View
     private var loadingView: some View {
-        VStack(spacing: 24) {
-            ZStack {
-                Circle()
-                    .stroke(Color(hex: "4B548D").opacity(0.2), lineWidth: 4)
-                    .frame(width: 60, height: 60)
-                
-                Circle()
-                    .trim(from: 0, to: 0.7)
-                    .stroke(
-                        LinearGradient(
-                            colors: [Color(hex: "4B548D"), Color(hex: "6B74A8")],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                    )
-                    .frame(width: 60, height: 60)
-                    .rotationEffect(.degrees(-90))
-                    .animation(.linear(duration: 1).repeatForever(autoreverses: false), value: viewModel.isLoading)
-            }
+        VStack(spacing: 12) {
+            ProgressView()
             
-            VStack(spacing: 8) {
-                Text("Finding Users")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.primary)
-                
-                Text("Please wait while we load available recipients")
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
+            Text("Finding Users")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.primary)
+            Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, 40)
@@ -375,7 +354,7 @@ struct SortedUsersView: View {
             LazyVStack(spacing: 12) {
                 ForEach(Array(filteredUsers.enumerated()), id: \.element.id) { index, user in
                     if UserSession.shared.currentUser?.userId != user.id {
-                        UserCardView(user: user) {
+                        UserCardView(cryptoManager: cryptoManager,user: user) {
                             print("✅ [VIEW] User selected - \(user.firstName) \(user.lastName)")
                             print("🆔 [VIEW] User ID - \(user.id)")
                             selectedUser = user
@@ -385,7 +364,7 @@ struct SortedUsersView: View {
                         .offset(y: showContent ? 0 : 20)
                         .animation(
                             .spring(response: 0.6, dampingFraction: 0.8)
-                                .delay(Double(index) * 0.05),
+                            .delay(Double(index) * 0.05),
                             value: showContent
                         )
                     }
@@ -409,6 +388,7 @@ struct SortedUsersView: View {
 
 // MARK: - User Card View
 struct UserCardView: View {
+    @ObservedObject var cryptoManager:CryptoManager
     let user: UserData
     let onTap: () -> Void
     @State private var isPressed = false
@@ -418,7 +398,7 @@ struct UserCardView: View {
             print("👆 [CARD] Card tapped for user: \(user.firstName) \(user.lastName)")
             onTap()
         }) {
-            HStack(spacing: 16) {
+            HStack(spacing: 8) {
                 profileImage
                 userInfo
                 Spacer()
@@ -442,7 +422,7 @@ struct UserCardView: View {
                         ZStack {
                             Circle()
                                 .fill(Color.gray.opacity(0.1))
-                                .frame(width: 56, height: 56)
+                                .frame(width: 36, height: 36)
                             
                             ProgressView()
                                 .tint(Color(hex: "4B548D"))
@@ -451,7 +431,7 @@ struct UserCardView: View {
                         image
                             .resizable()
                             .scaledToFill()
-                            .frame(width: 56, height: 56)
+                            .frame(width: 36, height: 36)
                             .clipShape(Circle())
                             .overlay(
                                 Circle()
@@ -482,7 +462,7 @@ struct UserCardView: View {
                         endPoint: .bottomTrailing
                     )
                 )
-                .frame(width: 56, height: 56)
+                .frame(width: 26, height: 26)
             
             Text(user.initials)
                 .font(.system(size: 20, weight: .bold))
@@ -499,26 +479,26 @@ struct UserCardView: View {
     private var userInfo: some View {
         HStack {
             VStack(alignment: .leading, spacing: 6) {
-                Text("\(user.firstName) \(user.lastName)")
-                    .font(.system(size: 16, weight: .semibold))
+                Text("\(cryptoManager.decrypt(encryptedData: user.firstName) ?? "nil") \(cryptoManager.decrypt(encryptedData: user.lastName) ?? "nil")")
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.primary)
                     .lineLimit(1)
                 
-                HStack {
-                    Text(user.email)
-                        .font(.system(size: 13, weight: .regular))
+                HStack(spacing: 6) {
+                    Text(cryptoManager.decrypt(encryptedData: user.email) ?? "nil")
+                        .font(.system(size: 8, weight: .regular))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
-                    Spacer()
+                    // Spacer()
                     
                     HStack(spacing: 6) {
-                        Text("Txn Recieved : \(user.noOfTransactionsReceived)")
-                            .font(.system(size: 11, weight: .regular))
+                        Text("Recieved: \(user.noOfTransactionsReceived)")
+                            .font(.system(size: 8, weight: .regular))
                             .foregroundColor(.black)
                             .lineLimit(1)
-                        Text("Total Paid : \(user.noOfTransactions)")
-                            .font(.system(size: 11, weight: .regular))
-                            .foregroundColor(.secondary)
+                        Text("Paid:\(user.noOfTransactions)")
+                            .font(.system(size: 8, weight: .regular))
+                            .foregroundColor(.black)
                             .lineLimit(1)
                     }
                 }

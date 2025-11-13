@@ -7,7 +7,7 @@ final class Logger {
     static let shared = Logger()
     
     // MARK: - Configuration
-    private let batchSize = 20 // Reduced from 50 for better performance with individual sends
+    private let batchSize = 50 // Reduced from 50 for better performance with individual sends
     private let maxRetries = 3
     private let retryDelay: TimeInterval = 5.0
     

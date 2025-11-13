@@ -108,16 +108,19 @@ struct LeaderboardPreviewItem: View {
         VStack(spacing: 10) {
             ZStack {
                 Circle()
-                    .fill(rankColor.opacity(0.18))
+                    .fill(rankColor.opacity(0.8))
                     .frame(width: isFirstRank ? 58 : 32, height: isFirstRank ? 58 : 32)
+                    .zIndex(0)
                 
                 Circle()
                     .stroke(rankColor.opacity(0.4), lineWidth: 2)
                     .frame(width: isFirstRank ? 58 : 32, height: isFirstRank ? 58 : 32)
+                    .zIndex(0)
                 
                 Text(rank)
                     .font(.system(size: isFirstRank ? 22 : 14, weight: .bold))
-                    .foregroundColor(rankColor)
+                    .foregroundColor(.white)
+                    .zIndex(1)
             }
             
             VStack(spacing: 3) {

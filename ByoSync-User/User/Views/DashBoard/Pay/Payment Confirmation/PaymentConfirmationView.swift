@@ -56,7 +56,6 @@ struct PaymentConfirmationView: View {
 
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 32) {
-                            coinHeader
                             paymentDetailsSection
                             recipientSection
                             actionButtonsSection
@@ -183,43 +182,18 @@ struct PaymentConfirmationView: View {
         .opacity(showContent ? 1 : 0)
         .offset(y: showContent ? 0 : -20)
     }
-
-    // MARK: - Coin Header
-    private var coinHeader: some View {
-        VStack(spacing: 16) {
-            ZStack {
+    // MARK: - Payment Details
+    private var paymentDetailsSection: some View {
+        VStack(spacing: 20) {
+            HStack(alignment: .center, spacing: 8) {
                 Image("byosync_coin")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 50, height: 50)
-                    .scaleEffect(coinScale)
-            }
-            
-            Text("Sending Coins")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.secondary)
-        }
-        .scaleEffect(showContent ? 1 : 0.8)
-        .opacity(showContent ? 1 : 0)
-    }
-
-    // MARK: - Payment Details
-    private var paymentDetailsSection: some View {
-        VStack(spacing: 20) {
-            HStack(alignment: .top, spacing: 8) {
-                Image("byosync_coin")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 40, height: 40)
                 
                 Text(amount)
                     .font(.system(size: 42, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.black)
-                
-                Text("COINS")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.secondary)
-                    .offset(y: 8)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 32)
@@ -306,11 +280,11 @@ struct PaymentConfirmationView: View {
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.secondary)
                         
-                        Text("\(selectedUser.firstName) \(selectedUser.lastName)")
+                        Text("\(cryptoManager.decrypt(encryptedData: selectedUser.firstName) ?? "nil") \(cryptoManager.decrypt(encryptedData: selectedUser.lastName) ?? "nil")")
                             .font(.system(size: 17, weight: .bold))
                             .foregroundColor(.primary)
                         
-                        Text(selectedUser.email)
+                        Text(cryptoManager.decrypt(encryptedData: selectedUser.email) ?? "nil")
                             .font(.system(size: 13, weight: .regular))
                             .foregroundColor(.secondary)
                     }

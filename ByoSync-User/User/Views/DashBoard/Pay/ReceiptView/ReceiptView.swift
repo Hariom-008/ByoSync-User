@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ReceiptView: View {
+    @EnvironmentObject var cryptoManager: CryptoManager
+    
     @Environment(\.dismiss) var dismiss
     @State private var isAnimating = false
     @State private var showContent = false
@@ -190,7 +192,7 @@ struct ReceiptView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("\(selectedUser.firstName) \(selectedUser.lastName)")
+                    Text("\(cryptoManager.decrypt(encryptedData: selectedUser.firstName) ?? "nil") \(cryptoManager.decrypt(encryptedData: selectedUser.lastName) ?? "nil")")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.primary)
                     
@@ -198,7 +200,7 @@ struct ReceiptView: View {
                         Image(systemName: "envelope.fill")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
-                        Text(selectedUser.email)
+                        Text(cryptoManager.decrypt(encryptedData: selectedUser.email) ?? "nil")
                             .font(.system(size: 13))
                             .foregroundColor(.secondary)
                             .lineLimit(1)
@@ -209,7 +211,7 @@ struct ReceiptView: View {
                             Image(systemName: String(localized: "icon.phone_fill"))
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
-                            Text(selectedUser.phoneNumber)
+                            Text((cryptoManager.decrypt(encryptedData: selectedUser.phoneNumber) ?? "nil"))
                                 .font(.system(size: 13))
                                 .foregroundColor(.secondary)
                         }
@@ -326,6 +328,7 @@ struct ReceiptView: View {
             }
             
             Button(action: {
+                dismiss()
                 dismiss()
                 hideTabBar = false
             }) {

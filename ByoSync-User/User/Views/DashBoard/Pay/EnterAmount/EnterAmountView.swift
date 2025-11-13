@@ -55,9 +55,6 @@ struct EnterAmountView: View {
                             // Quick Amount Buttons
                             quickAmountSection
                             
-                            // Info Card
-                            infoCard
-                            
                             // Bottom spacing
                             Spacer()
                                 .frame(height: 20)
@@ -114,23 +111,6 @@ struct EnterAmountView: View {
             }
             
             Spacer()
-            
-            // Optional: Add info button
-            Button {
-                generateHaptic(.light)
-                // Show info sheet
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 44, height: 44)
-                        .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 4)
-                    
-                    Image(systemName: "info")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(Color(hex: "4B548D"))
-                }
-            }
         }
         .padding(.horizontal, 24)
         .padding(.top, 16)
@@ -142,42 +122,12 @@ struct EnterAmountView: View {
     // MARK: - Title Section
     private var titleSection: some View {
         VStack(spacing: 16) {
-            // Icon with gradient background
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(hex: "4B548D").opacity(0.15),
-                                Color(hex: "6B74A8").opacity(0.15)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 80, height: 80)
-                    .scaleEffect(pulseAnimation ? 1.05 : 1.0)
-                
-                Image(systemName: "dollarsign.circle.fill")
-                    .font(.system(size: 40, weight: .semibold))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color(hex: "4B548D"), Color(hex: "6B74A8")],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .symbolEffect(.bounce, value: showContent)
-            }
-            .scaleEffect(showContent ? 1 : 0.3)
-            .opacity(showContent ? 1 : 0)
-            
             VStack(spacing: 8) {
                 Text("Enter Amount")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
                 
-                Text("How many tokens would you like to send?")
+                Text("How many coin would you like to pay?")
                     .font(.system(size: 15, weight: .regular))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -245,18 +195,6 @@ struct EnterAmountView: View {
                 }
             }
             .padding(24)
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color.white)
-                    .shadow(
-                        color: isAmountFocused ?
-                        Color(hex: "4B548D").opacity(0.15) :
-                            Color.black.opacity(0.04),
-                        radius: isAmountFocused ? 20 : 12,
-                        x: 0,
-                        y: isAmountFocused ? 8 : 4
-                    )
-            )
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(
@@ -327,10 +265,6 @@ struct EnterAmountView: View {
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                 }
                 .foregroundColor(amount == "\(value)" ? .white : Color(hex: "4B548D"))
-                
-                Text(formatCurrency(value))
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(amount == "\(value)" ? .white.opacity(0.8) : .secondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
@@ -368,38 +302,6 @@ struct EnterAmountView: View {
             .scaleEffect(amount == "\(value)" ? 1.02 : 1.0)
         }
         .buttonStyle(ScaleButtonStyle())
-    }
-    
-    // MARK: - Info Card
-    private var infoCard: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "info.circle.fill")
-                .font(.system(size: 20))
-                .foregroundColor(Color(hex: "4B548D"))
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Transaction Info")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.primary)
-                
-                Text("No fees • Instant transfer • Secure")
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(hex: "4B548D").opacity(0.06))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color(hex: "4B548D").opacity(0.1), lineWidth: 1)
-        )
-        .opacity(showQuickAmounts ? 1 : 0)
-        .offset(y: showQuickAmounts ? 0 : 20)
     }
     
     // MARK: - Bottom Action Section
@@ -440,6 +342,7 @@ struct EnterAmountView: View {
                         }
                     }
                 )
+                .cornerRadius(16, corners: .allCorners)
                 .shadow(
                     color: isValidAmount ? Color(hex: "4B548D").opacity(0.4) : .clear,
                     radius: isValidAmount ? 16 : 0,
@@ -502,11 +405,6 @@ struct EnterAmountView: View {
     private func generateHaptic(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
         let generator = UIImpactFeedbackGenerator(style: style)
         generator.impactOccurred()
-    }
-    
-    private func formatCurrency(_ value: Int) -> String {
-        let usd = Double(value) * 0.012
-        return String(format: "$%.2f", usd)
     }
 }
 #Preview {
