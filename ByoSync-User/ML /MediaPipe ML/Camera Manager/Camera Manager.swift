@@ -85,15 +85,11 @@ final class CameraManager: NSObject, ObservableObject {
     private let sessionQueue = DispatchQueue(label: "camera.session.queue")
     private let processingQueue = DispatchQueue(label: "camera.processing.queue")
     
-    #if canImport(MediaPipeTasksVision)
     private var faceLandmarker: FaceLandmarker?
-    #endif
 
     override init() {
         super.init()
-        #if canImport(MediaPipeTasksVision)
         setupMediaPipe()
-        #endif
         sessionQueue.async { [weak self] in
             self?.setupCamera()
         }
