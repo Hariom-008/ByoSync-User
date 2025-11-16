@@ -12,6 +12,7 @@ struct SortedUsersView: View {
     @State private var showContent: Bool = false
     @Environment(\.dismiss) private var dismiss
     @StateObject private var cryptoManager:CryptoManager
+    @State private var popToHome = false
     
     // MARK: - Initialization with Dependency Injection
     init(
@@ -58,7 +59,7 @@ struct SortedUsersView: View {
                     PaymentConfirmationView(
                         hideTabBar: $hideTabBar,
                         selectedUser: .constant(user),
-                        amount: amount
+                        amount: amount, popToHome: $popToHome
                     )
                 }
             }

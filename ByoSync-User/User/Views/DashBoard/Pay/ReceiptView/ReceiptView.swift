@@ -10,6 +10,8 @@ struct ReceiptView: View {
     @Binding var hideTabBar: Bool
     @Binding var selectedUser: UserData
     @Binding var orderId: String
+    @Binding var popToHome: Bool
+
 
     var amount: Int
 
@@ -18,51 +20,53 @@ struct ReceiptView: View {
     }
 
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Color(hex: "F8F9FD"), Color.white],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
-                    VStack(spacing: 24) {
-                        successAnimationView.frame(height: 200)
-                        successTextView
-                    }
-                    .padding(.top, 40)
-                    .padding(.bottom, 32)
-
-                    amountCardView
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
-
-                    recipientCardView
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
-
-                    transactionDetailsCardView
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 24)
-
-                    actionButtonsView
-                        .padding(.horizontal, 20)
+        NavigationStack{
+            ZStack {
+                LinearGradient(
+                    colors: [Color(hex: "F8F9FD"), Color.white],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 0) {
+                        VStack(spacing: 24) {
+                            successAnimationView.frame(height: 200)
+                            successTextView
+                        }
+                        .padding(.top, 40)
                         .padding(.bottom, 32)
+                        
+                        amountCardView
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
+                        
+                        recipientCardView
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
+                        
+                        transactionDetailsCardView
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 24)
+                        
+                        actionButtonsView
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 32)
+                    }
                 }
             }
-        }
-        .navigationBarHidden(true)
-        .onAppear {
-            withAnimation { isAnimating = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                withAnimation(.easeOut(duration: 0.6)) { showContent = true }
-                AudioManager.shared.playPaymentSuccessSound()
-                print("🎶 Payment Success Sound is Played")
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                withAnimation { showButton = true }
+            .navigationBarHidden(true)
+            .onAppear {
+                withAnimation { isAnimating = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    withAnimation(.easeOut(duration: 0.6)) { showContent = true }
+                    AudioManager.shared.playPaymentSuccessSound()
+                    print("🎶 Payment Success Sound is Played")
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                    withAnimation { showButton = true }
+                }
             }
         }
     }
@@ -305,7 +309,6 @@ struct ReceiptView: View {
         .animation(.easeOut(duration: 0.5).delay(0.5), value: showContent)
     }
     
-    // MARK: - Buttons
     private var actionButtonsView: some View {
         VStack(spacing: 12) {
             Button(action: {
@@ -328,9 +331,12 @@ struct ReceiptView: View {
             }
             
             Button(action: {
+                // 1) Tell the flow we want to go all the way home
+                popToHome = true
+                // 2) Pop this ReceiptView
                 dismiss()
                 dismiss()
-                hideTabBar = false
+                dismiss()
             }) {
                 Text(String(localized: "receipt.back_to_home"))
                     .font(.system(size: 16, weight: .semibold))
