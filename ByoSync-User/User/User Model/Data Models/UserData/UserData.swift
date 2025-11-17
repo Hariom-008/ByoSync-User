@@ -51,7 +51,7 @@ struct UserData: Codable,Identifiable {
     let firstName: String
     let lastName: String
     let phoneNumber: String
-    let pattern: [String]
+   // let pattern: [String]
     let salt: String
     let faceToken: String
     let wallet: Double
@@ -73,7 +73,7 @@ struct UserData: Codable,Identifiable {
         case firstName
         case lastName
         case phoneNumber
-        case pattern
+        //case pattern
         case salt
         case faceToken
         case wallet
