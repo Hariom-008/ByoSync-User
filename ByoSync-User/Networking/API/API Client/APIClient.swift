@@ -236,9 +236,7 @@ final class APIClient {
         completion: @escaping (Result<URL, APIError>) -> Void
     ) {
         let requestHeaders = headers ?? HTTPHeaders()
-        let urlString = APIConfig.baseURL
-            .appendingPathComponent(endpoint)
-            .absoluteString
+        let urlString = endpoint
         
         let destination: DownloadRequest.Destination = { _, _ in
             let documentsURL = FileManager.default

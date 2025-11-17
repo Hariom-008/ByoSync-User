@@ -30,7 +30,7 @@ final class CryptoManager: CryptoService {
         salt: String = "ByoSync",
         iterations: UInt32 = 65536,
         keyLength: Int = 32
-    ) {
+    ){
         self.password = password
         self.salt = salt
         self.iterations = iterations
