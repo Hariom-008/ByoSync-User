@@ -1,22 +1,44 @@
 import Alamofire
 import Foundation
 
+enum APIConfig {
+    static let baseURL = URL(string: "https://backendapi.byosync.in")!
+    static let host = "backendapi.byosync.in"
+}
+
 // MARK: - APIClient (Singleton)
 final class APIClient {
     static let shared = APIClient()
     
     private let session: Session
     
-    private init(){
-        let configuration = URLSessionConfiguration.default
+    private init() {
+        // 1. URLSession configuration
+        let configuration = URLSessionConfiguration.af.default
         configuration.timeoutIntervalForRequest = 30
         configuration.timeoutIntervalForResource = 60
         
-        self.session = Session(configuration: configuration)
+        // 2. TLS / Server trust: certificate pinning
+        // PinnedCertificatesTrustEvaluator() by default loads all .cer in main bundle.
+        // We map it to the exact backend host.
+        let evaluators: [String: ServerTrustEvaluating] = [
+            APIConfig.host: PinnedCertificatesTrustEvaluator(
+                acceptSelfSignedCertificates: false,
+                performDefaultValidation: true,
+                validateHost: true
+            )
+        ]
+        
+        let serverTrustManager = ServerTrustManager(evaluators: evaluators)
+        
+        // 3. Create Alamofire Session with trust manager
+        self.session = Session(
+            configuration: configuration,
+            serverTrustManager: serverTrustManager
+        )
     }
     
     // MARK: - Generic Request Method (For responses that return data)
-    /// Use this for endpoints that return JSON responses
     func request<T: Decodable>(
         _ endpoint: String,
         method: HTTPMethod,
@@ -24,10 +46,20 @@ final class APIClient {
         headers: HTTPHeaders? = nil,
         completion: @escaping (Result<T, APIError>) -> Void
     ) {
-        let requestHeaders = headers ?? HTTPHeaders()
+        let certs = Bundle.main.af.certificates
+        print("🔐 Found \(certs.count) bundled certificates")
+        for c in certs {
+            print("🔐 Cert:", c)
+        }
 
+        let requestHeaders = headers ?? HTTPHeaders()
+        
+        // Build URL relative to base (recommended)
+        let urlString = endpoint
+
+        
         session.request(
-            endpoint,
+            urlString,
             method: method,
             parameters: parameters,
             encoding: JSONEncoding.default,
@@ -50,20 +82,22 @@ final class APIClient {
                     }
                     completion(.failure(.decodingError(error.localizedDescription)))
                 }
-
+                
             case .failure(let afError):
                 let apiError = APIError.map(
                     from: response.response?.statusCode,
                     error: afError,
                     data: response.data
                 )
+                #if DEBUG
+                print("Alamofire Error: \(afError)")
+                #endif
                 completion(.failure(apiError))
             }
         }
     }
-
-    // MARK: - Request Without Response (For operations that return no data)
-    /// Use this for endpoints that return 200 OK with no body
+    
+    // MARK: - Request Without Response
     func requestWithoutResponse(
         _ endpoint: String,
         method: HTTPMethod,
@@ -72,9 +106,11 @@ final class APIClient {
         completion: @escaping (Result<Void, APIError>) -> Void
     ) {
         let requestHeaders = headers ?? HTTPHeaders()
+        let urlString = endpoint   // endpoint is a full absolute URL
+
         
         session.request(
-            endpoint,
+            urlString,
             method: method,
             parameters: parameters,
             encoding: JSONEncoding.default,
@@ -95,19 +131,21 @@ final class APIClient {
         }
     }
     
-    // MARK: - Custom Request with Raw Body (For HMAC signed requests)
-    /// Use this when you need full control over the request body (like HMAC signing)
-    /// This is what your RegisterUserRepository uses
+    // MARK: - Custom Request with Raw Body
     func requestWithCustomBody(
         _ urlRequest: URLRequest,
         completion: @escaping (Result<Void, APIError>) -> Void
     ) {
+        // Safety check: only HTTPS
+        assert(urlRequest.url?.scheme == "https", "All requests must use HTTPS")
+        
         session.request(urlRequest)
             .validate(statusCode: 200..<300)
             .response { response in
                 print("📥 Response Status Code: \(response.response?.statusCode ?? -1)")
                 
-                if let data = response.data, let responseString = String(data: data, encoding: .utf8) {
+                if let data = response.data,
+                   let responseString = String(data: data, encoding: .utf8) {
                     print("📥 Response Body: \(responseString)")
                 }
                 
@@ -119,7 +157,8 @@ final class APIClient {
                         data: response.data
                     )
                     completion(.failure(apiError))
-                } else if let statusCode = response.response?.statusCode, (200..<300).contains(statusCode) {
+                } else if let statusCode = response.response?.statusCode,
+                          (200..<300).contains(statusCode) {
                     print("✅ Request successful")
                     completion(.success(()))
                 } else {
@@ -128,36 +167,34 @@ final class APIClient {
             }
     }
     
-    
-// Request without validation so that if api's like change primary device don't have status code i can call them
+    // MARK: - Request Without Validation
     func requestWithoutValidation<T: Decodable>(
         _ endpoint: String,
         method: HTTPMethod,
         parameters: Parameters? = nil,
         headers: HTTPHeaders? = nil,
-        skipValidation: Bool = false,                 
+        skipValidation: Bool = false,
         completion: @escaping (Result<T, APIError>) -> Void
     ) {
         let requestHeaders = headers ?? HTTPHeaders()
+        let urlString = endpoint   // endpoint is a full absolute URL
+
+        
         var req = session.request(
-            endpoint,
+            urlString,
             method: method,
             parameters: parameters,
             encoding: JSONEncoding.default,
             headers: requestHeaders
         )
-       
-        //print("I am Ark Jain")
         
         if !skipValidation {
             req = req.validate(statusCode: 200..<300)
         }
-
+        
         req.responseData { response in
             switch response.result {
             case .success(let data):
-                // let jsonString = String(data: data, encoding: .utf8)
-            
                 do {
                     let decoder = JSONDecoder()
                     decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -168,9 +205,8 @@ final class APIClient {
                     print("❌ Failed to decode type: \(T.self)")
                     completion(.failure(.decodingError(error.localizedDescription)))
                 }
-
+                
             case .failure(let afError):
-                // 👇 Try to decode the body even on non-2xx if caller asked for it
                 if skipValidation, let data = response.data {
                     if let jsonString = String(data: data, encoding: .utf8) {
                         print("📥 Raw Error Body: \(jsonString)")
@@ -178,7 +214,6 @@ final class APIClient {
                     let decoder = JSONDecoder()
                     decoder.keyDecodingStrategy = .convertFromSnakeCase
                     if let decoded = try? decoder.decode(T.self, from: data) {
-                        // Treat decodable message as a logical/business success
                         completion(.success(decoded))
                         return
                     }
@@ -192,7 +227,7 @@ final class APIClient {
             }
         }
     }
-
+    
     // MARK: - Download File
     func downloadFile(
         _ endpoint: String,
@@ -201,15 +236,21 @@ final class APIClient {
         completion: @escaping (Result<URL, APIError>) -> Void
     ) {
         let requestHeaders = headers ?? HTTPHeaders()
+        let urlString = APIConfig.baseURL
+            .appendingPathComponent(endpoint)
+            .absoluteString
         
         let destination: DownloadRequest.Destination = { _, _ in
-            let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let fileURL = documentsURL.appendingPathComponent("transaction_report_\(Date().timeIntervalSince1970).pdf")
+            let documentsURL = FileManager.default
+                .urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let fileURL = documentsURL.appendingPathComponent(
+                "transaction_report_\(Date().timeIntervalSince1970).pdf"
+            )
             return (fileURL, [.removePreviousFile, .createIntermediateDirectories])
         }
         
         session.download(
-            endpoint,
+            urlString,
             method: method,
             headers: requestHeaders,
             to: destination
@@ -230,22 +271,24 @@ final class APIClient {
             }
         }
     }
+    
     // MARK: - Custom Request with Raw Body AND Response Decoding
-    /// Use this when you need full control over the request body (like HMAC signing) AND need to decode the response
     func requestWithCustomBodyAndResponse<T: Decodable>(
         _ urlRequest: URLRequest,
         completion: @escaping (Result<T, APIError>) -> Void
     ) {
+        assert(urlRequest.url?.scheme == "https", "All requests must use HTTPS")
+        
         session.request(urlRequest)
             .responseData { response in
                 let status = response.response?.statusCode ?? -1
                 print("📥 [APIClient] Status Code:", status)
-
+                
                 if let data = response.data,
                    let raw = String(data: data, encoding: .utf8) {
                     print("📥 [APIClient] Raw Response:\n\(raw)")
                 }
-
+                
                 switch response.result {
                 case .success(let data):
                     do {
@@ -258,21 +301,19 @@ final class APIClient {
                         print("❌ [APIClient] JSON decode error:", error)
                         completion(.failure(.decodingError(error.localizedDescription)))
                     }
-
+                    
                 case .failure(let afError):
-                    // ✅ Always print details
                     print("❌ [APIClient] Alamofire Error:", afError)
                     if let data = response.data,
                        let raw = String(data: data, encoding: .utf8) {
                         print("📦 [APIClient] Error Body:\n\(raw)")
                     }
-
-                    // Optional: try to decode backend error message
+                    
                     if let data = response.data,
                        let backendError = try? JSONDecoder().decode(BackendError.self, from: data) {
                         print("⚠️ Backend Error:", backendError.message ?? "Unknown")
                     }
-
+                    
                     let apiError = APIError.map(
                         from: response.response?.statusCode,
                         error: afError,
@@ -282,7 +323,6 @@ final class APIClient {
                 }
             }
     }
-
 }
 
 private struct BackendError: Codable {

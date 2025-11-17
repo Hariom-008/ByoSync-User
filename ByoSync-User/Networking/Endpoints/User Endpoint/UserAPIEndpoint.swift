@@ -2,9 +2,8 @@ import Foundation
 
  
 struct UserAPIEndpoint{
-    //static let baseURL = "http://192.168.1.16:7000"
     
-    static let baseURL = "https://byo-sync-backend-testing.vercel.app"
+    static let baseURL = "https://backendapi.byosync.in"
     
     // Login,Register,Phone & Email Verification
     struct Auth {
@@ -84,7 +83,7 @@ struct UserAPIEndpoint{
 
 
 struct CommonEndpoint{
-    static let baseURL = "https://byo-sync-backend-testing.vercel.app"
+    static let baseURL = "https://backendapi.byosync.in"
     
     static let summaryTransactionData = "\(baseURL)/api/v1/recons/merchant-and-user-summary"
     
@@ -92,7 +91,7 @@ struct CommonEndpoint{
 }
 
 struct LogEndpoint{
-    static let baseURL = "https://byo-sync-backend-testing.vercel.app"
+    static let baseURL = "https://backendapi.byosync.in"
     
     static let createLogs = "\(baseURL)/api/v1/logs/create"
 }

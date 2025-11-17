@@ -580,6 +580,8 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
 					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
+					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
+					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
 				);
 				GCC_PREFIX_HEADER = "$(SRCROOT)/PrefixHeader.pch";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -631,6 +633,8 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/ByoSync-User/Frameworks",
 					"$(inherited)",
+					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
+					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
 					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
 					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
 				);

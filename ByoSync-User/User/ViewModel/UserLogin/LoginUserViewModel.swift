@@ -17,7 +17,7 @@ final class LoginViewModel: ObservableObject {
     @Published var wallet: Int?
     @Published var fcmToken: String = ""
     
-    private let hardcodedDeviceId = "123456"
+    private let hardcodedDeviceId = "12345678ijhb"
     
     // ✅ Dependency injection via initializer
     init(cryptoService: any CryptoService) {
