@@ -48,10 +48,16 @@ struct ByoSync_UserApp: App {
     }
 }
 
+import UIKit
+import Firebase
+import FirebaseMessaging
+import CommonCrypto
+
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
-    
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-        
+
+    @StateObject private var cryptoManager = CryptoManager.shared
+
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         print("🚀 App launching...")
         
         // Configure Firebase FIRST
@@ -68,7 +74,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         
         return true
     }
-    
+
     private func requestNotificationPermissions(_ application: UIApplication) {
         print("📱 Requesting notification permissions...")
         
@@ -90,7 +96,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             }
         }
     }
-    
+
     // MARK: - APNs Token Registration
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let tokenString = deviceToken.map { String(format: "%02x", $0) }.joined()
@@ -113,7 +119,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         print("❌ Failed to register for remote notifications: \(error.localizedDescription)")
         print("💡 Tip: Make sure you're testing on a real device, not simulator")
     }
-    
+
     // MARK: - FCM Token Request
     private func requestFCMToken() {
         Messaging.messaging().token { token, error in
@@ -133,7 +139,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             self.handleFCMToken(token)
         }
     }
-    
+
     // MARK: - MessagingDelegate
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         guard let fcmToken = fcmToken else {
@@ -144,7 +150,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         print("🔑 FCM Token refreshed: \(fcmToken)")
         handleFCMToken(fcmToken)
     }
-    
+
     // MARK: - Handle FCM Token
     private func handleFCMToken(_ token: String) {
         print("💾 Processing FCM token...")
@@ -164,7 +170,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             userInfo: ["token": token]
         )
     }
-    
+
     func uploadFCMToken(_ token: String) {
         guard let userId = Auth.auth().currentUser?.uid else {
             print("⚠️ No user logged in, saving token locally for later upload")
@@ -189,7 +195,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             }
         }
     }
-    
+
     // MARK: - Remote Notifications
     func application(_ application: UIApplication,
                      didReceiveRemoteNotification notification: [AnyHashable : Any],
@@ -201,9 +207,20 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }
         
         print("📬 Remote notification: \(notification)")
+
+        // Check if notification contains encrypted data and decrypt it
+        if let encryptedPaymentDetails = notification["payment_details"] as? String {
+            if let decryptedPaymentDetails = cryptoManager.decrypt(encryptedData: encryptedPaymentDetails) {
+                print("Decrypted Payment Details: \(decryptedPaymentDetails)")
+                // Optionally, you can update the notification content here or pass the decrypted data to a view
+            } else {
+                print("Failed to decrypt payment details.")
+            }
+        }
+        
         completionHandler(.newData)
     }
-    
+
     func application(_ application: UIApplication, open url: URL,
                      options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
         if Auth.auth().canHandle(url) {
@@ -211,36 +228,79 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }
         return false
     }
-    
+
     // MARK: - Foreground Notifications
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        let userInfo = notification.request.content.userInfo
+        var userInfo = notification.request.content.userInfo
         print("📬 Foreground notification: \(userInfo)")
+
+        // Example: Decrypt encrypted payment details if present
+        if let encryptedPaymentDetails = userInfo["payment_details"] as? String {
+            if let decryptedPaymentDetails = cryptoManager.decrypt(encryptedData: encryptedPaymentDetails) {
+                // Update userInfo with decrypted data
+                userInfo["payment_details"] = decryptedPaymentDetails
+                print("Decrypted Payment Details: \(decryptedPaymentDetails)")
+            } else {
+                print("Failed to decrypt payment details.")
+            }
+        }
+
+        // You may now create a custom local notification or handle the decrypted content as needed
+        // Present the notification with the decrypted content
+        let newContent = UNMutableNotificationContent()
+        newContent.title = notification.request.content.title
+        newContent.body = "Payment received: \(userInfo["payment_details"] ?? "Unknown")"
+        newContent.sound = .default
+
+        // Create a new notification request with the updated content
+        let request = UNNotificationRequest(
+            identifier: notification.request.identifier,
+            content: newContent,
+            trigger: notification.request.trigger
+        )
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ Failed to update notification: \(error.localizedDescription)")
+            }
+        }
+        
+        // Continue presenting the updated notification
         completionHandler([.banner, .sound, .badge])
     }
-    
+
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        let userInfo = response.notification.request.content.userInfo
+        var userInfo = response.notification.request.content.userInfo
         print("👆 Notification tapped: \(userInfo)")
-        
+
+        // Example: Decrypt encrypted payment details if present
+        if let encryptedPaymentDetails = userInfo["payment_details"] as? String {
+            if let decryptedPaymentDetails = cryptoManager.decrypt(encryptedData: encryptedPaymentDetails) {
+                userInfo["payment_details"] = decryptedPaymentDetails
+                print("Decrypted Payment Details: \(decryptedPaymentDetails)")
+            } else {
+                print("Failed to decrypt payment details.")
+            }
+        }
+
         if let type = userInfo["type"] as? String {
             handleNotificationAction(type: type, data: userInfo)
         }
-        
+
         completionHandler()
     }
-    
+
     private func handleNotificationAction(type: String, data: [AnyHashable: Any]) {
         print("🎯 Notification action: \(type)")
-        
+
         NotificationCenter.default.post(
             name: NSNotification.Name("NotificationActionReceived"),
             object: nil,

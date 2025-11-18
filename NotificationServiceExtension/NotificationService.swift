@@ -21,8 +21,19 @@ final class NotificationService: UNNotificationServiceExtension {
         print("📬 Notification Service Extension triggered")
         print("📦 UserInfo: \(content.userInfo)")
 
+        // Extract and decrypt only the last part of the body (the encrypted names)
+        if let body = content.userInfo["body"] as? String {
+            let decryptedBody = decryptBody(body)
+            if let decryptedBody = decryptedBody {
+                // Update the body with decrypted message
+                content.body = decryptedBody
+                print("✅ Decrypted body: \(decryptedBody)")
+            } else {
+                print("⚠️ Failed to decrypt the body.")
+            }
+        }
+
         // Extract image URL from notification payload
-        // Firebase can send this in different keys, check both
         var imageURLString: String?
         if let customImage = content.userInfo["image"] as? String {
             imageURLString = customImage
@@ -67,6 +78,30 @@ final class NotificationService: UNNotificationServiceExtension {
 
     // MARK: - Helper Methods
 
+    private func decryptBody(_ body: String) -> String? {
+        // Extract the encrypted part (after 'from ') and split by space
+        if let range = body.range(of: "from ") {
+            let encryptedData = body[range.upperBound...]  // Everything after "from "
+            
+            // Split the encrypted data into first and last name parts
+            let components = encryptedData.split(separator: " ")
+            if components.count == 2 {
+                let firstNameEncrypted = String(components[0])
+                let lastNameEncrypted = String(components[1])
+
+                // Decrypt both parts
+                let firstNameDecrypted = CryptoManager.shared.decrypt(encryptedData: firstNameEncrypted)
+                let lastNameDecrypted = CryptoManager.shared.decrypt(encryptedData: lastNameEncrypted)
+
+                // If both parts are decrypted successfully, reconstruct the body
+                if let decryptedFirstName = firstNameDecrypted, let decryptedLastName = lastNameDecrypted {
+                    return body.replacingOccurrences(of: encryptedData, with: "\(decryptedFirstName) \(decryptedLastName)")
+                }
+            }
+        }
+        return nil
+    }
+
     private func downloadImage(from url: URL, completion: @escaping (URL?) -> Void) {
         let session = URLSession(configuration: .default)
         
@@ -102,46 +137,42 @@ final class NotificationService: UNNotificationServiceExtension {
     }
 
     private func attachMedia(to content: UNMutableNotificationContent, from url: URL) {
-            do {
-                // ✅ Use the correct options dictionary type and constant key
-                var options: [AnyHashable: Any]? = nil
+        do {
+            var options: [AnyHashable: Any]? = nil
 
-                if #available(iOS 14.0, *) {
-                    let ext = url.pathExtension.lowercased()
-                    if let utType = utType(for: ext) {
-                        // UNNotificationAttachmentOptionsTypeHintKey is a String constant
-                        options = [UNNotificationAttachmentOptionsTypeHintKey: utType.identifier]
-                    }
+            if #available(iOS 14.0, *) {
+                let ext = url.pathExtension.lowercased()
+                if let utType = utType(for: ext) {
+                    options = [UNNotificationAttachmentOptionsTypeHintKey: utType.identifier]
                 }
-
-                let attachment = try UNNotificationAttachment(
-                    identifier: "notification-image",
-                    url: url,
-                    options: options
-                )
-
-                content.attachments = [attachment]
-                print("🎉 Media attachment added successfully")
-
-            } catch {
-                print("❌ Failed to create attachment: \(error.localizedDescription)")
             }
-        }
 
-        // MARK: - File Type Helpers
+            let attachment = try UNNotificationAttachment(
+                identifier: "notification-image",
+                url: url,
+                options: options
+            )
 
-        @available(iOS 14.0, *)
-        private func utType(for ext: String) -> UTType? {
-            switch ext.lowercased() {
-            case "png":  return .png
-            case "gif":  return .gif
-            case "jpg", "jpeg": return .jpeg
-            case "webp": return .webP   // iOS 14+
-            default:     return nil
-            }
+            content.attachments = [attachment]
+            print("🎉 Media attachment added successfully")
+
+        } catch {
+            print("❌ Failed to create attachment: \(error.localizedDescription)")
         }
+    }
 
     // MARK: - File Type Helpers
+
+    @available(iOS 14.0, *)
+    private func utType(for ext: String) -> UTType? {
+        switch ext.lowercased() {
+        case "png":  return .png
+        case "gif":  return .gif
+        case "jpg", "jpeg": return .jpeg
+        case "webp": return .webP   // iOS 14+
+        default:     return nil
+        }
+    }
 
     private func fileExtension(fromMimeType mimeType: String, url: URL) -> String {
         if mimeType.contains("png") { return "png" }
