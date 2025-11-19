@@ -30,11 +30,6 @@ final class RegisterUserViewModel: ObservableObject {
                      !lastName.isEmpty &&
                      !email.isEmpty &&
                      !phoneNumber.isEmpty
-        print("📋 [VM] All fields filled: \(filled)")
-        print("   - First Name: '\(firstName)' (empty: \(firstName.isEmpty))")
-        print("   - Last Name: '\(lastName)' (empty: \(lastName.isEmpty))")
-        print("   - Email: '\(email)' (empty: \(email.isEmpty))")
-        print("   - Phone: '\(phoneNumber)' (empty: \(phoneNumber.isEmpty))")
         return filled
     }
     
@@ -52,22 +47,11 @@ final class RegisterUserViewModel: ObservableObject {
     
     var canSubmit: Bool {
         let can = allFieldsFilled && isValidEmail
-        print("✅ [VM] Can submit: \(can)")
         return can
     }
     
     // MARK: - Actions
     func registerUser() {
-        print("\n" + String(repeating: "=", count: 50))
-        print("🚀 [VM] registerUser() called")
-        print(String(repeating: "=", count: 50))
-        
-        // Force log the validation state
-        print("📊 [VM] Validation State:")
-        print("   - Can Submit: \(canSubmit)")
-        print("   - All Fields Filled: \(allFieldsFilled)")
-        print("   - Valid Email: \(isValidEmail)")
-        
         guard canSubmit else {
             print("❌ [VM] Validation FAILED - Cannot submit")
             if !isValidEmail && !email.isEmpty {

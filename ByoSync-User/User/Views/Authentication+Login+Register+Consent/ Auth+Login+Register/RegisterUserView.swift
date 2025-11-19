@@ -65,7 +65,7 @@ struct RegisterUserView: View {
                             icon: "phone.fill",
                             placeholder: L("phone_number"),
                             text: $viewModel.phoneNumber,
-                            keyboardType: .phonePad
+                            keyboardType: .default
                         )
                     }
                     .padding(.horizontal, 24)
@@ -161,6 +161,7 @@ struct FormField: View {
                     .autocapitalization(keyboardType == .emailAddress ? .none : .words)
                     .textContentType(contentTypeForKeyboard(keyboardType))
                     .focused($isFocused)
+                    .disabled(icon == "phone.fill")
                 
                 if !text.isEmpty {
                     Image(systemName: "checkmark.circle.fill")
