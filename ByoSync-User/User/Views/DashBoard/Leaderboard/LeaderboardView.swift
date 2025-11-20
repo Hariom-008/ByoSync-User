@@ -258,26 +258,7 @@ struct LeaderboardView: View {
     // MARK: - Loading View
     private var loadingView: some View {
         VStack(spacing: 24) {
-            ZStack {
-                Circle()
-                    .stroke(Color(hex: "E5E7F0"), lineWidth: 4)
-                    .frame(width: 60, height: 60)
-                
-                Circle()
-                    .trim(from: 0, to: 0.7)
-                    .stroke(
-                        LinearGradient(
-                            colors: [Color(hex: "4B548D"), Color(hex: "6B74A8")],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ),
-                        style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                    )
-                    .frame(width: 60, height: 60)
-                    .rotationEffect(.degrees(-90))
-                    .animation(.linear(duration: 1).repeatForever(autoreverses: false), value: UUID())
-            }
-            
+            ProgressView()
             VStack(spacing: 8) {
                 Text("Loading Rankings...")
                     .font(.system(size: 18, weight: .bold))

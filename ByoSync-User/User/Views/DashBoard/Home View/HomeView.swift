@@ -273,9 +273,9 @@ struct HomeView: View {
                         .padding(.horizontal, 20)
                     
                     // Promotions
-                    promotionsSection
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 50)
+//                    promotionsSection
+//                        .padding(.horizontal, 20)
+//                        .padding(.bottom, 50)
 
                 }
                 .padding(.top,32)
@@ -352,38 +352,46 @@ struct HomeView: View {
                     .shimmer()
                 } else if top3Users.count >= 3 {
                     // Display actual top 3 users
-                    HStack(spacing: 14) {
-                        // 2nd Place
-                        LeaderboardPreviewItem(
-                            rank: "2",
-                            name: top3Users[1].firstName,
-                            score: "\(top3Users[1].noOfTransactions)",
-                            rankColor: Color(hex: "C0C0C0"),
-                            isHighlighted: top3Users[1].id == UserSession.shared.currentUser?.userId,
-                            isFirstRank: false
-                        )
+                    VStack(spacing: 12) {
+                        HStack(spacing: 14) {
+                            // 2nd Place
+                            LeaderboardPreviewItem(
+                                rank: "2",
+                                name: top3Users[1].firstName,
+                                score: "\(top3Users[1].noOfTransactions)",
+                                rankColor: Color(hex: "C0C0C0"),
+                                isHighlighted: top3Users[1].id == UserSession.shared.currentUser?.userId,
+                                isFirstRank: false
+                            )
+                            
+                            // 1st Place
+                            LeaderboardPreviewItem(
+                                rank: "1",
+                                name: top3Users[0].id == UserSession.shared.currentUser?.userId ? "You" : top3Users[0].firstName,
+                                score: "\(top3Users[0].noOfTransactions)",
+                                rankColor: Color.orange,
+                                isHighlighted: false,
+                                isFirstRank: true
+                            )
+                            
+                            // 3rd Place
+                            LeaderboardPreviewItem(
+                                rank: "3",
+                                name: top3Users[2].firstName,
+                                score: "\(top3Users[2].noOfTransactions)",
+                                rankColor: Color(hex: "CD7F32"),
+                                isHighlighted: top3Users[2].id == UserSession.shared.currentUser?.userId,
+                                isFirstRank: false
+                            )
+                        }
                         
-                        // 1st Place
-                        LeaderboardPreviewItem(
-                            rank: "1",
-                            name: top3Users[0].id == UserSession.shared.currentUser?.userId ? "You" : top3Users[0].firstName,
-                            score: "\(top3Users[0].noOfTransactions)",
-                            rankColor: Color.orange,
-                            isHighlighted: false,
-                            isFirstRank: true
-                        )
-                        
-                        // 3rd Place
-                        LeaderboardPreviewItem(
-                            rank: "3",
-                            name: top3Users[2].firstName,
-                            score: "\(top3Users[2].noOfTransactions)",
-                            rankColor: Color(hex: "CD7F32"),
-                            isHighlighted: top3Users[2].id == UserSession.shared.currentUser?.userId,
-                            isFirstRank: false
-                        )
+                        // Show current user's rank if not in top 3
+                        if let currentUser = UserSession.shared.currentUser,
+                           !top3Users.contains(where: { $0.id == currentUser.userId }) {
+                            currentUserRankView
+                        }
                     }
-                } else if !top3Users.isEmpty{
+                } else if !top3Users.isEmpty {
                     // Display available users (less than 3)
                     HStack(spacing: 14) {
                         ForEach(Array(top3Users.enumerated()), id: \.element.id) { index, user in
@@ -417,6 +425,62 @@ struct HomeView: View {
                     )
                     .shadow(color: Color.yellow.opacity(0.15), radius: 15, x: 0, y: 8)
             )
+        }
+    }
+
+    // MARK: - Current User Rank View (When not in Top 3)
+    private var currentUserRankView: some View {
+        VStack(spacing: 8) {
+            Divider()
+                .padding(.vertical, 4)
+            
+            if let currentUser = UserSession.shared.currentUser,
+               let userIndex = leaderboardViewModel.users.firstIndex(where: { $0.id == currentUser.userId }),
+               let userData = leaderboardViewModel.users.first(where: { $0.id == currentUser.userId }) {
+                
+                HStack(spacing: 12) {
+                    // Rank Badge
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color(hex: "4B548D").opacity(0.2), Color(hex: "4B548D").opacity(0.1)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 40, height: 40)
+                        
+                        Text("#\(userIndex + 1)")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(Color(hex: "4B548D"))
+                    }
+                    
+                    // User Info
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Your Rank")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.black)
+                        
+                        Text("\(userData.noOfTransactions) transactions")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.gray)
+                    }
+                    
+                    Spacer()
+                    
+                    // Arrow to indicate it's tappable
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.gray.opacity(0.5))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(hex: "4B548D").opacity(0.05))
+                )
+            }
         }
     }
     
