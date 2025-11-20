@@ -90,7 +90,7 @@ final class SocketIOManager: ObservableObject {
                         id: response.order.id,
                         amount: Double(response.order.coins),
                         currency: "Coins",
-                        senderName: response.order.senderId,
+                        senderId: response.order.senderId,
                         timestamp: Date(),
                         transactionId: response.order.id,
                         message: response.message,

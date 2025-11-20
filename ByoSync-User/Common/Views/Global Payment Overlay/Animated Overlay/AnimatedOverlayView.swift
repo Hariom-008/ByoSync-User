@@ -6,7 +6,7 @@ struct PaymentNotification: Identifiable, Codable {
     let id: String
     let amount: Double
     let currency: String
-    let senderName: String
+    let senderId: String
     let timestamp: Date
     let transactionId: String
     let message: String?
@@ -16,7 +16,7 @@ struct PaymentNotification: Identifiable, Codable {
         case id = "_id"
         case amount
         case currency
-        case senderName = "sender_name"
+        case senderId = "senderId"
         case timestamp
         case transactionId = "transaction_id"
         case message
@@ -52,6 +52,7 @@ struct PaymentReceivedResponse: Codable {
         }
     }
 }
+
 
 struct PaymentNotificationOverlay: View {
     let cryptoManager = CryptoManager.shared
@@ -96,9 +97,9 @@ struct PaymentNotificationOverlay: View {
         }
         .ignoresSafeArea(edges: .top)
         .onAppear {
-            // 🔔 Auto-dismiss after 4 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                if isShowing {       // avoid double-dismiss
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                if isShowing {
+                    print("🔔 Auto-dismiss timer fired")
                     dismissNotification()
                 }
             }
@@ -109,73 +110,125 @@ struct PaymentNotificationOverlay: View {
     private var notificationCard: some View {
         let decrypted = cryptoManager.decryptPaymentMessage(notification.message)
         let messageText = decrypted.isEmpty ? (notification.message ?? "") : decrypted
+        let formattedAmount = String(format: "%.2f", notification.amount)
         
-        return VStack(alignment: .leading, spacing: 10) {
-            // Top row: icon + title + close button
+        return VStack(alignment: .leading, spacing: 0) {
+            // Header with icon and close button
             HStack(alignment: .center, spacing: 12) {
+                // Success icon with animated background
                 ZStack {
                     Circle()
-                        .fill(Color.white.opacity(0.18))
-                        .frame(width: 34, height: 34)
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color.white.opacity(0.25),
+                                    Color.white.opacity(0.12)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                     
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundColor(.green)
                 }
+                .frame(width: 40, height: 40)
                 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Payment notification")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white)
+                // Title and subtitle
+                VStack(alignment: .leading, spacing: 3) {
+                    if !messageText.isEmpty {
+                        Text(messageText)
+                            .font(.system(size: 16, weight: .semibold, design: .default))
+                            .foregroundColor(.white)
+                            .tracking(0.3)
+                    }
                     
                     Text("Just now")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
+                        .font(.system(size: 12, weight: .regular, design: .default))
+                        .foregroundColor(.white.opacity(0.65))
                 }
                 
-                Spacer(minLength: 12)
+                Spacer()
                 
-                Button(action: dismissNotification) {
+                // Close button with improved interaction
+                Button(action: {
+                    print("🔔 Manual dismiss triggered")
+                    dismissNotification()
+                }) {
                     ZStack {
                         Circle()
-                            .fill(Color.white.opacity(0.12))
-                            .frame(width: 28, height: 28)
+                            .fill(Color.white.opacity(0.10))
+                            .background(Circle().fill(Color.white.opacity(0.04)))
                         
                         Image(systemName: "xmark")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.9))
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white.opacity(0.75))
                     }
                 }
+                .frame(width: 32, height: 32)
                 .buttonStyle(ScaleButtonStyle())
             }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
             
-            // Message body
-            if !messageText.isEmpty {
-                Text(messageText)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.white)
-                    .lineLimit(3)
-                    .multilineTextAlignment(.leading)
-                    .padding(.top, 2)
+            // Divider for visual separation
+            Divider()
+                .background(Color.white.opacity(0.12))
+                .padding(.horizontal, 18)
+            
+            // Amount and message section
+            VStack(alignment: .leading, spacing: 10) {
+                // Amount display with currency
+                HStack(alignment: .center, spacing: 6) {
+                    Text(notification.currency)
+                        .font(.system(size: 12, weight: .medium, design: .default))
+                        .foregroundColor(.white.opacity(0.7))
+                        .tracking(0.5)
+                    
+                    Text(formattedAmount)
+                        .font(.system(size: 22, weight: .bold, design: .default))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                }
+                .padding(.top, 2)
+                
+                // Sender info
+                HStack(spacing: 6) {
+                    Text("SenderID: \(notification.senderId)")
+                        .font(.system(size: 13, weight: .semibold, design: .default))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                }
+                
+                // Transaction ID badge (subtle)
+                HStack(spacing: 4) {
+                    Text("Txn Id: \(notification.transactionId)")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                }
+                .foregroundColor(.white.opacity(0.5))
+                .padding(.top, 8)
             }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
         .background(
             ZStack {
+                // Base gradient
                 LinearGradient(
                     gradient: Gradient(colors: [
                         brandColor,
-                        brandColor.opacity(0.9)
+                        brandColor.opacity(0.88)
                     ]),
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
                 
-                // Subtle overlay stripe
+                // Animated shine effect
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color.white.opacity(0.09),
+                        Color.white.opacity(0.12),
+                        Color.clear,
                         Color.clear
                     ]),
                     startPoint: .topLeading,
@@ -184,20 +237,20 @@ struct PaymentNotificationOverlay: View {
                 .blendMode(.screen)
             }
         )
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .shadow(color: brandColor.opacity(0.35), radius: 22, x: 0, y: 14)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: brandColor.opacity(0.4), radius: 20, x: 0, y: 12)
         .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            Color.white.opacity(0.30),
-                            Color.white.opacity(0.06)
+                            Color.white.opacity(0.25),
+                            Color.white.opacity(0.05)
                         ]),
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
-                    lineWidth: 0.8
+                    lineWidth: 1
                 )
         )
     }

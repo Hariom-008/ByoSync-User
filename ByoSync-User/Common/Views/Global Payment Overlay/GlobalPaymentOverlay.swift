@@ -8,9 +8,12 @@
 import Foundation
 import SwiftUI
 
+import Foundation
+import SwiftUI
+
 struct GlobalPaymentOverlayView: View {
     @ObservedObject var socketManager = SocketIOManager.shared
-    @State var isShowing:Bool = false
+    
     var body: some View {
         ZStack {
             // Show overlay when there's a current payment notification
@@ -18,12 +21,13 @@ struct GlobalPaymentOverlayView: View {
                let notification = socketManager.currentPaymentNotification {
                 PaymentNotificationOverlay(
                     notification: notification,
-                    isShowing: $isShowing,
+                    isShowing: $socketManager.showPaymentOverlay,
                     onDismiss: {
+                        print("🔔 Payment overlay dismissed by user or auto-dismiss timer")
                         socketManager.dismissCurrentPayment()
                     }
                 )
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .transition(.move(edge: .top).combined(with: .opacity))
                 .zIndex(9999)
             }
         }
