@@ -206,3 +206,40 @@ extension Data {
         [UInt8](self)
     }
 }
+
+extension CryptoManager {
+    /// Decrypts any `hex:hex` tokens inside a payment message.
+    /// Example:
+    /// "Payment received 2 coins from iv:cipher iv:cipher"
+    ///  -> "Payment received 2 coins from FirstName LastName"
+    func decryptPaymentMessage(_ rawMessage: String?) -> String {
+        guard let raw = rawMessage, !raw.isEmpty else { return "" }
+
+        // Split message on spaces
+        let parts = raw.split(separator: " ").map(String.init)
+
+        let processed = parts.map { token -> String in
+            // Check pattern like "hex:hex"
+            guard token.contains(":"),
+                  token.range(
+                    of: #"^[0-9a-fA-F]+:[0-9a-fA-F]+$"#,
+                    options: .regularExpression
+                  ) != nil
+            else {
+                return token
+            }
+
+            // 🔐 Safe unwrap: decrypt returns String?
+            guard let decrypted = self.decrypt(encryptedData: token),
+                  !decrypted.isEmpty
+            else {
+                // If decryption fails or empty, keep original token
+                return token
+            }
+
+            return decrypted
+        }
+
+        return processed.joined(separator: " ")
+    }
+}

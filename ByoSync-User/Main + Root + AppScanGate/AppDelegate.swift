@@ -1,4 +1,3 @@
-
 import UIKit
 import Firebase
 import FirebaseMessaging
@@ -8,21 +7,20 @@ import FirebaseAuth
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
 
-    @StateObject private var cryptoManager = CryptoManager.shared
+    // Use a normal property, not @StateObject
+    private let cryptoManager = CryptoManager.shared
 
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         print("🚀 App launching...")
         
-        // Configure Firebase FIRST
         FirebaseApp.configure()
         print("✅ Firebase configured")
         
-        // Set delegates
         Messaging.messaging().delegate = self
         UNUserNotificationCenter.current().delegate = self
         print("✅ Delegates set")
         
-        // Request notification permissions
         requestNotificationPermissions(application)
         
         return true
@@ -51,24 +49,23 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
 
     // MARK: - APNs Token Registration
-    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+    func application(_ application: UIApplication,
+                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let tokenString = deviceToken.map { String(format: "%02x", $0) }.joined()
         print("🔐 Device Token Received: \(tokenString)")
         
-        // Set APNs token for Firebase Auth
         Auth.auth().setAPNSToken(deviceToken, type: .unknown)
         print("✅ APNs token set for Firebase Auth")
         
-        // Set APNs token for Firebase Messaging
         Messaging.messaging().apnsToken = deviceToken
         print("✅ APNs token set for Firebase Messaging")
         
-        // Now request FCM token since APNs is ready
         print("🔄 Requesting FCM token now that APNs is ready...")
         requestFCMToken()
     }
     
-    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+    func application(_ application: UIApplication,
+                     didFailToRegisterForRemoteNotificationsWithError error: Error) {
         print("❌ Failed to register for remote notifications: \(error.localizedDescription)")
         print("💡 Tip: Make sure you're testing on a real device, not simulator")
     }
@@ -87,8 +84,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             }
             
             print("🔑 FCM Token received: \(token)")
-            
-            // Save and upload
             self.handleFCMToken(token)
         }
     }
@@ -108,15 +103,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     private func handleFCMToken(_ token: String) {
         print("💾 Processing FCM token...")
         
-        // Update manager
         Task {
             await FCMTokenManager.shared.setToken(token)
         }
         
-        // Upload to Firestore
         uploadFCMToken(token)
         
-        // Notify observers
         NotificationCenter.default.post(
             name: NSNotification.Name("FCMTokenReceived"),
             object: nil,
@@ -127,7 +119,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     func uploadFCMToken(_ token: String) {
         guard let userId = Auth.auth().currentUser?.uid else {
             print("⚠️ No user logged in, saving token locally for later upload")
-            // Save for later when user logs in
             UserDefaults.standard.set(token, forKey: "pendingFCMToken")
             return
         }
@@ -161,11 +152,9 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         
         print("📬 Remote notification: \(notification)")
 
-        // Check if notification contains encrypted data and decrypt it
         if let encryptedPaymentDetails = notification["payment_details"] as? String {
             if let decryptedPaymentDetails = cryptoManager.decrypt(encryptedData: encryptedPaymentDetails) {
                 print("Decrypted Payment Details: \(decryptedPaymentDetails)")
-                // Optionally, you can update the notification content here or pass the decrypted data to a view
             } else {
                 print("Failed to decrypt payment details.")
             }
@@ -174,7 +163,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         completionHandler(.newData)
     }
 
-    func application(_ application: UIApplication, open url: URL,
+    func application(_ application: UIApplication,
+                     open url: URL,
                      options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
         if Auth.auth().canHandle(url) {
             return true
@@ -188,45 +178,43 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        var userInfo = notification.request.content.userInfo
+        let content = notification.request.content
+        let userInfo = content.userInfo
+
         print("📬 Foreground notification: \(userInfo)")
 
-        // Example: Decrypt encrypted payment details if present
-        if let encryptedPaymentDetails = userInfo["payment_details"] as? String {
-            if let decryptedPaymentDetails = cryptoManager.decrypt(encryptedData: encryptedPaymentDetails) {
-                // Update userInfo with decrypted data
-                userInfo["payment_details"] = decryptedPaymentDetails
-                print("Decrypted Payment Details: \(decryptedPaymentDetails)")
-            } else {
-                print("Failed to decrypt payment details.")
-            }
-        }
+        let originalBody = content.body
+        let originalTitle = content.title
 
-        // You may now create a custom local notification or handle the decrypted content as needed
-        // Present the notification with the decrypted content
+        print("📨 Original title = \(originalTitle)")
+        print("📨 Original body  = \(originalBody)")
+
+        let decryptedBody = decryptPaymentBodyIfNeeded(originalBody)
+
         let newContent = UNMutableNotificationContent()
-        newContent.title = notification.request.content.title
-        newContent.body = "Payment received: \(userInfo["payment_details"] ?? "Unknown")"
-        newContent.sound = .default
+        newContent.title = originalTitle
+        newContent.body  = decryptedBody
+        newContent.sound = UNNotificationSound.defaultCritical
+        newContent.userInfo = userInfo
 
-        // Create a new notification request with the updated content
         let request = UNNotificationRequest(
-            identifier: notification.request.identifier,
+            identifier: notification.request.identifier + "-decrypted",
             content: newContent,
-            trigger: notification.request.trigger
+            trigger: nil
         )
-        
+
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
-                print("❌ Failed to update notification: \(error.localizedDescription)")
+                print("❌ Failed to show decrypted foreground notification: \(error.localizedDescription)")
+            } else {
+                print("✅ Decrypted foreground notification scheduled")
             }
         }
-        
-        // Continue presenting the updated notification
-        completionHandler([.banner, .sound, .badge])
+
+        completionHandler([])
     }
 
-    func userNotificationCenter(
+    func userNotificationCenter( 
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
@@ -234,7 +222,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         var userInfo = response.notification.request.content.userInfo
         print("👆 Notification tapped: \(userInfo)")
 
-        // Example: Decrypt encrypted payment details if present
         if let encryptedPaymentDetails = userInfo["payment_details"] as? String {
             if let decryptedPaymentDetails = cryptoManager.decrypt(encryptedData: encryptedPaymentDetails) {
                 userInfo["payment_details"] = decryptedPaymentDetails
@@ -249,6 +236,14 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }
 
         completionHandler()
+    }
+
+    // MARK: - Payment Body Decryption Helper
+    private func decryptPaymentBodyIfNeeded(_ body: String) -> String {
+        let decrypted = cryptoManager.decryptPaymentMessage(body)
+        print("🔍 [AppDelegate] INPUT  = \(body)")
+        print("🔍 [AppDelegate] OUTPUT = \(decrypted)")
+        return decrypted.isEmpty ? body : decrypted
     }
 
     private func handleNotificationAction(type: String, data: [AnyHashable: Any]) {
@@ -272,4 +267,3 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }
     }
 }
-

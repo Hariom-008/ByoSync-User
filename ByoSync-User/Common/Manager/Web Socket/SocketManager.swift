@@ -18,7 +18,7 @@ final class SocketIOManager: ObservableObject {
     private var socket: SocketIOClient!
     private var isManualDisconnect = false
 
-    private init(urlString: String = "http://192.168.1.12:7000") {
+    private init(urlString: String = "https://backendapi.byosync.in") {
         setupSocket(urlString: urlString)
     }
 

@@ -54,13 +54,17 @@ struct PaymentReceivedResponse: Codable {
 }
 
 struct PaymentNotificationOverlay: View {
+    let cryptoManager = CryptoManager.shared
     let notification: PaymentNotification
     @Binding var isShowing: Bool
     var onDismiss: (() -> Void)? = nil
+    
     @State private var dragOffset: CGFloat = 0
     @State private var isDragging = false
     
-    private let primaryGreen = Color.green
+    // Brand & semantic colors
+    private let brandColor = Color(hex: "4B548D")
+    private let accentGreen = Color.green
     
     var body: some View {
         VStack {
@@ -87,12 +91,14 @@ struct PaymentNotificationOverlay: View {
                             }
                         }
                 )
+            
             Spacer()
         }
+        .ignoresSafeArea(edges: .top)
         .onAppear {
-            // 👇 Automatically dismiss after 4 seconds
+            // 🔔 Auto-dismiss after 4 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                if isShowing { // avoid double-dismiss
+                if isShowing {       // avoid double-dismiss
                     dismissNotification()
                 }
             }
@@ -101,13 +107,30 @@ struct PaymentNotificationOverlay: View {
     }
     
     private var notificationCard: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(notification.message ?? "Nil")
-                        .font(.system(size: 12, weight: .semibold))
+        let decrypted = cryptoManager.decryptPaymentMessage(notification.message)
+        let messageText = decrypted.isEmpty ? (notification.message ?? "") : decrypted
+        
+        return VStack(alignment: .leading, spacing: 10) {
+            // Top row: icon + title + close button
+            HStack(alignment: .center, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.18))
+                        .frame(width: 34, height: 34)
+                    
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.white)
-                        .padding(.top, 2)
+                }
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Payment notification")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                    
+                    Text("Just now")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
                 }
                 
                 Spacer(minLength: 12)
@@ -116,44 +139,65 @@ struct PaymentNotificationOverlay: View {
                     ZStack {
                         Circle()
                             .fill(Color.white.opacity(0.12))
-                            .frame(width: 32, height: 32)
+                            .frame(width: 28, height: 28)
                         
                         Image(systemName: "xmark")
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.85))
+                            .foregroundColor(.white.opacity(0.9))
                     }
                 }
                 .buttonStyle(ScaleButtonStyle())
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            
+            // Message body
+            if !messageText.isEmpty {
+                Text(messageText)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.white)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
+                    .padding(.top, 2)
+            }
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: 120)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
         .background(
             ZStack {
                 LinearGradient(
-                    gradient: Gradient(colors: [primaryGreen, primaryGreen]),
+                    gradient: Gradient(colors: [
+                        brandColor,
+                        brandColor.opacity(0.9)
+                    ]),
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
-                Color.white.opacity(0.03)
+                
+                // Subtle overlay stripe
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color.white.opacity(0.09),
+                        Color.clear
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .blendMode(.screen)
             }
         )
-        .clipShape(RoundedRectangle(cornerRadius: 28))
-        .shadow(color: primaryGreen.opacity(0.25), radius: 24, x: 0, y: 12)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: brandColor.opacity(0.35), radius: 22, x: 0, y: 14)
         .overlay(
-            RoundedRectangle(cornerRadius: 28)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            Color.white.opacity(0.25),
-                            Color.white.opacity(0.08)
+                            Color.white.opacity(0.30),
+                            Color.white.opacity(0.06)
                         ]),
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
-                    lineWidth: 1
+                    lineWidth: 0.8
                 )
         )
     }
@@ -163,42 +207,5 @@ struct PaymentNotificationOverlay: View {
             isShowing = false
         }
         onDismiss?()
-    }
-}
-
-
-// MARK: - Notification Manager
-class PaymentNotificationManager: ObservableObject {
-    @Published var currentNotification: PaymentNotification?
-    @Published var isShowing: Bool = false
-    private var dismissWorkItem: DispatchWorkItem?
-    
-    func showNotification(_ notification: PaymentNotification) {
-        // Cancel any pending dismiss
-        dismissWorkItem?.cancel()
-        
-        currentNotification = notification
-        withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
-            isShowing = true
-        }
-        
-        // Auto-dismiss after 5 seconds
-        let workItem = DispatchWorkItem { [weak self] in
-            self?.dismissNotification()
-        }
-        dismissWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: workItem)
-    }
-    
-    func dismissNotification() {
-        dismissWorkItem?.cancel()
-        
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-            isShowing = false
-        }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            self.currentNotification = nil
-        }
     }
 }

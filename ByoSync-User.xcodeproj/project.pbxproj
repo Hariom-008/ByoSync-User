@@ -578,22 +578,17 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/ByoSync-User/Frameworks",
 					"$(inherited)",
-					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
-					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
-					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
-					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
-					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
-					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
 				);
 				GCC_PREFIX_HEADER = "$(SRCROOT)/PrefixHeader.pch";
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
-					"$(PROJECT_DIR)/ByoSync-User/Frameworks/ncnn.framework/Versions/A/Headers/**",
-					"$(PROJECT_DIR)/ByoSync-User/Frameworks/ncnn.framework/Versions/A/Headers/**",
-					"$(PROJECT_DIR)/**",
+					"$(PROJECT_DIR)/ByoSync-User/Frameworks/ncnn.framework/Versions/A/Headers",
+					"$(PROJECT_DIR)/ByoSync-User/Frameworks/ncnn.framework/Versions/A/Headers",
+					"$(PROJECT_DIR)",
 				);
 				INFOPLIST_FILE = "ByoSync-User/Info.plist";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Allow to camera access to proceed for payment and scan.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to fetch nearby users in the area";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -635,17 +630,17 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/ByoSync-User/Frameworks",
 					"$(inherited)",
-					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
-					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
-					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
-					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
-					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
-					"$(PROJECT_DIR)/ByoSync-User/Frameworks\\ 2",
 				);
 				GCC_PREFIX_HEADER = "$(SRCROOT)/PrefixHeader.pch";
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/ByoSync-User/Frameworks/ncnn.framework/Versions/A/Headers",
+					"$(PROJECT_DIR)/ByoSync-User/Frameworks/ncnn.framework/Versions/A/Headers",
+					"$(PROJECT_DIR)",
+				);
 				INFOPLIST_FILE = "ByoSync-User/Info.plist";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Allow to camera access to proceed for payment and scan.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to fetch nearby users in the area";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

@@ -1,10 +1,15 @@
 import UserNotifications
 import UniformTypeIdentifiers
 
+private func log(_ msg: String) {
+    print("🟩 [NSE] \(msg)")
+}
+
 final class NotificationService: UNNotificationServiceExtension {
 
     private var contentHandler: ((UNNotificationContent) -> Void)?
     private var bestAttemptContent: UNMutableNotificationContent?
+    private let cryptoManager = CryptoManager.shared
 
     override func didReceive(
         _ request: UNNotificationRequest,
@@ -14,60 +19,75 @@ final class NotificationService: UNNotificationServiceExtension {
         self.bestAttemptContent = (request.content.mutableCopy() as? UNMutableNotificationContent)
 
         guard let content = bestAttemptContent else {
+            log("❌ bestAttemptContent is nil")
             contentHandler(request.content)
             return
         }
 
-        print("📬 Notification Service Extension triggered")
-        print("📦 UserInfo: \(content.userInfo)")
+        log("📬 Notification triggered")
+        log("📦 Full UserInfo: \(content.userInfo)")
 
-        // Extract and decrypt only the last part of the body (the encrypted names)
-        if let body = content.userInfo["body"] as? String {
-            let decryptedBody = decryptBody(body)
-            if let decryptedBody = decryptedBody {
-                // Update the body with decrypted message
-                content.body = decryptedBody
-                print("✅ Decrypted body: \(decryptedBody)")
-            } else {
-                print("⚠️ Failed to decrypt the body.")
-            }
+        // Log all keys individually for safety
+        content.userInfo.forEach { key, value in
+            log("🔑 Key: \(key) | Value: \(value)")
         }
 
-        // Extract image URL from notification payload
+        let rawBody: String
+        if let bodyFromData = content.userInfo["body"] as? String {
+            log("📨 RAW body from data.body: \(bodyFromData)")
+            rawBody = bodyFromData
+        } else {
+            rawBody = content.body
+            log("📨 RAW body from content.body: \(rawBody)")
+        }
+
+        // ✅ Now this uses the shared token-decrypting logic
+        let decryptedBody = decryptPaymentBodyIfNeeded(rawBody)
+
+        log("✅ FINAL Decrypted body: \(decryptedBody)")
+        content.body = decryptedBody
+        
+        
+        // IMAGE LOGGING
         var imageURLString: String?
         if let customImage = content.userInfo["image"] as? String {
             imageURLString = customImage
+            log("🖼 Found image in data.image: \(customImage)")
         } else if let fcmOptions = content.userInfo["fcm_options"] as? [String: Any],
                   let image = fcmOptions["image"] as? String {
             imageURLString = image
+            log("🖼 Found image in fcm_options.image: \(image)")
+        } else {
+            log("⚠️ No image found in payload")
         }
 
         guard let imageURLString = imageURLString,
               let url = URL(string: imageURLString) else {
-            print("⚠️ No image URL found, delivering text-only notification")
+            log("⚠️ Invalid image URL")
             contentHandler(content)
             return
         }
 
-        print("🖼️ Downloading image from: \(url.absoluteString)")
+        log("⬇️ Downloading image from URL: \(url.absoluteString)")
 
-        // Download image with timeout
         downloadImage(from: url) { [weak self] localURL in
             guard let self = self, let content = self.bestAttemptContent else {
+                log("❌ NSE expired before attaching media")
                 contentHandler(request.content)
                 return
             }
 
             if let localURL = localURL {
-                print("✅ Image downloaded successfully")
+                log("📁 Image saved at: \(localURL.path)")
                 self.attachMedia(to: content, from: localURL)
             } else {
-                print("❌ Failed to download image")
+                log("❌ Image download failed")
             }
 
             contentHandler(content)
         }
     }
+
 
     override func serviceExtensionTimeWillExpire() {
         print("⏰ Extension time expiring, delivering notification")
@@ -76,63 +96,54 @@ final class NotificationService: UNNotificationServiceExtension {
         }
     }
 
-    // MARK: - Helper Methods
+    // MARK: - Decryption helpers
 
-    private func decryptBody(_ body: String) -> String? {
-        // Extract the encrypted part (after 'from ') and split by space
-        if let range = body.range(of: "from ") {
-            let encryptedData = body[range.upperBound...]  // Everything after "from "
-            
-            // Split the encrypted data into first and last name parts
-            let components = encryptedData.split(separator: " ")
-            if components.count == 2 {
-                let firstNameEncrypted = String(components[0])
-                let lastNameEncrypted = String(components[1])
-
-                // Decrypt both parts
-                let firstNameDecrypted = CryptoManager.shared.decrypt(encryptedData: firstNameEncrypted)
-                let lastNameDecrypted = CryptoManager.shared.decrypt(encryptedData: lastNameEncrypted)
-
-                // If both parts are decrypted successfully, reconstruct the body
-                if let decryptedFirstName = firstNameDecrypted, let decryptedLastName = lastNameDecrypted {
-                    return body.replacingOccurrences(of: encryptedData, with: "\(decryptedFirstName) \(decryptedLastName)")
-                }
-            }
-        }
-        return nil
+    /// Wraps `decryptedMessage` but falls back to the raw body if decryption fails.
+    private func decryptPaymentBodyIfNeeded(_ rawBody: String) -> String {
+        let candidate = cryptoManager.decryptPaymentMessage(rawBody)
+        return candidate.isEmpty ? rawBody : candidate
     }
 
+
+
     private func downloadImage(from url: URL, completion: @escaping (URL?) -> Void) {
+        log("🌐 Starting image download...")
+
         let session = URLSession(configuration: .default)
-        
         let task = session.dataTask(with: url) { data, response, error in
-            guard let data = data,
-                  error == nil,
-                  let mimeType = response?.mimeType else {
-                print("❌ Download failed: \(error?.localizedDescription ?? "Unknown error")")
+
+            if let error = error {
+                log("❌ Image download error: \(error)")
                 completion(nil)
                 return
             }
 
-            // Determine file extension
-            let ext = self.fileExtension(fromMimeType: mimeType, url: url)
-            
-            // Create temporary file URL with proper extension
-            let tmpDirectory = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            let tmpFileURL = tmpDirectory
+            log("📡 HTTP Response mimeType: \(response?.mimeType ?? "nil")")
+            log("📊 Image size: \(data?.count ?? 0) bytes")
+
+            guard let data = data else {
+                log("❌ No data received")
+                completion(nil)
+                return
+            }
+
+            let ext = self.fileExtension(fromMimeType: response?.mimeType ?? "", url: url)
+            log("🗂 Using file extension: \(ext)")
+
+            let tmpURL = URL(fileURLWithPath: NSTemporaryDirectory())
                 .appendingPathComponent(UUID().uuidString)
                 .appendingPathExtension(ext)
 
             do {
-                try data.write(to: tmpFileURL, options: .atomic)
-                print("💾 Image saved to: \(tmpFileURL.path)")
-                completion(tmpFileURL)
+                try data.write(to: tmpURL)
+                log("💾 Saved image at: \(tmpURL.path)")
+                completion(tmpURL)
             } catch {
-                print("❌ Failed to write image: \(error.localizedDescription)")
+                log("❌ Failed to write image: \(error)")
                 completion(nil)
             }
         }
-        
+
         task.resume()
     }
 
