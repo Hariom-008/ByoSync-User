@@ -141,21 +141,23 @@ struct AuthenticationView: View {
             .navigationDestination(isPresented: $openEnterNumber) {
                 EnterNumberView()
             }
-            .navigationDestination(isPresented: $openTestingView, destination: {
-                MLScanView {
-                    print("😌 Face Detection is complete you can now LOGIN")
-                }
-            })
+            .navigationDestination(isPresented: $openTestingView) {
+                #if DEBUG
+                UserDataByIdView(mode: .mockContent)
+                #else
+                UserDataByIdView()
+                #endif
+            }
             .alert(deviceAlertMessage, isPresented: $showDeviceAlert) {
                 Button("OK", role: .cancel) { }
             }
-//            .toolbar{
-//                Button{
-//                    openTestingView.toggle()
-//                }label: {
-//                    Text("Testing")
-//                }
-//            }
+            .toolbar{
+                Button{
+                    openTestingView.toggle()
+                }label: {
+                    Text("Testing")
+                }
+            }
             
             // 🔁 Decide what to do when API call finishes
             .onChange(of: deviceRegistrationVM.isLoading) { isLoading in

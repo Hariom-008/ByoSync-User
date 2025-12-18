@@ -78,3 +78,28 @@ final class UserDataByIdViewModel: ObservableObject {
         isPrimaryDevice = false
     }
 }
+#if DEBUG
+extension UserDataByIdViewModel {
+    func loadMock() {
+        isLoading = false
+        errorText = nil
+        message = "Mock data loaded"
+        user = .mock
+        device = .mockPrimary
+
+        wallet = user?.wallet ?? 0
+        chai = user?.chai ?? 0
+        isPrimaryDevice = device?.isPrimary ?? false
+    }
+
+    func loadMockLoading() {
+        reset()
+        isLoading = true
+    }
+
+    func loadMockError(_ text: String = "Mock error: something failed") {
+        reset()
+        errorText = text
+    }
+}
+#endif

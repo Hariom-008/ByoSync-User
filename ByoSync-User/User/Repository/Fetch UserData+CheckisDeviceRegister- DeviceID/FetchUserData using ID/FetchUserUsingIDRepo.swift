@@ -129,12 +129,6 @@ final class UserDataByIdRepository: UserDataByIdRepositoryProtocol {
             userId: userId,
             deviceKeyHash: deviceKeyHash
         )
-
-//        let params: Parameters = [
-//            "userId": userId,
-//            "deviceKeyHash": deviceKeyHash
-//        ]
-
         client.request(
             endpoint,
             method: .get,
