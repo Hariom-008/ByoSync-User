@@ -149,13 +149,13 @@ struct AuthenticationView: View {
             .alert(deviceAlertMessage, isPresented: $showDeviceAlert) {
                 Button("OK", role: .cancel) { }
             }
-            .toolbar{
-                Button{
-                    openTestingView.toggle()
-                }label: {
-                    Text("Testing")
-                }
-            }
+//            .toolbar{
+//                Button{
+//                    openTestingView.toggle()
+//                }label: {
+//                    Text("Testing")
+//                }
+//            }
             
             // 🔁 Decide what to do when API call finishes
             .onChange(of: deviceRegistrationVM.isLoading) { isLoading in
