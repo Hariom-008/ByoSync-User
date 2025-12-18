@@ -64,19 +64,19 @@ struct AuthenticationView: View {
                     
                     VStack(spacing: 16) {
                         // LOGIN
-                        Button(action: { openLoginSheet.toggle() }) {
-                            Text(L("login"))
-                                .fontWeight(.semibold)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 56)
-                                .background(Color(hex: "4B548D"))
-                                .foregroundColor(.white)
-                                .cornerRadius(16)
-                                .shadow(
-                                    color: Color(hex: "4B548D").opacity(0.3),
-                                    radius: 8, x: 0, y: 4
-                                )
-                        }
+//                        Button(action: { openLoginSheet.toggle() }) {
+//                            Text(L("login"))
+//                                .fontWeight(.semibold)
+//                                .frame(maxWidth: .infinity)
+//                                .frame(height: 56)
+//                                .background(Color(hex: "4B548D"))
+//                                .foregroundColor(.white)
+//                                .cornerRadius(16)
+//                                .shadow(
+//                                    color: Color(hex: "4B548D").opacity(0.3),
+//                                    radius: 8, x: 0, y: 4
+//                                )
+//                        }
                         
                         // REGISTER
                         Button(action: {
