@@ -190,11 +190,6 @@ struct DirectionalGuidanceOverlay: View {
             } else {
                 Spacer()
             }
-            
-            // Bottom checklist
-            bottomChecklist
-                .padding(.horizontal, 16)
-                .padding(.bottom, 44)
         }
     }
     
@@ -253,36 +248,6 @@ struct DirectionalGuidanceOverlay: View {
         }
     }
     
-    // MARK: - Bottom Checklist
-    
-    private var bottomChecklist: some View {
-        VStack(spacing: 6) {
-            Text("Place face in oval and adjust as per directions provided")
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundColor(.white.opacity(0.9))
-                .multilineTextAlignment(.center)
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.25),
-                                    Color.white.opacity(0.08)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
-        )
-        .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
-    }
     
     // MARK: - Success Celebration
     
