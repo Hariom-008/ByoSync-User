@@ -23,6 +23,7 @@ struct UserAPIEndpoint{
     // (GET) Fetch Logged In User Data
     struct UserData{
         static let getUserData = "\(baseURL)/api/v1/users/get-user-data"
+        
     }
     
     
