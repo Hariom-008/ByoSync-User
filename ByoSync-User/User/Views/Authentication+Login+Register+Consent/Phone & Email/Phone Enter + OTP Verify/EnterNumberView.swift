@@ -4,6 +4,7 @@ struct EnterNumberView: View {
     @StateObject private var viewModel = PhoneOTPViewModel()
     @EnvironmentObject var router: Router
     @FocusState private var isPhoneFieldFocused: Bool
+    @Environment(\.dismiss) var dismiss
 
     let countryCodes = ["+91"]
 
@@ -137,7 +138,7 @@ struct EnterNumberView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: { router.pop() }) {
+                Button(action: { dismiss() }) {
                     Image(systemName: "chevron.left")
                         .foregroundColor(.primary)
                         .fontWeight(.medium)
