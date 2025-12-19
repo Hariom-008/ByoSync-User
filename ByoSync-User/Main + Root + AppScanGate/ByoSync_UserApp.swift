@@ -36,6 +36,7 @@ struct ByoSync_UserApp: App {
             }
             .onAppear {
                 print("🚀 [APP] App appeared, connecting socket")
+               
                 socketManager.connect()
             }
             .onChange(of: scenePhase) { oldPhase, newPhase in

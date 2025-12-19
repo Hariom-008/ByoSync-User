@@ -4,9 +4,9 @@ struct EnterNumberView: View {
     @StateObject private var viewModel = PhoneOTPViewModel()
     @EnvironmentObject var router: Router
     @FocusState private var isPhoneFieldFocused: Bool
-    
+
     let countryCodes = ["+91"]
-    
+
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
@@ -15,28 +15,28 @@ struct EnterNumberView: View {
                     Text("Enter your phone number")
                         .font(.title2)
                         .fontWeight(.bold)
-                    
+
                     Text("We'll send you a verification code via SMS")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
                 .padding(.top, 60)
                 .padding(.bottom, 40)
-                
+
                 // Phone Number Input
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Phone Number")
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .foregroundColor(.secondary)
-                    
+
                     HStack(spacing: 12) {
                         // Country Code Picker
                         Menu {
                             ForEach(countryCodes, id: \.self) { code in
-                                Button(action: {
+                                Button {
                                     viewModel.selectedCountryCode = code
-                                }) {
+                                } label: {
                                     HStack {
                                         Text(code)
                                         if viewModel.selectedCountryCode == code {
@@ -59,7 +59,7 @@ struct EnterNumberView: View {
                             .background(Color(.systemGray6))
                             .cornerRadius(10)
                         }
-                        
+
                         // Phone Number Field
                         TextField("6234567890", text: $viewModel.phoneNumber)
                             .keyboardType(.phonePad)
@@ -69,23 +69,22 @@ struct EnterNumberView: View {
                             .padding(.vertical, 16)
                             .background(Color(.systemGray6))
                             .cornerRadius(10)
-                            .onChange(of: viewModel.phoneNumber) { oldValue, newValue in
+                            .onChange(of: viewModel.phoneNumber) { _, newValue in
+                                // Keep digits only + max 10
                                 let filtered = newValue.filter { $0.isNumber }
-                                if filtered.count <= 10 {
-                                    viewModel.phoneNumber = filtered
-                                    viewModel.updatePhoneNumber(filtered)
-                                } else {
-                                    viewModel.phoneNumber = String(filtered.prefix(10))
-                                    viewModel.updatePhoneNumber(String(filtered.prefix(10)))
+                                let clipped = String(filtered.prefix(10))
+                                if viewModel.phoneNumber != clipped {
+                                    viewModel.phoneNumber = clipped
                                 }
+                                viewModel.updatePhoneNumber(clipped)
                             }
                     }
-                    
+
                     Text("Enter 10 digit mobile number starting with 6-9")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .padding(.top, 2)
-                    
+
                     if let errorMessage = viewModel.errorMessage {
                         Text(errorMessage)
                             .font(.caption)
@@ -94,15 +93,14 @@ struct EnterNumberView: View {
                     }
                 }
                 .padding(.horizontal, 24)
-                
+
                 Spacer()
-                
+
                 // Continue Button
-                Button(action: {
+                Button {
                     isPhoneFieldFocused = false
-                    // Changed to backend OTP
-                    viewModel.sendOTPonBackend()
-                }) {
+                    viewModel.sendOTP() // ✅ Firebase
+                } label: {
                     HStack(spacing: 8) {
                         if viewModel.isLoading {
                             ProgressView()
@@ -119,8 +117,8 @@ struct EnterNumberView: View {
                     .padding(.vertical, 16)
                     .background(
                         viewModel.isValidPhoneNumber && !viewModel.isLoading
-                            ? Color.indigo
-                            : Color.gray
+                        ? Color.indigo
+                        : Color.gray
                     )
                     .cornerRadius(12)
                 }
@@ -128,10 +126,8 @@ struct EnterNumberView: View {
                 .padding(.horizontal, 24)
                 .padding(.bottom, 40)
             }
-            .onTapGesture {
-                isPhoneFieldFocused = false
-            }
-            
+            .onTapGesture { isPhoneFieldFocused = false }
+
             if viewModel.isLoading {
                 Color.black.opacity(0.2)
                     .ignoresSafeArea()
@@ -141,10 +137,7 @@ struct EnterNumberView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: {
-                    print("⬅️ [VIEW] Back button tapped")
-                    router.pop()
-                }) {
+                Button(action: { router.pop() }) {
                     Image(systemName: "chevron.left")
                         .foregroundColor(.primary)
                         .fontWeight(.medium)
@@ -154,27 +147,18 @@ struct EnterNumberView: View {
         .alert("Error", isPresented: $viewModel.showError) {
             Button("OK", role: .cancel) {}
         } message: {
-            if let errorMessage = viewModel.errorMessage {
-                Text(errorMessage)
-            }
+            Text(viewModel.errorMessage ?? "Something went wrong.")
         }
-        .onChange(of: viewModel.otpSent) { _, newValue in
-            if newValue {
-                print("✅ [VIEW] OTP sent via backend, navigating to verification")
-                
-                // Show received OTP in console for testing
-                if let otp = viewModel.receivedOTP {
-                    print("🔐 [VIEW] Received OTP for testing: \(otp)")
-                }
-                
-                router.navigate(to: .otpVerification(
+        .onChange(of: viewModel.otpSent) { _, sent in
+            guard sent else { return }
+
+            router.navigate(
+                to: .otpVerification(
                     phoneNumber: viewModel.fullPhoneNumber,
                     viewModel: viewModel
-                ), style: .push)
-            }
-        }
-        .onAppear {
-            print("👀 [VIEW] EnterNumberView appeared")
+                ),
+                style: .push
+            )
         }
     }
 }

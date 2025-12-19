@@ -16,6 +16,7 @@ struct UserDataByIdView: View {
     
     @StateObject private var viewModel: UserDataByIdViewModel
     @StateObject private var userSession: UserSession = UserSession.shared
+    let cryptoManager = CryptoManager.shared
     
     @MainActor
     init(mode: Mode = .live, viewModel: UserDataByIdViewModel? = nil) {
@@ -179,14 +180,13 @@ private func profileHeaderView(user: UserByIdDTO) -> some View {
                 .overlay(Circle().stroke(Color.white, lineWidth: 4))
                 .shadow(radius: 5)
         }
-        
         // Name
-        Text("\(user.firstName) \(user.lastName)")
+        Text("\(cryptoManager.decrypt(encryptedData: user.firstName) ?? "nil") \( cryptoManager.decrypt(encryptedData: user.lastName) ?? "nil")")
             .font(.title2.bold())
         
         // Email with verification badge
         HStack(spacing: 4) {
-            Text(user.email)
+            Text(cryptoManager.decrypt(encryptedData: user.email) ?? "nil")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             
@@ -199,7 +199,7 @@ private func profileHeaderView(user: UserByIdDTO) -> some View {
         
         // Phone Number
         if !user.phoneNumber.isEmpty {
-            Text(user.phoneNumber)
+            Text(cryptoManager.decrypt(encryptedData:user.phoneNumber) ?? "nil")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
@@ -259,7 +259,7 @@ private func statsCardsView(user: UserByIdDTO) -> some View {
         statCard(
             title: "Wallet",
             value: String(format: "%.2f", viewModel.wallet),
-            icon: "dollarsign.circle.fill",
+            icon: "indianrupeesign",
             color: .green
         )
         
