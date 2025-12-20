@@ -34,6 +34,10 @@ struct ByoSync_UserApp: App {
 
                // GlobalPaymentOverlayView()
             }
+            .onOpenURL { url in
+                    // This is the bridge that fixes the "Blank Screen"
+                    Auth.auth().canHandle(url)
+            }
             .onAppear {
                 print("🚀 [APP] App appeared, connecting socket")
                
@@ -61,5 +65,6 @@ struct ByoSync_UserApp: App {
                 }
             }
         }
+      
     }
 }
