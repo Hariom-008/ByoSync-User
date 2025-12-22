@@ -144,23 +144,23 @@ struct AuthenticationView: View {
             .navigationDestination(isPresented: $openEnterNumber) {
                 EnterNumberView()
             }
-//            .navigationDestination(isPresented: $openTestingView) {
-//                #if DEBUG
-//                UserDataByIdView(mode: .mockContent)
-//                #else
-//                UserDataByIdView()
-//                #endif
-//            }
+            .navigationDestination(isPresented: $openTestingView) {
+                #if DEBUG
+                UserConsentView(onComplete: {
+                    print("Consent Given!!")
+                })
+                #endif
+            }
             .alert(deviceAlertMessage, isPresented: $showDeviceAlert) {
                 Button("OK", role: .cancel) { }
             }
-//            .toolbar{
-//                Button{
-//                    openTestingView.toggle()
-//                }label: {
-//                    Text("Testing")
-//                }
-//            }
+            .toolbar{
+                Button{
+                    openTestingView.toggle()
+                }label: {
+                    Text("Testing")
+                }
+            }
             
             // 🔁 Decide what to do when API call finishes
             .onChange(of: deviceRegistrationVM.isLoading) { isLoading in
