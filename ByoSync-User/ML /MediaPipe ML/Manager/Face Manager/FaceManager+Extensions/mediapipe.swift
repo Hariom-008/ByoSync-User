@@ -90,6 +90,8 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
         // Process on main queue
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
+            self.lastDetectionTimestampMs = timestampInMilliseconds
+
             
             // Store coordinates
             self.CameraFeedCoordinates = coords

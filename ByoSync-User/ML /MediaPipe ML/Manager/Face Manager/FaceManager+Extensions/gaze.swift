@@ -10,7 +10,6 @@ import Foundation
 
 // MARK: - Gaze Tracking
 extension FaceManager {
-    
     // MARK: - Helper Functions
     
     /// Calculates mean of subset of coordinates by landmark indices

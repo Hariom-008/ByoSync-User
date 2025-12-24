@@ -156,38 +156,42 @@ extension FaceManager {
         // ----------------------------------------------------------------
         // Log summary
         // ----------------------------------------------------------------
-//        print("""
-//        📏 Pattern Vector Computed:
-//           Total elements: \(allDistances.count) [expected 363]
-//           - Reference (33-263):     1
-//           - Mandatory×Mandatory:    \(mandatoryCount) [expected 135]
-//           - Optional chain:         \(optionalChainCount) [expected 10]
-//           - Optional×Mandatory:     \(bipartiteCount) [expected 170]
-//           - Angles:                 \(anglesCount) [expected 47]
-//        """)
+        //        print("""
+        //        📏 Pattern Vector Computed:
+        //           Total elements: \(allDistances.count) [expected 363]
+        //           - Reference (33-263):     1
+        //           - Mandatory×Mandatory:    \(mandatoryCount) [expected 135]
+        //           - Optional chain:         \(optionalChainCount) [expected 10]
+        //           - Optional×Mandatory:     \(bipartiteCount) [expected 170]
+        //           - Angles:                 \(anglesCount) [expected 47]
+        //        """)
         
         // Sanity check
-//        if allDistances.count != 363 {
-//            print("⚠️ WARNING: Expected 363 elements, got \(allDistances.count)")
-//        }
+        //        if allDistances.count != 363 {
+        //            print("⚠️ WARNING: Expected 363 elements, got \(allDistances.count)")
+        //        }
         // ----------------------------------------------------------------
         // CONDITION CHECK with detailed logging
         // ----------------------------------------------------------------
-//        print("""
-//        🔍 Frame Collection Conditions:
-//           isFaceReal:      \(isFaceReal)
-//           ratioIsInRange:  \(ratioIsInRange)
-//           isHeadPoseStable: \(isHeadPoseStable())
-//           Pitch: \(Pitch), Yaw: \(Yaw), Roll: \(Roll)
-//           Ratio: \(irisDistanceRatio ?? -1)
-//        """)
-//        
+        //        print("""
+        //        🔍 Frame Collection Conditions:
+        //           isFaceReal:      \(isFaceReal)
+        //           ratioIsInRange:  \(ratioIsInRange)
+        //           isHeadPoseStable: \(isHeadPoseStable())
+        //           Pitch: \(Pitch), Yaw: \(Yaw), Roll: \(Roll)
+        //           Ratio: \(irisDistanceRatio ?? -1)
+        //        """)
+        //
         // LIVENESS GATE: Only store if ALL conditions pass
-       
+        
         if iodIsValid && isNoseTipCentered && isHeadPoseStable() && !allDistances.isEmpty {
             AllFramesOptionalAndMandatoryDistance.append(allDistances)
             totalFramesCollected = AllFramesOptionalAndMandatoryDistance.count
             frameRecordedTrigger.toggle()
+            
+            // ✅ Upload the image for THIS accepted frame
+            enqueueAcceptedFrameUpload(frameIndex: totalFramesCollected)
+            
             print("""
             ✅ FRAME ACCEPTED & STORED:
                frameIndex (1-based) = \(totalFramesCollected)

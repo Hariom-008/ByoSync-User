@@ -72,8 +72,23 @@ final class FaceManager: NSObject, ObservableObject {
     let errorWindowPx: CGFloat = 55.0
     // Updated by IODGate.swift
     @Published var iodGuidance: DistanceGuidance = .noFace
-
     
+    @Published var acceptedFrameUploads: [AcceptedFrameUpload] = []
+
+    // Limit concurrent uploads (avoid 80 parallel uploads)
+     let frameUploadSemaphore = DispatchSemaphore(value: 2)
+
+    // Store last MediaPipe callback timestamp so the acceptor can tag uploads
+    var lastDetectionTimestampMs: Int = 0
+
+    struct AcceptedFrameUpload: Identifiable {
+        let id = UUID()
+        let frameIndex: Int
+        let timestampMs: Int
+        var url: String? = nil
+        var error: String? = nil
+    }
+
     
     // MARK: - Internal Calculation Buffers
     var rawMediaPipePoints: [(x: Float, y: Float)] = []
