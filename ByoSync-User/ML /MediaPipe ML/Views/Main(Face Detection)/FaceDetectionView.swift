@@ -149,10 +149,8 @@ struct FaceDetectionView: View {
                 MediapipeCameraPreviewView(faceManager: faceManager)
                     .ignoresSafeArea()
 
-                // Face detection overlays
-                FacePointsOverlay(faceManager: faceManager)
                 TargetFaceOvalOverlay(faceManager: faceManager)
-                FaceOvalOverlay(faceManager: faceManager)
+
                 DirectionalGuidanceOverlay(faceManager: faceManager)
 
                 // Nose center overlay

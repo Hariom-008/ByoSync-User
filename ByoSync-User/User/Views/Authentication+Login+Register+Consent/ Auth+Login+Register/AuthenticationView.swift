@@ -146,9 +146,9 @@ struct AuthenticationView: View {
             }
             .navigationDestination(isPresented: $openTestingView) {
                 #if DEBUG
-                UserConsentView(onComplete: {
-                    print("Consent Given!!")
-                })
+                MLScanView {
+                    print("MLScan Opened!")
+                }
                 #endif
             }
             .alert(deviceAlertMessage, isPresented: $showDeviceAlert) {

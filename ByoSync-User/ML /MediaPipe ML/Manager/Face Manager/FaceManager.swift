@@ -64,7 +64,15 @@ final class FaceManager: NSObject, ObservableObject {
     @Published var currentDistanceRatio: CGFloat = 0.0
     @Published var isNoseTipCentered:Bool = false
     
+    // FaceManager.swift
+    @Published var iodNormalized: Float = 0
+    @Published var iodPixels: Float = 0
+    @Published var iodIsValid: Bool = false
+    
     let errorWindowPx: CGFloat = 55.0
+    // Updated by IODGate.swift
+    @Published var iodGuidance: DistanceGuidance = .noFace
+
     
     
     // MARK: - Internal Calculation Buffers

@@ -183,11 +183,11 @@ extension FaceManager {
 //        """)
 //        
         // LIVENESS GATE: Only store if ALL conditions pass
-        if isFaceReal && ratioIsInRange && isHeadPoseStable() && allDistances.count != 0{
+       
+        if iodIsValid && isNoseTipCentered && isHeadPoseStable() && !allDistances.isEmpty {
             AllFramesOptionalAndMandatoryDistance.append(allDistances)
             totalFramesCollected = AllFramesOptionalAndMandatoryDistance.count
             frameRecordedTrigger.toggle()
-            
             print("""
             ✅ FRAME ACCEPTED & STORED:
                frameIndex (1-based) = \(totalFramesCollected)
@@ -202,13 +202,6 @@ extension FaceManager {
             if !isFaceReal { reasons.append("SPOOF") }
             if !ratioIsInRange { reasons.append("DISTANCE") }
             if !isHeadPoseStable() { reasons.append("HEAD_POSE") }
-            
-//            print("""
-//            ❌ FRAME REJECTED:
-//               Reasons: \(reasons.joined(separator: ", "))
-//               rejectedFrames = \(rejectedFrames)
-//               vector computed (len=\(allDistances.count)) but NOT stored
-//            """)
         }
     }
 }

@@ -50,8 +50,15 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
                 self.CameraFeedCoordinates = []
                 self.CalculationCoordinates = []
                 self.ScreenCoordinates = []
+                self.rawMediaPipePoints = []
                 self.irisDistanceRatio = nil
                 self.ratioIsInRange = false
+
+                self.TargetFaceOvalCoordinates.removeAll()
+                self.TransalatedScaledFaceOvalCoordinates.removeAll()
+                self.FaceOvalIsInTarget = false
+
+                self.resetIODGate()
             }
             return
         }
@@ -64,11 +71,9 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
         
         let frameWidth = Float(imageSize.width)
         let frameHeight = Float(imageSize.height)
-        // Store RAW MediaPipe normalized points (0–1)
-        let rawPoints: [(x: Float, y: Float)] = firstFace.map { lm in
-            (x: lm.x, y: lm.y)
-        }
-         rawMediaPipePoints = rawPoints
+
+        // RAW MediaPipe normalized points (0–1)
+        let rawPoints: [(x: Float, y: Float)] = firstFace.map { lm in (x: lm.x, y: lm.y) }
         
         // Transform landmarks to camera feed coordinates
         let coords: [(x: Float, y: Float)] = firstFace.map { lm in
@@ -89,33 +94,30 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
             // Store coordinates
             self.CameraFeedCoordinates = coords
             self.CalculationCoordinates = calcCoords
+            self.rawMediaPipePoints = rawPoints
 
-            // ✅ FIXED: Convert to screen coordinates with proper aspect-fill handling
+            // IOD gate (per-frame)
+            self.updateIODGate(frameWidth: frameWidth, frameHeight: frameHeight)
+
+            // Convert to screen coordinates (kept; other UI may still use this)
             if let previewLayer = self.previewLayer {
-                   let cameraResolution = CGSize(width: CGFloat(frameWidth), height: CGFloat(frameHeight))
+                let cameraResolution = CGSize(width: CGFloat(frameWidth), height: CGFloat(frameHeight))
 
-                   let screenCoords: [(x: CGFloat, y: CGFloat)] = firstFace.map { lm in
-                       let screenPoint = self.convertToScreenCoordinates(
-                           normalizedX: CGFloat(lm.x),
-                           normalizedY: CGFloat(lm.y),
-                           previewLayer: previewLayer,
-                           cameraResolution: cameraResolution
-                       )
-                       return (x: screenPoint.x, y: screenPoint.y)
-                   }
+                let screenCoords: [(x: CGFloat, y: CGFloat)] = firstFace.map { lm in
+                    let screenPoint = self.convertToScreenCoordinates(
+                        normalizedX: CGFloat(lm.x),
+                        normalizedY: CGFloat(lm.y),
+                        previewLayer: previewLayer,
+                        cameraResolution: cameraResolution
+                    )
+                    return (x: screenPoint.x, y: screenPoint.y)
+                }
 
-                   self.ScreenCoordinates = screenCoords
-
-                   // 🔥 NEW: compute target oval for this frame
-                   let bounds = previewLayer.bounds
-                   self.updateTargetFaceOvalCoordinates(
-                       screenWidth: bounds.width,
-                       screenHeight: bounds.height
-                   )
-               } else {
-                   self.ScreenCoordinates = []
-                   self.TransalatedScaledFaceOvalCoordinates.removeAll()
-               }
+                self.ScreenCoordinates = screenCoords
+            } else {
+                self.ScreenCoordinates = []
+                self.TransalatedScaledFaceOvalCoordinates.removeAll()
+            }
             
             // Geometric calculations
             self.calculateCentroidUsingFaceOval()
@@ -123,6 +125,18 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
             self.calculateTranslatedSquareDistance()
             self.calculateRMSOfTransalted()
             self.calculateNormalizedPoints()
+
+            // Nose center from normalized space
+            self.updateNoseTipCenterStatusFromCalcCoords()
+
+            // Build face-oval overlay from NormalizedPoints (Android-style)
+            if let previewLayer = self.previewLayer {
+                let bounds = previewLayer.bounds
+                self.updateTargetFaceOvalCoordinates(
+                    screenWidth: bounds.width,
+                    screenHeight: bounds.height
+                )
+            }
             
             // Face metrics
             self.calculateFaceBoundingBox()
@@ -133,10 +147,8 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
             
             // Gaze tracking logic
             if self.isCentreTracking && !self.isMovementTracking {
-                // Calibration phase: collect samples
                 self.AppendActualLeftRight()
             } else if !self.isCentreTracking && self.isMovementTracking {
-                // Tracking phase: compute live gaze
                 self.calculateGazeVector()
             }
             
@@ -151,7 +163,7 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
                 self.Roll = 0
             }
             
-            // ✅ ALWAYS calculate pattern (conditions checked inside function)
+            // Always calculate pattern (conditions checked inside function)
             self.calculateOptionalAndMandatoryDistances()
         }
     }
@@ -197,9 +209,6 @@ extension FaceManager {
             let scaledCameraHeight = cameraResolution.height * scaleY
             offsetY = (previewHeight - scaledCameraHeight) / 2.0
         }
-        
-        // Don't mirror here - the preview layer already handles mirroring
-        // since conn.isVideoMirrored = true in Camera.swift
         
         // Convert normalized [0,1] to camera pixel coordinates
         let cameraX = normalizedX * cameraResolution.width
