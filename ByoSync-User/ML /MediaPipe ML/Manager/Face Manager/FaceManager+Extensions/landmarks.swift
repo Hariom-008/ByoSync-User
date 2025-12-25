@@ -185,6 +185,7 @@ extension FaceManager {
                vector length        = \(allDistances.count)
                total stored frames  = \(AllFramesOptionalAndMandatoryDistance.count)
             """)
+            print("Distance Array:\(allDistances.count)")
         } else {
             rejectedFrames += 1
             

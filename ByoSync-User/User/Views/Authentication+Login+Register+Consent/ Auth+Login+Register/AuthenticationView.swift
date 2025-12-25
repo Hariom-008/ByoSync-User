@@ -137,20 +137,20 @@ struct AuthenticationView: View {
             .toolbar {
                 #if DEBUG
                 ToolbarItem(placement: .navigationBarTrailing) {
-//                    Button {
-//                        print("🧪 Opening Testing View")
-//                        openTestingView.toggle()
-//                    } label: {
-//                        Text("Testing")
-//                            .font(.system(size: 12, weight: .medium))
-//                            .foregroundStyle(
-//                                LinearGradient(
-//                                    colors: [logoBlue, logoPurple],
-//                                    startPoint: .leading,
-//                                    endPoint: .trailing
-//                                )
-//                            )
-//                    }
+                    Button {
+                        print("🧪 Opening Testing View")
+                        openTestingView.toggle()
+                    } label: {
+                        Text("Testing")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [logoBlue, logoPurple],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                    }
                 }
                 #endif
             }
