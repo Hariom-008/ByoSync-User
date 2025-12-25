@@ -7,7 +7,8 @@ enum DistanceGuidance: String {
     case noFace
 }
 
-extension FaceManager {
+extension FaceManager{
+    
     func updateIODGate(
         frameWidth: Float,
         frameHeight: Float,
@@ -15,14 +16,15 @@ extension FaceManager {
         rightIdx: Int = 263,
         iodMin: Float = 0.30,
         iodMax: Float = 0.31
-    ) {
+    ){
+
         guard frameWidth > 0, frameHeight > 0 else {
             resetIODGate()
             return
         }
 
         let pts = rawMediaPipePoints
-        guard pts.count > max(leftIdx, rightIdx) else {
+        guard pts.count > max(leftIdx, rightIdx) else{
             resetIODGate()
             return
         }
@@ -61,4 +63,5 @@ extension FaceManager {
         iodIsValid = false
         iodGuidance = .noFace
     }
+
 }

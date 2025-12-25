@@ -1,19 +1,19 @@
+// ByoSync_UserApp.swift
+
 import SwiftUI
-import Firebase
-import UIKit
 import FirebaseAuth
-import FirebaseMessaging
-import Combine
+import UIKit
 
 @main
 struct ByoSync_UserApp: App {
     @StateObject private var cryptoManager = CryptoManager()
-
     @StateObject private var languageManager = LanguageManager.shared
     @StateObject var userSession = UserSession.shared
     @StateObject private var socketManager = SocketIOManager.shared
     @StateObject private var scanGate = AppScanGate.shared
     @StateObject private var faceAuthManager = FaceAuthManager.shared
+    @StateObject private var enrollmentGate = EnrollmentGate.shared
+
 
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @Environment(\.scenePhase) private var scenePhase
@@ -21,50 +21,58 @@ struct ByoSync_UserApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                RouterView {
-                    RootView()
-                }
-                .environmentObject(userSession)
-                .environmentObject(languageManager)
-                .environmentObject(faceAuthManager)
-                .environment(\.locale, .init(identifier: languageManager.currentLanguageCode))
-                .preferredColorScheme(.light)
-                .environmentObject(cryptoManager)
-                .environmentObject(scanGate)
+                RouterView { RootView() }
+                    .environmentObject(userSession)
+                    .environmentObject(languageManager)
+                    .environmentObject(faceAuthManager)
+                    .environmentObject(cryptoManager)
+                    .environmentObject(scanGate)
+                    .environmentObject(enrollmentGate)
 
-               // GlobalPaymentOverlayView()
+                    .environment(\.locale, .init(identifier: languageManager.currentLanguageCode))
+                    .preferredColorScheme(.light)
             }
             .onOpenURL { url in
-                    // This is the bridge that fixes the "Blank Screen"
-                    Auth.auth().canHandle(url)
+                Auth.auth().canHandle(url)
             }
             .onAppear {
-                print("🚀 [APP] App appeared, connecting socket")
-               
                 socketManager.connect()
             }
             .onChange(of: scenePhase) { oldPhase, newPhase in
                 print("🔄 [APP] Scene phase changed: \(oldPhase) -> \(newPhase)")
+
+                // Only enforce re-scan if user is already logged in
+                let isLoggedIn = (userSession.currentUser != nil)
+                let isUserAccount = (UserDefaults.standard.string(forKey: "accountType") == "user")
+
+                // Mark required only when leaving foreground
+                if oldPhase == .active,
+                   (newPhase == .inactive || newPhase == .background),
+                   isLoggedIn,
+                   isUserAccount,
+                   enrollmentGate.isEnrolled
+                {
+                    print("🔐 [APP] Leaving foreground -> require verification scan on return")
+                    scanGate.markRequiredDueToInactive()
+                }
+
                 switch newPhase {
                 case .active:
-                    print("✅ [APP] App active - connecting socket")
                     socketManager.connectIfNeeded()
-
-                case .inactive:
-                    // ✅ IMPORTANT: do NOT mark scan required here anymore
-                    print("⏸️ [APP] App inactive - disconnecting socket (no scan flag change)")
+                case .inactive, .background:
                     socketManager.disconnect()
-
-                case .background:
-                    print("📱 [APP] App background - disconnecting socket (no scan flag change)")
-                    socketManager.disconnect()
-
                 @unknown default:
-                    print("⚠️ [APP] Unknown scene phase: \(newPhase)")
                     break
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willTerminateNotification)) { _ in
+                // Optional: extra safety if app is killed
+                if userSession.currentUser != nil,
+                   UserDefaults.standard.string(forKey: "accountType") == "user" {
+                    print("🧨 [APP] willTerminate -> require scan on next launch")
+                    scanGate.markRequiredOnTerminate()
+                }
+            }
         }
-      
     }
 }

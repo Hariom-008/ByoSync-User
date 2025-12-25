@@ -1,4 +1,3 @@
-// RootView.swift
 import SwiftUI
 internal import AVFoundation
 
@@ -11,100 +10,88 @@ struct RootView: View {
     @EnvironmentObject var scanGate: AppScanGate
     @EnvironmentObject var router: Router
     @EnvironmentObject var faceAuthManager: FaceAuthManager
-    
+    @EnvironmentObject var enrollmentGate: EnrollmentGate
+
+
     @State private var step: AppStep = .loading
     @State private var consentAccepted = false
-    @State private var cameraPermissionGranted = false
-    
+
     private let consentKey = "consentAccepted"
-    
+
+    private var hasCameraPermission: Bool {
+        AVCaptureDevice.authorizationStatus(for: .video) == .authorized
+    }
+
     var body: some View {
         Group {
             switch step {
             case .loading:
                 SplashScreenView()
-                
+
             case .auth:
                 AuthenticationView()
-                
+
             case .consent:
                 UserConsentView(onComplete: {
                     consentAccepted = true
                     UserDefaults.standard.set(true, forKey: consentKey)
-                    print("✅ Consent accepted, moving to camera prep")
                     withAnimation(.easeInOut) { step = .cameraPrep }
                 })
-                
+
             case .cameraPrep:
                 CameraPreparationView(onReady: {
-                    print("✅ Camera ready, moving to ML scan")
-                    cameraPermissionGranted = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            step = .mlScan
-                        }
-                    }
+                    withAnimation(.easeInOut(duration: 0.3)) { step = .mlScan }
                 })
-                
+
             case .mlScan:
                 MLScanView(onDone: {
                     print("✅ ML scan completed")
                     scanGate.markScanCompleted()
                     withAnimation(.easeInOut) { step = .mainTab }
                 })
-                
+
             case .mainTab:
                 MainTabView()
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .scale(scale: 0.98)),
-                        removal: .opacity.combined(with: .move(edge: .trailing))
-                    ))
             }
         }
         .onAppear {
-            print("🚀 RootView appeared")
             userSession.loadUser()
+            enrollmentGate.reload()
             consentAccepted = UserDefaults.standard.bool(forKey: consentKey)
             scanGate.reloadFromStorage()
-            
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                 step = nextStep()
-                print("📍 Moving to step: \(step)")
             }
         }
         .onChange(of: userSession.currentUser) { _, _ in
             step = nextStep()
-            print("👤 User changed, step: \(step)")
         }
         .onChange(of: scanGate.requireScan) { _, _ in
             step = nextStep()
-            print("📸 Scan requirement changed, step: \(step)")
         }
     }
-    
+
     private func nextStep() -> AppStep {
-        guard let accountType = UserDefaults.standard.string(forKey: "accountType"),
-              accountType == "user" else {
-            print("⚠️ Not a user account")
-            return .auth
+        guard UserDefaults.standard.string(forKey: "accountType") == "user" else { return .auth }
+        guard userSession.currentUser != nil else { return .auth }
+        guard consentAccepted else { return .consent }
+
+        // ✅ 1) If not enrolled, always run REGISTRATION scan (80 frames)
+        if enrollmentGate.needsEnrollment {
+            faceAuthManager.setRegistrationMode()
+            return hasCameraPermission ? .mlScan : .cameraPrep
         }
-        
-        guard userSession.currentUser != nil else {
-            print("⚠️ No current user")
-            return .auth
-        }
-        
-        if !consentAccepted {
-            print("📋 Consent not accepted")
-            return .consent
-        }
+
+        // ✅ 2) Otherwise, enforce unlock verification scan if required
         if scanGate.requireScan {
-            print("📸 Scan required, checking camera prep")
-            return cameraPermissionGranted ? .mlScan : .cameraPrep
+            faceAuthManager.setVerificationMode()
+            return hasCameraPermission ? .mlScan : .cameraPrep
         }
-        print("✅ All checks passed, going to main tab")
+
         return .mainTab
     }
+
 }
 
 
