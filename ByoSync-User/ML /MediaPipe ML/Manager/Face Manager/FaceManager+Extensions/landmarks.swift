@@ -61,7 +61,7 @@ extension FaceManager {
         let maxIdx = max(
             mand.max() ?? 0,
             opt.max() ?? 0,
-            angleTriples.flatMap { [$0.0, $0.1, $0.2] }.max() ?? 0
+           // angleTriples.flatMap { [$0.0, $0.1, $0.2] }.max() ?? 0
         )
         
         guard maxIdx < NormalizedPoints.count else {
@@ -80,19 +80,19 @@ extension FaceManager {
         // ----------------------------------------------------------------
         // 1) FIRST ELEMENT: Reference distance 33-263 (RAW, not normalized)
         // ----------------------------------------------------------------
-        let p33 = NormalizedPoints[33]
-        let p263 = NormalizedPoints[263]
-        let dRef = Helper.shared.calculateDistance(p33, p263)
-        
-        allDistances.append(round4(dRef))
-        
-        //print("📏 Reference distance (33-263): \(round4(dRef))")
-        
-        // Safety check
-        guard dRef > 1e-6 else {
-            print("❌ Reference distance too small, cannot normalize")
-            return
-        }
+//        let p33 = NormalizedPoints[33]
+//        let p263 = NormalizedPoints[263]
+//        let dRef = Helper.shared.calculateDistance(p33, p263)
+//        
+//        allDistances.append(round4(dRef))
+//        
+//        //print("📏 Reference distance (33-263): \(round4(dRef))")
+//        
+//        // Safety check
+//        guard dRef > 1e-6 else {
+//            print("❌ Reference distance too small, cannot normalize")
+//            return
+//        }
         
         // ----------------------------------------------------------------
         // 2) MANDATORY × MANDATORY (normalized, skip 33-263 pair)
@@ -109,7 +109,7 @@ extension FaceManager {
                 }
                 
                 let dist = d(idxA, idxB)
-                allDistances.append(round4(dist / dRef))
+                allDistances.append(round4(dist))
             }
         }
         let mandatoryCount = allDistances.count - mandatoryStart
@@ -123,7 +123,7 @@ extension FaceManager {
             let idxB = opt[(i + 1) % opt.count]  // Wrap around
             
             let dist = d(idxA, idxB)
-            allDistances.append(round4(dist / dRef))
+            allDistances.append(round4(dist))
         }
         let optionalChainCount = allDistances.count - optionalStart
         
@@ -134,25 +134,12 @@ extension FaceManager {
         for optIdx in opt {
             for manIdx in mand {
                 let dist = d(optIdx, manIdx)
-                allDistances.append(round4(dist / dRef))
+                allDistances.append(round4(dist))
             }
         }
         let bipartiteCount = allDistances.count - bipartiteStart
         
-        // ----------------------------------------------------------------
-        // 5) ANGLES from angleTriples
-        // ----------------------------------------------------------------
-        let anglesStart = allDistances.count
-        for (aIdx, bIdx, cIdx) in angleTriples {
-            let a = NormalizedPoints[aIdx]
-            let b = NormalizedPoints[bIdx]
-            let c = NormalizedPoints[cIdx]
-            
-            let angle = angleAtVertex(a, b, c)
-            allDistances.append(round4(angle))
-        }
-        let anglesCount = allDistances.count - anglesStart
-        
+
         // ----------------------------------------------------------------
         // Log summary
         // ----------------------------------------------------------------

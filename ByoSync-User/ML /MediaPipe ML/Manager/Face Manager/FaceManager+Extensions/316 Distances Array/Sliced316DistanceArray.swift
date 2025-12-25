@@ -19,8 +19,8 @@ extension FaceManager {
         
         // ✅ FIX: Skip element 0 (raw ref), take next 316 normalized elements
         let trimmed = first80Frames.compactMap { frame -> [Float]? in
-            guard frame.count >= 317 else {
-                print("⚠️ Frame too short: \(frame.count), need at least 317")
+            guard frame.count >= 316 else {
+                print("⚠️ Frame too short: \(frame.count), need at least 316")
                 return nil
             }
             // Elements 1-316 (all normalized by reference distance)
@@ -43,8 +43,8 @@ extension FaceManager {
         
         // ✅ FIX: Skip element 0 (raw ref), take next 316 normalized elements
         let trimmed = first10Frames.compactMap { frame -> [Float]? in
-            guard frame.count >= 317 else {
-                print("⚠️ Frame too short: \(frame.count), need at least 317")
+            guard frame.count >= 316 else {
+                print("⚠️ Frame too short: \(frame.count), need at least 316")
                 return nil
             }
             // Elements 1-316 (all normalized by reference distance)
