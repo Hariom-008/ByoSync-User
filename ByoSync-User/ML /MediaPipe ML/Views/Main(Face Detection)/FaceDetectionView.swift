@@ -73,8 +73,18 @@ struct FaceDetectionView: View {
 
     // MARK: - Derived UI state
 
-    private var isBusy: Bool {
+    /// Local busy computation (depends on view models + local state)
+    private var busyLocal: Bool {
         isProcessing || faceIdFetchViewModel.isLoading || faceIdUploadViewModel.isUploading
+    }
+
+    /// Keep FaceManager's published busy in sync (so any child overlays can also observe it)
+    private func syncBusy() {
+        // If you added FaceManager.setBusy(_:)
+        faceManager.setBusy(busyLocal)
+
+        // OR if you didn't add setter:
+        // faceManager.isBusy = busyLocal
     }
 
     /// Enrollment is "usable" only if backend returned BOTH salt + non-empty faceData.
@@ -154,8 +164,8 @@ struct FaceDetectionView: View {
                     .animation(.easeInOut(duration: 0.3), value: faceManager.isMovementTracking)
                 }
 
-                // Busy overlay
-                if isBusy {
+                // ✅ Busy overlay now driven by FaceManager
+                if faceManager.isBusy {
                     ZStack {
                         Color.black.opacity(0.5).ignoresSafeArea()
                         VStack(spacing: 16) {
@@ -271,9 +281,23 @@ struct FaceDetectionView: View {
                 }
             }
 
+            // ✅ Keep FaceManager busy synced whenever drivers change
+            .onAppear {
+                syncBusy()
+            }
+            .onChange(of: isProcessing) { _, _ in
+                syncBusy()
+            }
+            .onChange(of: faceIdFetchViewModel.isLoading) { _, _ in
+                syncBusy()
+            }
+            .onChange(of: faceIdUploadViewModel.isUploading) { _, _ in
+                syncBusy()
+            }
+
             // ✅ Auto-trigger based on frame count and mode
             .onChange(of: faceManager.totalFramesCollected) { _, newValue in
-                guard !hasAutoTriggered && !isBusy else { return }
+                guard !hasAutoTriggered && !faceManager.isBusy else { return }
 
                 switch faceAuthManager.currentMode {
                 case .registration:
@@ -314,14 +338,9 @@ struct FaceDetectionView: View {
             .onChange(of: faceIdUploadViewModel.uploadSuccess) { ok in
                 guard ok else { return }
 
-                // ✅ IMPORTANT: if app closes right after this, we should not route to verification.
-                // Mark enrolled optimistically (backend accepted upload).
                 enrollmentGate.markEnrolled()
-
-                // Refresh backend data (new salt + faceData should be visible)
                 faceIdFetchViewModel.fetchFaceIds()
 
-                // Clear frames after successful upload
                 faceManager.AllFramesOptionalAndMandatoryDistance = []
                 faceManager.totalFramesCollected = 0
                 hasAutoTriggered = false
@@ -378,14 +397,15 @@ struct FaceDetectionView: View {
             print("🌐 [FaceDetectionView] Fetching FaceIds on appear for deviceKey=\(DeviceIdentity.resolve())")
             print("🎯 [FaceDetectionView] Current mode: \(faceAuthManager.currentMode)")
 
-            // ✅ Key edge-case fix: If we are in registration mode, persist "not enrolled" immediately.
-            // So if user kills the app mid-enrollment, next launch won't force verification.
             if faceAuthManager.currentMode == .registration {
                 enrollmentGate.markNotEnrolled()
             }
 
             faceIdFetchViewModel.fetchFaceIds()
             hasAutoTriggered = false
+
+            // keep busy correct after starting fetch
+            syncBusy()
         }
         .onReceive(
             faceManager.$latestPixelBuffer
@@ -401,7 +421,6 @@ struct FaceDetectionView: View {
     private func checkEnrollmentStatus() {
         isEnrolled = backendEnrollmentValid
 
-        // ✅ Persist definitive backend truth after first load
         if faceIdFetchViewModel.hasLoadedOnce {
             if backendEnrollmentValid {
                 enrollmentGate.markEnrolled()
@@ -442,7 +461,6 @@ struct FaceDetectionView: View {
                 self.isProcessing = false
                 switch result {
                 case .success:
-                    // uploadSuccess handler will show alert + persist enrollment
                     break
                 case .failure(let error):
                     self.alertTitle = "❌ Registration Failed"
@@ -459,7 +477,6 @@ struct FaceDetectionView: View {
         isProcessing = true
 
         guard backendEnrollmentValid else {
-            // ✅ Make sure gate is consistent if login attempted without enrollment
             enrollmentGate.markNotEnrolled()
 
             isProcessing = false

@@ -12,6 +12,8 @@ final class FaceManager: NSObject, ObservableObject {
     // MARK: - Dependencies
     let cameraSpecManager: CameraSpecManager
     
+    @Published var isBusy: Bool = false
+    
     private let bchQueue = DispatchQueue(label: "FaceManager.BCH", qos: .userInitiated)
     
     var rollPrintTick: Int = 0
@@ -155,6 +157,16 @@ final class FaceManager: NSObject, ObservableObject {
             self.isFaceReal = true
         } else {
             self.isFaceReal = false
+        }
+    }
+    /// Thread-safe setter (optional but recommended)
+    func setBusy(_ busy: Bool) {
+        if Thread.isMainThread {
+            self.isBusy = busy
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.isBusy = busy
+            }
         }
     }
 }

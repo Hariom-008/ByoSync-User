@@ -55,17 +55,22 @@ final class LogRepository: LogRepositoryProtocol {
                 Task { @MainActor in
                     do {
                         let logResponse = try JSONDecoder().decode(LogCreateResponse.self, from: data)
+                        #if DEBUG
                         print("✅ [LOG-REPO] Logs sent successfully: \(logResponse.message)")
+                        #endif
                         completion(.success(logResponse))
                     } catch {
+                        #if DEBUG
                         print("❌ [LOG-REPO] Failed to decode response: \(error)")
+                        #endif
                         completion(.failure(.custom("Failed to decode response")))
                     }
                 }
                 
             case .failure(let error):
+                #if DEBUG
                 print("❌ [LOG-REPO] Failed to send logs: \(error.localizedDescription)")
-                
+                #endif
                 // Convert AFError to APIError
                 let apiError: APIError
                 if let statusCode = response.response?.statusCode {
@@ -82,6 +87,8 @@ final class LogRepository: LogRepositoryProtocol {
     }
     
     deinit {
+        #if DEBUG
         print("♻️ [LOG-REPO] LogRepository deallocated")
+        #endif
     }
 }

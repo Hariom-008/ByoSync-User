@@ -80,7 +80,7 @@ extension FaceManager {
         """)
 
         // Store frame if gate passes (kept your logic)
-        if iodIsValid && isNoseTipCentered && isHeadPoseStable() && !allDistances.isEmpty {
+        if iodIsValid && isNoseTipCentered && isHeadPoseStable() && !allDistances.isEmpty && !isBusy {
             AllFramesOptionalAndMandatoryDistance.append(allDistances)
             totalFramesCollected = AllFramesOptionalAndMandatoryDistance.count
             frameRecordedTrigger.toggle()

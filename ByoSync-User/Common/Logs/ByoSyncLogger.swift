@@ -7,9 +7,9 @@ final class Logger {
     static let shared = Logger()
     
     // MARK: - Configuration
-    private let batchSize = 50 // Reduced from 50 for better performance with individual sends
+    private let batchSize = 100 // Reduced from 100 for better performance with individual sends
     private let maxRetries = 3
-    private let retryDelay: TimeInterval = 5.0
+    private let retryDelay: TimeInterval = 2.0
     
     private var pendingLogs: [InternalLogEntry] = []
     private let queue = DispatchQueue(label: "com.byosync.logger", qos: .utility)
