@@ -63,5 +63,4 @@ extension FaceManager{
         iodIsValid = false
         iodGuidance = .noFace
     }
-
 }

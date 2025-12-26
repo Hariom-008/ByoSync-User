@@ -1,7 +1,7 @@
 import Foundation
 
 extension FaceManager {
-
+    
     /// Returns last 80 frames, each with exactly 316 distances
     func save316LengthDistanceArray() -> [[Float]] {
         guard AllFramesOptionalAndMandatoryDistance.count >= 80 else {

@@ -248,7 +248,6 @@ extension FaceManager {
 // MARK: - Verification
 
 extension FaceManager {
-
     func verifyFaceIDAgainstBackend(
         framesToUse: [[Float]],
         completion: @escaping (Result<BCHBiometric.VerificationResult, Error>) -> Void
