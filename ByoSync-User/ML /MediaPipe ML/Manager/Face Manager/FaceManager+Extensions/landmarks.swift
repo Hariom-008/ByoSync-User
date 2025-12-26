@@ -1,100 +1,95 @@
-import Foundation
-import SwiftUI
-import simd
-
 extension FaceManager {
 
     @inline(__always)
-    private func round4(_ x: Float) -> Float {
+    private func trunc4(_ x: Float) -> Float {
         let factor: Float = 10_000
-        return (x * factor).rounded() / factor
+        return Float(Int(x * factor)) / factor   // truncate toward 0
     }
 
     func calculateOptionalAndMandatoryDistances() {
-        guard !NormalizedPoints.isEmpty else {
+        // ✅ 1) Hard stop: don't even compute while busy
+        guard !isBusy else { return }
+
+        // ✅ 2) Snapshot points (avoid races)
+        let points = NormalizedPoints
+        guard !points.isEmpty else {
             print("⚠️ NormalizedPoints is empty, cannot compute pattern vector")
             return
         }
 
-        var allDistances: [Float] = []
-
         let mand = mandatoryLandmarkPoints
         let opt  = selectedOptionalLandmarks
 
-        // Validate indices
         let maxIdx = max(mand.max() ?? 0, opt.max() ?? 0)
-        guard maxIdx < NormalizedPoints.count else {
-            print("⚠️ Invalid landmark index \(maxIdx) for NormalizedPoints.count = \(NormalizedPoints.count)")
+        guard maxIdx < points.count else {
+            print("⚠️ Invalid landmark index \(maxIdx) for NormalizedPoints.count = \(points.count)")
             return
         }
 
         @inline(__always)
         func d(_ i: Int, _ j: Int) -> Float {
-            let p1 = NormalizedPoints[i]
-            let p2 = NormalizedPoints[j]
+            let p1 = points[i]
+            let p2 = points[j]
             return Helper.shared.calculateDistance(p1, p2)
         }
 
-        // ------------------------------------------------------------
-        // 1) MANDATORY × MANDATORY  (NO SKIP)  => C(17,2) = 136
-        // ------------------------------------------------------------
-        let mandatoryStart = allDistances.count
+        var allDistances: [Float] = []
+        allDistances.reserveCapacity(316)
+
+        // 1) mandatory×mandatory
         for i in 0..<mand.count {
             let idxA = mand[i]
             for j in (i + 1)..<mand.count {
                 let idxB = mand[j]
-                allDistances.append(round4(d(idxA, idxB)))
+                allDistances.append(trunc4(d(idxA, idxB)))
             }
         }
-        let mandatoryCount = allDistances.count - mandatoryStart
 
-        // ------------------------------------------------------------
-        // 2) OPTIONAL CHAIN (ring) => opt.count = 10
-        // ------------------------------------------------------------
-        let optionalStart = allDistances.count
+        // 2) optional chain
         for i in 0..<opt.count {
             let idxA = opt[i]
             let idxB = opt[(i + 1) % opt.count]
-            allDistances.append(round4(d(idxA, idxB)))
+            allDistances.append(trunc4(d(idxA, idxB)))
         }
-        let optionalChainCount = allDistances.count - optionalStart
 
-        // ------------------------------------------------------------
-        // 3) MANDATORY × OPTIONAL (aka OPTIONAL × MANDATORY)
-        // ------------------------------------------------------------
-        let bipartiteStart = allDistances.count
-        for (a) in mand {
-            for (b) in opt {
-                allDistances.append(round4(d(a, b)))
+        // 3) mandatory×optional
+        for a in mand {
+            for b in opt {
+                allDistances.append(trunc4(d(a, b)))
             }
         }
-        let bipartiteCount = allDistances.count - bipartiteStart
 
-        // Debug
-        print("""
-        📏 Distances summary:
-          mandatory×mandatory: \(mandatoryCount) (expected 136)
-          optional chain:      \(optionalChainCount) (expected 10)
-          mandatory×optional:  \(bipartiteCount) (expected \(mand.count * opt.count))
-          TOTAL:               \(allDistances.count) (expected 316)
-        """)
+        // ✅ 3) Gate right before storing (busy might have flipped while computing)
+        guard iodIsValid,
+              isNoseTipCentered,
+              isHeadPoseStable(),
+              !allDistances.isEmpty,
+              !isBusy
+        else {
+            DispatchQueue.main.async { [weak self] in
+                self?.rejectedFrames += 1
+            }
+            return
+        }
 
-        // Store frame if gate passes (kept your logic)
-        if iodIsValid && isNoseTipCentered && isHeadPoseStable() && !allDistances.isEmpty && !isBusy {
-            AllFramesOptionalAndMandatoryDistance.append(allDistances)
-            totalFramesCollected = AllFramesOptionalAndMandatoryDistance.count
-            frameRecordedTrigger.toggle()
+        // ✅ 4) Publish state on main
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            guard !self.isBusy else { return }
 
-            enqueueAcceptedFrameUpload(frameIndex: totalFramesCollected)
+            self.AllFramesOptionalAndMandatoryDistance.append(allDistances)
+            self.totalFramesCollected = self.AllFramesOptionalAndMandatoryDistance.count
+            self.frameRecordedTrigger.toggle()
 
+            self.enqueueAcceptedFrameUpload(frameIndex: self.totalFramesCollected)
+            #if DEBUG
             print("""
             ✅ FRAME ACCEPTED & STORED:
                frameIndex (1-based) = \(totalFramesCollected)
                vector length        = \(allDistances.count)
                total stored frames  = \(AllFramesOptionalAndMandatoryDistance.count)
             """)
-        } else {
-            rejectedFrames += 1
+            #endif
         }
     }
 }

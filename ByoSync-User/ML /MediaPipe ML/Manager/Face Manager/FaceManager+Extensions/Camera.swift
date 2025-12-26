@@ -14,7 +14,7 @@ import MediaPipeTasksVision
 extension FaceManager {
     
     /// Sets up the camera capture session with appropriate configuration
-    func setupCamera() {
+    func setupCamera(){
         captureSession.beginConfiguration()
         captureSession.sessionPreset = .medium   // or .vga640x480
         

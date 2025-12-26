@@ -2,7 +2,7 @@ import Foundation
 import CoreGraphics
 
 extension FaceManager {
-
+    
     /// Builds the on-screen oval from **NormalizedPoints** (Android-style).
     ///
     /// Mapping:
