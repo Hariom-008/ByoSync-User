@@ -1,26 +1,3 @@
-//
-//  Nose Tip.swift
-//  ML-Testing
-//
-//  Created by Hari's Mac on 29.11.2025.
-//
-
-//import Foundation
-//import SwiftUI
-//
-//extension FaceManager {
-//    func  updateNoseTipCenterStatusFromCalcCoords(tolerance: Float = 0.05) {
-//        guard CalculationCoordinates.count > 4 else {
-//            isNoseTipCentered = false
-//            return
-//        }
-//        let nose = CalculationCoordinates[4] // (0..1)
-//        isNoseTipCentered = abs(nose.x - 0.5) <= tolerance &&
-//                            abs(nose.y - 0.5) <= tolerance
-//    }
-//}
-
-
 import SwiftUI
 import Foundation
 import CoreGraphics
