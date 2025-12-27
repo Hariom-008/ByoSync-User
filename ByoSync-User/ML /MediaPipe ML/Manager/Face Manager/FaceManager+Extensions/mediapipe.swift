@@ -88,12 +88,12 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
             (x: lm.x * frameWidth, y: lm.y * frameHeight)
         }
         
-        // Transform landmarks for calculations (flipped)
-        let calcCoords: [(x: Float, y: Float)] = firstFace.map { lm in
-            let flippedY = 1 - lm.y
-            let flippedX = 1 - lm.x
-            return (x: flippedX * frameWidth, y: flippedY * frameHeight)
-        }
+//        // Transform landmarks for calculations (flipped)
+//        let calcCoords: [(x: Float, y: Float)] = firstFace.map { lm in
+//            let flippedY = 1 - lm.y
+//            let flippedX = 1 - lm.x
+//            return (x: flippedX * frameWidth, y: flippedY * frameHeight)
+//        }
         
         // Process on main queue
         DispatchQueue.main.async { [weak self] in
@@ -103,7 +103,7 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
             
             // Store coordinates
             self.CameraFeedCoordinates = coords
-            self.CalculationCoordinates = calcCoords
+//            self.CalculationCoordinates = calcCoords
             self.rawMediaPipePoints = rawPoints
 
             // IOD gate (per-frame)
@@ -113,7 +113,7 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
             if let previewLayer = self.previewLayer {
                 let cameraResolution = CGSize(width: CGFloat(frameWidth), height: CGFloat(frameHeight))
 
-                let screenCoords: [(x: CGFloat, y: CGFloat)] = firstFace.map { lm in
+                let screenCoords: [(x: Float, y: Float)] = firstFace.map { lm in
                     let screenPoint = self.convertToScreenCoordinates(
                         normalizedX: CGFloat(lm.x),
                         normalizedY: CGFloat(lm.y),
@@ -123,7 +123,7 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
                     return (x: screenPoint.x, y: screenPoint.y)
                 }
 
-                self.ScreenCoordinates = screenCoords
+                self.CalculationCoordinates = screenCoords
             } else {
                 self.ScreenCoordinates = []
                 self.TransalatedScaledFaceOvalCoordinates.removeAll()
@@ -137,7 +137,24 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
             self.calculateNormalizedPoints()
 
             // Nose center from normalized space
-            self.updateNoseTipCenterStatusFromCalcCoords()
+            if let previewLayer = self.previewLayer {
+                let b = previewLayer.bounds
+
+                // CalculationCoordinates are already in previewLayer.bounds space
+                let ptsCG: [CGPoint] = self.CalculationCoordinates.map {
+                    CGPoint(x: CGFloat($0.x), y: CGFloat($0.y))
+                }
+
+                self.updateNoseTipCenterStatusFromCalcCoords(
+                    pixelPoints: ptsCG,
+                    screenCenterX: b.midX,
+                    screenCenterY: b.midY,
+                    tolerancePx: 10.0
+                )
+            } else {
+                self.isNoseTipCentered = false
+            }
+
 
             // Build face-oval overlay from NormalizedPoints -- NOT IN USE
             if let previewLayer = self.previewLayer {
@@ -181,6 +198,10 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
 // MARK: - Coordinate Transformation Helper
 extension FaceManager {
     
+    struct Pixel{
+        let x: Float
+        let y: Float
+    }
     /// Converts MediaPipe normalized coordinates to screen coordinates
     /// Accounts for: portrait orientation, mirroring, and aspect fill scaling
     func convertToScreenCoordinates(
@@ -188,7 +209,7 @@ extension FaceManager {
         normalizedY: CGFloat,
         previewLayer: AVCaptureVideoPreviewLayer,
         cameraResolution: CGSize
-    ) -> CGPoint {
+    ) -> Pixel {
         
         let previewBounds = previewLayer.bounds
         let previewWidth = previewBounds.width
@@ -220,13 +241,55 @@ extension FaceManager {
         }
         
         // Convert normalized [0,1] to camera pixel coordinates
-        let cameraX = normalizedX * cameraResolution.width
-        let cameraY = normalizedY * cameraResolution.height
+        let cameraX = (1-normalizedX) * cameraResolution.width
+        let cameraY = (1-normalizedY) * cameraResolution.height
         
         // Scale to screen and add offset
         let screenX = cameraX * scaleX + offsetX
         let screenY = cameraY * scaleY + offsetY
         
-        return CGPoint(x: screenX, y: screenY)
+        return Pixel(x: Float(screenX), y: Float(screenY))
     }
 }
+
+//func convertToScreenCoordinates(
+//    normalizedX: CGFloat,
+//    normalizedY: CGFloat,
+//    previewLayer: AVCaptureVideoPreviewLayer,
+//    cameraResolution: CGSize
+//) -> CGPoint {
+//
+//    let previewBounds = previewLayer.bounds
+//    let canvasWidth = previewBounds.width
+//    let canvasHeight = previewBounds.height
+//    
+//
+//    // Cache aspectFill mapping terms so repeated landmark calls don't recompute them.
+//    // (Assumes calls happen on the same thread; typical for UI overlay code.)
+//    struct Cache {
+//        static var key: (CGFloat, CGFloat, CGFloat, CGFloat)? = nil
+//        static var scaledWidth: CGFloat = 0
+//        static var scaledHeight: CGFloat = 0
+//        static var offsetX: CGFloat = 0
+//        static var offsetY: CGFloat = 0
+//    }
+//
+//    let key = (canvasWidth, canvasHeight, imageWidth, imageHeight)
+//
+//    // Android-style: compute scale = max(scaleX, scaleY) for aspectFill, then centered crop offsets.
+//    let scaleX = canvasWidth  / imageWidth
+//    let scaleY = canvasHeight / imageHeight
+//    let scale  = max(scaleX, scaleY)
+//
+//    scaledWidth  = imageWidth  * scale
+//    scaledHeight = imageHeight * scale
+//    offsetX = (canvasWidth  - scaledWidth)  / 2.0
+//    offsetY = (canvasHeight - scaledHeight) / 2.0
+//
+//
+//    // Keep the original Swift behavior: flip both axes and map into the scaled (aspectFill) space.
+//    let x = (1.0 - normalizedX) * scaledWidth  + offsetX
+//    let y = (1.0 - normalizedY) * scaledHeight + offsetY
+//
+//    return CGPoint(x: x, y: y)
+//}

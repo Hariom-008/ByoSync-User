@@ -332,9 +332,11 @@ struct FaceDetectionView: View {
                 print("👁️ [EAR] Updated: \(String(format: "%.3f", newEAR)) | Series count: \(earSeries.count)")
             }
             .onReceive(faceManager.$NormalizedPoints) { points in
-                faceManager.updateNoseTipCenterStatusFromCalcCoords()
+                #if DEBUG
                 print("📍 [NormalizedPoints] Updated: \(points.count) points")
+                #endif
             }
+
             .onReceive(
                 faceManager.$NormalizedPoints
                     .throttle(for: .milliseconds(100), scheduler: RunLoop.main, latest: true)

@@ -217,7 +217,7 @@ extension FaceManager {
                 let k2Bytes = xorData(kBytes, k1Bytes)
 
                 // token = SHA256(K || FULL_R)
-                let tokenBytes = sha256(kBytes + frameRec.rBytesFull)
+                let tokenBytes = sha256(kBytes + frameRec.rBytes32)
 
                 addFaceIdPayload.append(
                     AddFaceIdRequestBody(
@@ -264,7 +264,7 @@ extension FaceManager {
         }
 
         let faceIds = RemoteFaceIdCache.faceIds
-        let requiredRecordMatches = 2
+        let requiredRecordMatches = 1
         let expectedN = (1 << Int(BCHBiometric.BCH_M)) - 1
         
         DispatchQueue.global(qos: .userInitiated).async {
@@ -283,6 +283,7 @@ extension FaceManager {
                     guard isHex(record.k2), record.k2.count == 64,
                           let k2Bytes = dataFromHex(record.k2), k2Bytes.count == 32 else { continue }
                     guard isHex(record.token), record.token.count == 64 else { continue }
+                    
 
                     let v: BCHBiometric.FrameVerification
                     do {
@@ -302,7 +303,7 @@ extension FaceManager {
                     // token' = SHA256(k' || rFull)
                     let k1Prime = xorData(v.rBytes32, saltBytes)
                     let kRecovered = xorData(k2Bytes, k1Prime)
-                    let tokenCandidate = hexFromData(sha256(kRecovered + v.rBytesFull))
+                    let tokenCandidate = hexFromData(sha256(kRecovered + v.rBytes32))
 
                     if tokenCandidate.caseInsensitiveCompare(record.token) == .orderedSame {
                         recordMatchCount += 1
@@ -333,7 +334,6 @@ extension FaceManager {
                 totalBitsCompared: 0,
                 notes: "Android-style: bestRecordMatches=\(bestRecordMatchCount)/\(faceIds.count), required=\(requiredRecordMatches), bestFrame=\(bestFrameIndex.map(String.init) ?? "nil")"
             )
-
             DispatchQueue.main.async { completion(.success(aggregated)) }
         }
     }
