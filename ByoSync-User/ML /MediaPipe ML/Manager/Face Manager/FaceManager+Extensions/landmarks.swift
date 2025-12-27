@@ -13,7 +13,9 @@ extension FaceManager {
         // ✅ 2) Snapshot points (avoid races)
         let points = NormalizedPoints
         guard !points.isEmpty else {
+            #if DEBUG
             print("⚠️ NormalizedPoints is empty, cannot compute pattern vector")
+            #endif
             return
         }
 
@@ -80,7 +82,7 @@ extension FaceManager {
             self.AllFramesOptionalAndMandatoryDistance.append(allDistances)
             self.totalFramesCollected = self.AllFramesOptionalAndMandatoryDistance.count
             self.frameRecordedTrigger.toggle()
-
+            
             self.enqueueAcceptedFrameUpload(frameIndex: self.totalFramesCollected)
             #if DEBUG
             print("""

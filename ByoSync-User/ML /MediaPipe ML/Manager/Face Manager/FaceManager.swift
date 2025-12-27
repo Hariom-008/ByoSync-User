@@ -133,8 +133,10 @@ final class FaceManager: NSObject, ObservableObject {
     let midLineMandatoryLandmarks = [2, 4, 9]
     let leftMandatoryLandmarks = [70, 107, 46, 55, 33, 133, 98]
     let rightMandatoryLandmarks = [300, 336, 276, 285, 263, 362, 327]
+    
     let mandatoryLandmarkPoints = [2, 4, 9, 70, 107, 46, 55, 33, 133, 98, 300, 336, 276, 285, 263, 362, 327]
     let selectedOptionalLandmarks = [423, 357, 349, 347, 340, 266, 330, 427, 280, 203]
+    
     let optionalLandmarks = [423, 357, 349, 347, 340, 266, 330, 427, 280, 203, 128, 120, 118, 111, 36, 101, 207, 50, 187, 147, 411, 376, 336, 107, 351, 399, 429, 363, 134, 209, 174, 122, 151, 69, 299, 63, 156, 293, 383]
     
     // MARK: - Initialization

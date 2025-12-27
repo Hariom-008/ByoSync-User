@@ -61,34 +61,79 @@ extension FaceManager {
     func computeAngles(from landmarks: [(x: Float, y: Float)]) -> (pitch: Float, yaw: Float, roll: Float)? {
         let needed = [4, 33, 263]
         guard needed.allSatisfy({ $0 < landmarks.count }) else { return nil }
-
+        
         let nose = landmarks[4]
         let p33 = landmarks[33]
         let p263 = landmarks[263]
-
+        
         let v = (x: p33.x - p263.x, y: p33.y - p263.y)
-
+        
         let oneMinusR2 = max(0 as Float, 1 - (nose.x * nose.x + nose.y * nose.y))
         let den = sqrtf(oneMinusR2)
-
+        
         let pitch = atan2f(nose.y, den)
         let yaw   = atan2f(nose.x, den)
-
+        
+        
         var roll = atan2f(v.y, v.x) // directed
         let halfPi: Float = .pi / 2
         if roll > halfPi { roll -= .pi }
         if roll < -halfPi { roll += .pi }
-
+        
+        if abs(roll) <= 0.05{
+            
+            let c = cosf(roll)
+            let s = sinf(roll)
+            
+            @inline(__always)
+            func rotateMinusRoll(_ pts: inout [(x: Float, y: Float)]) {
+                // matrix: rotate by -roll around origin
+                for i in pts.indices {
+                    let x = pts[i].x
+                    let y = pts[i].y
+                    pts[i] = (x: x * c + y * s,
+                              y: -x * s + y * c)
+                }
+            }
+            
+            @inline(__always)
+            func rotatePlusRoll(_ pts: inout [(x: Float, y: Float)]) {
+                // rotate by +roll around origin
+                for i in pts.indices {
+                    let x = pts[i].x
+                    let y = pts[i].y
+                    pts[i] = (x: x * c - y * s,
+                              y: x * s + y * c)
+                }
+            }
+            
+            // If your coordinate conventions are consistent, this is enough:
+            // rotateMinusRoll(&normalized)
+            
+            // If you want robustness across flips/mirroring, choose the one that makes the eye-line most horizontal (mod pi)
+            var candA = landmarks
+            var candB = landmarks
+            rotateMinusRoll(&candA)
+            rotatePlusRoll(&candB)
+            
+            func horizResidual(_ pts: [(x: Float, y: Float)]) -> Float {
+                let a = pts[33], b = pts[263]
+                let ang = atan2f(b.y - a.y, b.x - a.x)
+                return abs(sinf(ang)) // 0 when angle is 0 or pi
+            }
+            
+            self.NormalizedPoints = (horizResidual(candA) <= horizResidual(candB)) ? candA : candB
+        }
         return (pitch, yaw, roll)
     }
-
+    
     
     /// Checks if head pose is stable (within ±0.1 radians for all angles)
     func isHeadPoseStable() -> Bool {
         let threshold: Float = 0.1
         return abs(Pitch) <= threshold &&
-               abs(Yaw) <= threshold &&
-               abs(Roll) <= threshold
+        abs(Yaw) <= threshold &&
+        abs(Roll) <= 0.05
     }
     
     // MARK: - Face Bounding Box & Iris Distance
@@ -157,7 +202,7 @@ extension FaceManager {
             print("✅ ACCEPT (ratio = \(ratio))")
         } else {
             self.ratioIsInRange = false
-          //  print("❌ REJECT (ratio = \(ratio))")
+            //  print("❌ REJECT (ratio = \(ratio))")
         }
         
         // Calculate face bounding box using face oval landmarks

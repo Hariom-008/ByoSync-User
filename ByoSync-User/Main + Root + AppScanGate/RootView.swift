@@ -82,7 +82,6 @@ struct RootView: View {
             faceAuthManager.setRegistrationMode()
             return hasCameraPermission ? .mlScan : .cameraPrep
         }
-
         // ✅ 2) Otherwise, enforce unlock verification scan if required
         if scanGate.requireScan {
             faceAuthManager.setVerificationMode()

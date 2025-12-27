@@ -188,7 +188,7 @@ extension FaceManager {
             return
         }
 
-        // Android: ONE SALT for all frames (32 bytes)
+        // ONE SALT for all frames (32 bytes)
         let saltBytes = randomBytes(32)
         let saltHex = hexFromData(saltBytes)
 

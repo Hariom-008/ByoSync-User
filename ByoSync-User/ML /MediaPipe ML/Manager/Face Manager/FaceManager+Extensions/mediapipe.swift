@@ -14,19 +14,25 @@ extension FaceManager {
                 print("❌ face_landmarker.task file not found")
                 return
             }
-            
+
             let options = FaceLandmarkerOptions()
             options.baseOptions.modelAssetPath = modelPath
             options.runningMode = .liveStream
             options.numFaces = 1
             options.faceLandmarkerLiveStreamDelegate = self
-            
+
+            // 🔒 Increase thresholds to be stricter about “face detected”
+            options.minFaceDetectionConfidence = 0.80
+            options.minFacePresenceConfidence = 0.80
+            options.minTrackingConfidence = 0.70
+
             faceLandmarker = try FaceLandmarker(options: options)
             print("✅ MediaPipe Face Landmarker initialized")
         } catch {
             print("❌ Error initializing Face Landmarker: \(error.localizedDescription)")
         }
     }
+
 }
 
 // MARK: - FaceLandmarkerLiveStreamDelegate
@@ -73,7 +79,9 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
         let frameHeight = Float(imageSize.height)
 
         // RAW MediaPipe normalized points (0–1)
-        let rawPoints: [(x: Float, y: Float)] = firstFace.map { lm in (x: lm.x, y: lm.y) }
+        let rawPoints: [(x: Float, y: Float)] = firstFace.map { lm in
+            (x: lm.x, y: lm.y)
+        }
         
         // Transform landmarks to camera feed coordinates
         let coords: [(x: Float, y: Float)] = firstFace.map { lm in
@@ -131,7 +139,7 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
             // Nose center from normalized space
             self.updateNoseTipCenterStatusFromCalcCoords()
 
-            // Build face-oval overlay from NormalizedPoints (Android-style)
+            // Build face-oval overlay from NormalizedPoints -- NOT IN USE
             if let previewLayer = self.previewLayer {
                 let bounds = previewLayer.bounds
                 self.updateTargetFaceOvalCoordinates(
@@ -139,15 +147,14 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
                     screenHeight: bounds.height
                 )
             }
-            
-            // Face metrics
+            // Face metrics -- NOT IN USE
             self.calculateFaceBoundingBox()
             
-            // Eye Aspect Ratio
+            // Eye Aspect Ratio -- NOT IN USE
             let simdPoints = self.CalculationCoordinates.asSIMD2
             self.EAR = self.earCalc(from: simdPoints)
             
-            // Gaze tracking logic
+            // Gaze tracking logic -- NOT IN USE
             if self.isCentreTracking && !self.isMovementTracking {
                 self.AppendActualLeftRight()
             } else if !self.isCentreTracking && self.isMovementTracking {
@@ -160,9 +167,9 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
                 self.Yaw = yaw
                 self.Roll = roll
             } else {
-                self.Pitch = 0
-                self.Yaw = 0
-                self.Roll = 0
+                self.Pitch = -1000
+                self.Yaw = -1000
+                self.Roll = -1000
             }
             
             // Always calculate pattern (conditions checked inside function)

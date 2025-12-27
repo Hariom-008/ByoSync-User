@@ -49,6 +49,9 @@ struct FaceDetectionView: View {
     @State private var alertMessage: String = ""
     @State private var isProcessing: Bool = false
 
+    // ✅ NEW: Show/hide normalized points overlay
+    @State private var showNormalizedPoints: Bool = true
+
     // ✅ Face auth mode manager
     @EnvironmentObject var faceAuthManager: FaceAuthManager
 
@@ -80,11 +83,7 @@ struct FaceDetectionView: View {
 
     /// Keep FaceManager's published busy in sync (so any child overlays can also observe it)
     private func syncBusy() {
-        // If you added FaceManager.setBusy(_:)
         faceManager.setBusy(busyLocal)
-
-        // OR if you didn't add setter:
-        // faceManager.isBusy = busyLocal
     }
 
     /// Enrollment is "usable" only if backend returned BOTH salt + non-empty faceData.
@@ -163,7 +162,7 @@ struct FaceDetectionView: View {
                     .transition(.opacity.combined(with: .scale))
                     .animation(.easeInOut(duration: 0.3), value: faceManager.isMovementTracking)
                 }
-
+                
                 // ✅ Busy overlay now driven by FaceManager
                 if faceManager.isBusy {
                     ZStack {
@@ -198,34 +197,34 @@ struct FaceDetectionView: View {
 
                         Spacer()
 
-//                        VStack(spacing: 4) {
-//                            HStack(spacing: 8) {
-//                                Image(systemName: "camera.fill")
-//                                Text("\(faceManager.totalFramesCollected) / \(targetFrameCount)")
-//                                    .font(.system(size: 14, weight: .bold))
-//                                    .monospacedDigit()
-//                            }
-//
-//                            GeometryReader { geo in
-//                                ZStack(alignment: .leading) {
-//                                    RoundedRectangle(cornerRadius: 2)
-//                                        .fill(Color.white.opacity(0.3))
-//                                        .frame(height: 3)
-//
-//                                    RoundedRectangle(cornerRadius: 2)
-//                                        .fill(frameProgress >= 1.0 ? Color.green : currentModeColor)
-//                                        .frame(width: geo.size.width * min(frameProgress, 1.0), height: 3)
-//                                }
-//                            }
-//                            .frame(height: 3)
-//                        }
-//                        .padding(.horizontal, 12)
-//                        .padding(.vertical, 8)
-//                        .background(
-//                            RoundedRectangle(cornerRadius: 8)
-//                                .fill(faceManager.totalFramesCollected >= targetFrameCount ? Color.green.opacity(0.8) : Color.black.opacity(0.7))
-//                        )
-//                        .foregroundColor(.white)
+                        VStack(spacing: 4) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "camera.fill")
+                                Text("\(faceManager.totalFramesCollected) / \(targetFrameCount)")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .monospacedDigit()
+                            }
+
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(Color.white.opacity(0.3))
+                                        .frame(height: 3)
+
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(frameProgress >= 1.0 ? Color.green : currentModeColor)
+                                        .frame(width: geo.size.width * min(frameProgress, 1.0), height: 3)
+                                }
+                            }
+                            .frame(height: 3)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(faceManager.totalFramesCollected >= targetFrameCount ? Color.green.opacity(0.8) : Color.black.opacity(0.7))
+                        )
+                        .foregroundColor(.white)
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 60)
@@ -244,6 +243,85 @@ struct FaceDetectionView: View {
                     }
 
                     Spacer()
+                    
+                    // ✅ Normalized Points Card at Bottom - Now with dismiss button and better visibility
+                    if showNormalizedPoints {
+                        VStack(spacing: 0) {
+                            // Header with dismiss button
+                            HStack {
+                                Image(systemName: "point.3.connected.trianglepath.dotted")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.white)
+                                
+                                Text("Face Landmarks")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.white)
+                                
+                                Spacer()
+                                
+                                Text("\(faceManager.NormalizedPoints.count) points")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.7))
+                                
+                                // Dismiss button
+                                Button(action: {
+                                    print("🗑️ [NormalizedPoints] Dismissing overlay")
+                                    withAnimation(.spring(duration: 0.3)) {
+                                        showNormalizedPoints = false
+                                    }
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 18))
+                                        .foregroundColor(.white.opacity(0.8))
+                                }
+                                .padding(.leading, 8)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(Color.blue.opacity(0.8))
+                            
+                            // Overlay visualization
+                            NormalizedPointsOverlay(points: faceManager.NormalizedPoints)
+                                .frame(width: 280, height: 280)
+                                .background(Color.black)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 0)
+                                        .stroke(Color.blue.opacity(0.5), lineWidth: 2)
+                                )
+                        }
+                        .background(Color.black)
+                        .cornerRadius(16)
+                        .shadow(color: .black.opacity(0.5), radius: 15, x: 0, y: -5)
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 40)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                    
+                    // Show button to reveal overlay if dismissed
+                    if !showNormalizedPoints {
+                        Button(action: {
+                            print("👁️ [NormalizedPoints] Showing overlay")
+                            withAnimation(.spring(duration: 0.3)) {
+                                showNormalizedPoints = true
+                            }
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "point.3.connected.trianglepath.dotted")
+                                    .font(.system(size: 12))
+                                Text("Show Landmarks")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.blue.opacity(0.8))
+                            )
+                        }
+                        .padding(.bottom, 40)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
             }
             .onChange(of: faceManager.EAR) { newEAR in
@@ -251,9 +329,11 @@ struct FaceDetectionView: View {
                 s.append(CGFloat(newEAR))
                 if s.count > earMaxSamples { s.removeFirst(s.count - earMaxSamples) }
                 earSeries = s
+                print("👁️ [EAR] Updated: \(String(format: "%.3f", newEAR)) | Series count: \(earSeries.count)")
             }
-            .onReceive(faceManager.$NormalizedPoints) { _ in
+            .onReceive(faceManager.$NormalizedPoints) { points in
                 faceManager.updateNoseTipCenterStatusFromCalcCoords()
+                print("📍 [NormalizedPoints] Updated: \(points.count) points")
             }
             .onReceive(
                 faceManager.$NormalizedPoints
@@ -272,10 +352,13 @@ struct FaceDetectionView: View {
                     pitchSeries = p
                     yawSeries = y
                     rollSeries = r
+                    
+                    print("🎯 [HeadPose] Pitch: \(String(format: "%.1f°", pitch)) | Yaw: \(String(format: "%.1f°", yaw)) | Roll: \(String(format: "%.1f°", roll))")
                 }
             }
             .onChange(of: faceManager.frameRecordedTrigger) { _ in
                 showRecordingFlash = true
+                print("📸 [Recording] Frame recorded! Total: \(faceManager.totalFramesCollected)")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                     showRecordingFlash = false
                 }
@@ -284,25 +367,32 @@ struct FaceDetectionView: View {
             // ✅ Keep FaceManager busy synced whenever drivers change
             .onAppear {
                 syncBusy()
+                print("🎬 [FaceDetectionView] View appeared")
             }
-            .onChange(of: isProcessing) { _, _ in
+            .onChange(of: isProcessing) { _, newValue in
                 syncBusy()
+                print("⚙️ [Processing] Status changed: \(newValue)")
             }
-            .onChange(of: faceIdFetchViewModel.isLoading) { _, _ in
+            .onChange(of: faceIdFetchViewModel.isLoading) { _, newValue in
                 syncBusy()
+                print("🔄 [Fetch] Loading status: \(newValue)")
             }
-            .onChange(of: faceIdUploadViewModel.isUploading) { _, _ in
+            .onChange(of: faceIdUploadViewModel.isUploading) { _, newValue in
                 syncBusy()
+                print("⬆️ [Upload] Status: \(newValue)")
             }
 
             // ✅ Auto-trigger based on frame count and mode
             .onChange(of: faceManager.totalFramesCollected) { _, newValue in
                 guard !hasAutoTriggered && !faceManager.isBusy else { return }
 
+                print("📊 [FrameCount] Current: \(newValue) | Target: \(targetFrameCount) | Mode: \(faceAuthManager.currentMode)")
+
                 switch faceAuthManager.currentMode {
                 case .registration:
                     if newValue >= 80 {
                         hasAutoTriggered = true
+                        print("✅ [Registration] Auto-triggering registration...")
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             handleRegister()
                         }
@@ -310,6 +400,7 @@ struct FaceDetectionView: View {
                 case .verification:
                     if newValue >= 10 {
                         hasAutoTriggered = true
+                        print("✅ [Verification] Auto-triggering verification...")
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             handleLogin()
                         }
@@ -319,6 +410,7 @@ struct FaceDetectionView: View {
 
             .onChange(of: faceManager.uploadSuccess) { success in
                 if success {
+                    print("🎉 [Upload] Success! Completing flow...")
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         faceManager.resetForNewUser()
                         onComplete()
@@ -338,6 +430,7 @@ struct FaceDetectionView: View {
             .onChange(of: faceIdUploadViewModel.uploadSuccess) { ok in
                 guard ok else { return }
 
+                print("✅ [Upload] Registration successful!")
                 enrollmentGate.markEnrolled()
                 faceIdFetchViewModel.fetchFaceIds()
 
@@ -354,6 +447,7 @@ struct FaceDetectionView: View {
 
             .onChange(of: faceIdFetchViewModel.showError) { show in
                 guard show else { return }
+                print("❌ [Fetch] Error: \(faceIdFetchViewModel.errorMessage ?? "Unknown")")
                 alertTitle = "❌ Fetch Failed"
                 alertMessage = faceIdFetchViewModel.errorMessage ?? "Unknown fetch error"
                 showAlert = true
@@ -362,6 +456,7 @@ struct FaceDetectionView: View {
 
             .onChange(of: faceIdUploadViewModel.showError) { show in
                 guard show else { return }
+                print("❌ [Upload] Error: \(faceIdUploadViewModel.errorMessage ?? "Unknown")")
                 alertTitle = "❌ Upload Failed"
                 alertMessage = faceIdUploadViewModel.errorMessage ?? "Unknown upload error"
                 showAlert = true
@@ -373,12 +468,14 @@ struct FaceDetectionView: View {
                     showAlert = false
 
                     if alertTitle.contains("Successful") {
+                        print("✅ [Alert] Success confirmed, completing flow...")
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             self.onComplete()
                         }
                     }
 
                     if alertTitle.contains("Failed") || alertTitle.contains("Error") {
+                        print("🔄 [Alert] Error acknowledged, resetting frames...")
                         faceManager.AllFramesOptionalAndMandatoryDistance = []
                         faceManager.totalFramesCollected = 0
                         hasAutoTriggered = false
@@ -439,13 +536,17 @@ struct FaceDetectionView: View {
     // MARK: - Register Handler
 
     private func handleRegister() {
+        print("🚀 [Register] Starting registration process...")
         isProcessing = true
 
         let allFrames = faceManager.save316LengthDistanceArray()
         let validFrames = allFrames.filter { $0.count == 316 }
         let invalidCount = allFrames.count - validFrames.count
 
+        print("📦 [Register] Total frames: \(allFrames.count) | Valid: \(validFrames.count) | Invalid: \(invalidCount)")
+
         guard validFrames.count >= 80 else {
+            print("❌ [Register] Insufficient valid frames")
             isProcessing = false
             alertTitle = "❌ Registration Failed"
             alertMessage = "Need at least 80 valid frames.\n\nFound: \(validFrames.count) valid\nInvalid: \(invalidCount)"
@@ -461,8 +562,9 @@ struct FaceDetectionView: View {
                 self.isProcessing = false
                 switch result {
                 case .success:
-                    break
+                    print("✅ [Register] Face ID generated and uploaded successfully")
                 case .failure(let error):
+                    print("❌ [Register] Failed: \(error.localizedDescription)")
                     self.alertTitle = "❌ Registration Failed"
                     self.alertMessage = "Error: \(error.localizedDescription)"
                     self.showAlert = true
@@ -474,9 +576,11 @@ struct FaceDetectionView: View {
     // MARK: - Login Handler
 
     private func handleLogin() {
+        print("🔐 [Login] Starting verification process...")
         isProcessing = true
 
         guard backendEnrollmentValid else {
+            print("❌ [Login] No valid enrollment found")
             enrollmentGate.markNotEnrolled()
 
             isProcessing = false
@@ -490,7 +594,10 @@ struct FaceDetectionView: View {
         let validFrames = allFrames.filter { $0.count == 316 }
         let invalidCount = allFrames.count - validFrames.count
 
+        print("📦 [Login] Total frames: \(allFrames.count) | Valid: \(validFrames.count) | Invalid: \(invalidCount)")
+
         guard validFrames.count >= 10 else {
+            print("❌ [Login] Insufficient valid frames")
             isProcessing = false
             alertTitle = "❌ Login Failed"
             alertMessage = "Need at least 10 valid frames.\n\nFound: \(validFrames.count) valid\nInvalid: \(invalidCount)"
@@ -513,6 +620,8 @@ struct FaceDetectionView: View {
                 switch result {
                 case .success(let verification):
                     let matchPercent = verification.matchPercentage
+                    print("📊 [Login] Verification result - Success: \(verification.success) | Match: \(String(format: "%.1f", matchPercent))%")
+                    
                     if verification.success {
                         self.alertTitle = "✅ Login Successful!"
                         self.alertMessage = "Welcome back!\n\nMatch: \(String(format: "%.1f", matchPercent))%"
@@ -523,6 +632,7 @@ struct FaceDetectionView: View {
                         self.showAlert = true
                     }
                 case .failure(let error):
+                    print("❌ [Login] Error: \(error.localizedDescription)")
                     self.alertTitle = "❌ Verification Error"
                     self.alertMessage = "Error: \(error.localizedDescription)"
                     self.showAlert = true
