@@ -4,6 +4,12 @@ internal import AVFoundation
 private enum AppStep {
     case loading, auth, consent, cameraPrep, mlScan, mainTab
 }
+private enum LaunchDeviceState {
+    case unknown
+    case registered
+    case notRegistered
+}
+
 
 struct RootView: View {
     @EnvironmentObject var userSession: UserSession
@@ -11,6 +17,11 @@ struct RootView: View {
     @EnvironmentObject var router: Router
     @EnvironmentObject var faceAuthManager: FaceAuthManager
     @EnvironmentObject var enrollmentGate: EnrollmentGate
+    
+    @StateObject private var deviceRegistrationVM = DeviceRegistrationViewModel()
+    @State private var didRunLaunchDeviceCheck = false
+    @State private var launchDeviceState: LaunchDeviceState = .unknown
+
 
 
     @State private var step: AppStep = .loading
@@ -45,10 +56,21 @@ struct RootView: View {
 
             case .mlScan:
                 MLScanView(onDone: {
+                    #if DEBUG
                     print("✅ ML scan completed")
+                    #endif
+
                     scanGate.markScanCompleted()
+
+                    // Optional but useful: refresh user session after verification
+                    userSession.loadUser()
+
+                    // Release launch routing so future transitions use normal logic
+                    launchDeviceState = .unknown
+
                     withAnimation(.easeInOut) { step = .mainTab }
                 })
+
 
             case .mainTab:
                 MainTabView()
@@ -60,10 +82,32 @@ struct RootView: View {
             consentAccepted = UserDefaults.standard.bool(forKey: consentKey)
             scanGate.reloadFromStorage()
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                step = nextStep()
+            // ✅ Run only once per app launch of RootView
+            guard !didRunLaunchDeviceCheck else { return }
+            didRunLaunchDeviceCheck = true
+
+            // 🔍 Device check: if deviceKey missing => treat as not registered
+            let deviceKey = DeviceIdentity.resolve()
+            if deviceKey.isEmpty {
+                launchDeviceState = .notRegistered
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    step = nextStep()
+                }
+                return
             }
+
+            // ✅ Ask backend
+            deviceRegistrationVM.checkDeviceRegistration()
         }
+        .onChange(of: deviceRegistrationVM.isLoading) { _, isLoading in
+            guard didRunLaunchDeviceCheck else { return }
+            guard !isLoading else { return }
+            guard launchDeviceState == .unknown else { return }
+
+            launchDeviceState = deviceRegistrationVM.isDeviceRegistered ? .registered : .notRegistered
+            step = nextStep()
+        }
+
         .onChange(of: userSession.currentUser) { _, _ in
             step = nextStep()
         }
@@ -73,16 +117,32 @@ struct RootView: View {
     }
 
     private func nextStep() -> AppStep {
+
+        // ✅ Launch routing requirement:
+        // - registered => go to ML scan for verification
+        // - not registered => go to AuthenticationView
+        switch launchDeviceState {
+        case .registered:
+            faceAuthManager.setVerificationMode()
+            return hasCameraPermission ? .mlScan : .cameraPrep
+
+        case .notRegistered:
+            return .auth
+
+        case .unknown:
+            break
+        }
+
+        // ---- Existing logic below (unchanged) ----
         guard UserDefaults.standard.string(forKey: "accountType") == "user" else { return .auth }
         guard userSession.currentUser != nil else { return .auth }
         guard consentAccepted else { return .consent }
 
-        // ✅ 1) If not enrolled, always run REGISTRATION scan (80 frames)
         if enrollmentGate.needsEnrollment {
             faceAuthManager.setRegistrationMode()
             return hasCameraPermission ? .mlScan : .cameraPrep
         }
-        // ✅ 2) Otherwise, enforce unlock verification scan if required
+
         if scanGate.requireScan {
             faceAuthManager.setVerificationMode()
             return hasCameraPermission ? .mlScan : .cameraPrep
@@ -90,7 +150,6 @@ struct RootView: View {
 
         return .mainTab
     }
-
 }
 
 

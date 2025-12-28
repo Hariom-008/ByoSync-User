@@ -216,7 +216,7 @@ extension FaceManager {
                 // K2 = K XOR K1
                 let k2Bytes = xorData(kBytes, k1Bytes)
 
-                // token = SHA256(K || FULL_R)
+                // token = SHA256(K || R-32Byte)
                 let tokenBytes = sha256(kBytes + frameRec.rBytes32)
 
                 addFaceIdPayload.append(
@@ -300,7 +300,7 @@ extension FaceManager {
                     // Android:
                     // k1' = r32 XOR salt
                     // k'  = k2 XOR k1'
-                    // token' = SHA256(k' || rFull)
+                    // token' = SHA256(k' || rByte32)
                     let k1Prime = xorData(v.rBytes32, saltBytes)
                     let kRecovered = xorData(k2Bytes, k1Prime)
                     let tokenCandidate = hexFromData(sha256(kRecovered + v.rBytes32))
@@ -332,7 +332,7 @@ extension FaceManager {
                 recoveredHashPreview: "",
                 numErrorsDetected: 0,
                 totalBitsCompared: 0,
-                notes: "Android-style: bestRecordMatches=\(bestRecordMatchCount)/\(faceIds.count), required=\(requiredRecordMatches), bestFrame=\(bestFrameIndex.map(String.init) ?? "nil")"
+                notes: "BestRecordMatches=\(bestRecordMatchCount)/\(faceIds.count), required=\(requiredRecordMatches), bestFrame=\(bestFrameIndex.map(String.init) ?? "nil")"
             )
             DispatchQueue.main.async { completion(.success(aggregated)) }
         }
@@ -365,7 +365,3 @@ extension FaceManager {
         )
     }
 }
-
-// ========================================
-// END OF CODE TO ADD
-// ========================================

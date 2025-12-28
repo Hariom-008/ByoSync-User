@@ -79,22 +79,6 @@ extension FaceManager {
     }
     
     /// Normalizes all points by dividing by the scale factor
-//    func calculateNormalizedPoints() {
-//        let eps: Float = 1e-6
-//        guard !Translated.isEmpty, scale > eps else {
-//            NormalizedPoints = []
-//            return
-//        }
-//        
-//        // Divide each translated point by scale
-//        NormalizedPoints = Translated.map { p in
-//            (x: p.x / scale, y: p.y / scale)
-//        }
-//    }
-}
-
-extension FaceManager {
-
     func calculateNormalizedPoints() {
         let eps: Float = 1e-6
         guard !Translated.isEmpty, scale > eps else {

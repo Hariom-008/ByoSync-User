@@ -19,7 +19,7 @@ extension FaceManager {
             return
         }
 
-        let mand = mandatoryLandmarkPoints
+        let mand = mandatoryLandmarkPoints.sorted()
         let opt  = selectedOptionalLandmarks
 
         let maxIdx = max(mand.max() ?? 0, opt.max() ?? 0)
@@ -38,7 +38,7 @@ extension FaceManager {
         var allDistances: [Float] = []
         allDistances.reserveCapacity(316)
 
-        // 1) mandatory×mandatory
+        // 1). mandatory×mandatory
         for i in 0..<mand.count {
             let idxA = mand[i]
             for j in (i + 1)..<mand.count {
@@ -47,21 +47,21 @@ extension FaceManager {
             }
         }
 
-        // 2) optional chain
+        // 2). optional chain
         for i in 0..<opt.count {
             let idxA = opt[i]
             let idxB = opt[(i + 1) % opt.count]
             allDistances.append(trunc4(d(idxA, idxB)))
         }
 
-        // 3) mandatory×optional
+        // 3). mandatory×optional
         for a in mand {
             for b in opt {
                 allDistances.append(trunc4(d(a, b)))
             }
         }
 
-        // ✅ 3) Gate right before storing (busy might have flipped while computing)
+        //Gate right before storing
         guard iodIsValid,
               isNoseTipCentered,
               isHeadPoseStable(),
@@ -74,7 +74,7 @@ extension FaceManager {
             return
         }
 
-        // ✅ 4) Publish state on main
+        // Publish state on main
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             guard !self.isBusy else { return }

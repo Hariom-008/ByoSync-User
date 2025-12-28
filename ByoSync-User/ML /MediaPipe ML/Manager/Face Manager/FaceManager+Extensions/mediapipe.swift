@@ -156,7 +156,7 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
             }
 
 
-            // Build face-oval overlay from NormalizedPoints -- NOT IN USE
+            // Build face-oval overlay from NormalizedPoints
             if let previewLayer = self.previewLayer {
                 let bounds = previewLayer.bounds
                 self.updateTargetFaceOvalCoordinates(
@@ -165,18 +165,18 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
                 )
             }
             // Face metrics -- NOT IN USE
-            self.calculateFaceBoundingBox()
+           // self.calculateFaceBoundingBox()
             
             // Eye Aspect Ratio -- NOT IN USE
             let simdPoints = self.CalculationCoordinates.asSIMD2
             self.EAR = self.earCalc(from: simdPoints)
             
             // Gaze tracking logic -- NOT IN USE
-            if self.isCentreTracking && !self.isMovementTracking {
-                self.AppendActualLeftRight()
-            } else if !self.isCentreTracking && self.isMovementTracking {
-                self.calculateGazeVector()
-            }
+//            if self.isCentreTracking && !self.isMovementTracking {
+//                self.AppendActualLeftRight()
+//            } else if !self.isCentreTracking && self.isMovementTracking {
+//                self.calculateGazeVector()
+//            }
             
             // Head pose estimation
             if let (pitch, yaw, roll) = self.computeAngles(from: self.NormalizedPoints) {

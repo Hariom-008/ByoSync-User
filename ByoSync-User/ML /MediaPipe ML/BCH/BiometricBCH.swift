@@ -194,6 +194,8 @@ final class BCHBiometric {
         )
     }
 
+    
+    
     // MARK: - BCH encode (1 byte per bit)
     private func encodeSecretKeyBCH(_ secretKeyBits: BitArray) throws -> BitArray {
         try ensureInit()

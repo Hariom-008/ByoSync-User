@@ -18,8 +18,6 @@ extension FaceManager {
             }
             return Array(frame[0..<316])
         }
-
-        print("📊 [ENROLLMENT] Extracted \(trimmed.count) valid frames (316 distances each)")
         return trimmed
     }
 
