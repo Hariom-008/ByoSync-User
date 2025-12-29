@@ -6,88 +6,98 @@ import UIKit
 import CoreImage
 
 struct FaceDetectionView: View {
-
+    
     // Core managers
     @StateObject private var faceManager: FaceManager
     @StateObject private var cameraSpecManager: CameraSpecManager
-
+    
     // NCNN liveness model
     @StateObject private var ncnnViewModel = NcnnLivenessViewModel()
-
+    
     // Distance logging
     @State private var isDistanceLoggingStarted: Bool = false
     @State private var distanceLogFileURL: URL? = nil
     @State private var showDownloadButton: Bool = false
     @State private var showShareSheet = false
-
+    
     // Auth token (for potential future use)
     let authToken: String
     let onComplete: () -> Void
-
+    
     // EAR series
     @State private var earSeries: [CGFloat] = []
     private let earMaxSamples = 180
     private let blinkThreshold: CGFloat = 0.21
-
+    
     // Pose buffers
     @State private var pitchSeries: [CGFloat] = []
     @State private var yawSeries:   [CGFloat] = []
     @State private var rollSeries:  [CGFloat] = []
     private let poseMaxSamples = 180
-
+    
     // Animation state for frame recording indicator
     @State private var showRecordingFlash: Bool = false
-
+    
     // UI State
     @State private var showAlert: Bool = false
     @State private var alertTitle: String = ""
     @State private var alertMessage: String = ""
-
+    
     // Show/hide normalized points overlay
     @State private var showNormalizedPoints: Bool = true
-
+    
     // Target frame count for testing
     private let targetFrameCount = 100
-
+    
     // MARK: - Init
     init(
         authToken: String,
         onComplete: @escaping () -> Void
     ) {
         self.authToken = authToken
-
+        
         let camSpecManager = CameraSpecManager()
         _cameraSpecManager = StateObject(wrappedValue: camSpecManager)
         _faceManager = StateObject(wrappedValue: FaceManager(cameraSpecManager: camSpecManager))
         self.onComplete = onComplete
     }
-
+    
     // MARK: - Derived UI state
-
+    
     private var frameProgress: Double {
         Double(faceManager.totalFramesCollected) / Double(targetFrameCount)
     }
-
+    
+    private var uploadProgress: Double {
+        let uploaded = faceManager.acceptedFrameUploads.filter { $0.url != nil }.count
+        guard faceManager.totalFramesCollected > 0 else { return 0 }
+        return Double(uploaded) / Double(faceManager.totalFramesCollected)
+    }
+    
+    private var uploadedCount: Int {
+        faceManager.acceptedFrameUploads.filter { $0.url != nil }.count
+    }
+    
+    private var uploadErrorCount: Int {
+        faceManager.acceptedFrameUploads.filter { $0.error != nil }.count
+    }
+    
+    private var isUploadComplete: Bool {
+        uploadedCount == faceManager.totalFramesCollected && faceManager.totalFramesCollected > 0
+    }
+    
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 // Camera preview
                 MediapipeCameraPreviewView(faceManager: faceManager)
                     .ignoresSafeArea()
-
+                
                 TargetFaceOvalOverlay(faceManager: faceManager)
                 DirectionalGuidanceOverlay(faceManager: faceManager)
                 NoseCenterCircleOverlay(isCentered: faceManager.isNoseTipCentered)
-
-                if faceManager.isMovementTracking {
-                    GazeVectorCard(
-                        gazeVector: faceManager.GazeVector,
-                        screenSize: geometry.size
-                    )
-                    .transition(.opacity.combined(with: .scale))
-                    .animation(.easeInOut(duration: 0.3), value: faceManager.isMovementTracking)
-                }
-
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .ignoresSafeArea()
                 VStack {
                     // Top status bar
                     HStack(spacing: 16) {
@@ -100,9 +110,9 @@ struct FaceDetectionView: View {
                         .padding(.vertical, 8)
                         .background(RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.7)))
                         .foregroundColor(.white)
-
+                        
                         Spacer()
-
+                        
                         VStack(spacing: 4) {
                             HStack(spacing: 8) {
                                 Image(systemName: "camera.fill")
@@ -110,13 +120,13 @@ struct FaceDetectionView: View {
                                     .font(.system(size: 14, weight: .bold))
                                     .monospacedDigit()
                             }
-
+                            
                             GeometryReader { geo in
                                 ZStack(alignment: .leading) {
                                     RoundedRectangle(cornerRadius: 2)
                                         .fill(Color.white.opacity(0.3))
                                         .frame(height: 3)
-
+                                    
                                     RoundedRectangle(cornerRadius: 2)
                                         .fill(frameProgress >= 1.0 ? Color.green : Color.purple)
                                         .frame(width: geo.size.width * min(frameProgress, 1.0), height: 3)
@@ -135,10 +145,10 @@ struct FaceDetectionView: View {
                     .padding(.horizontal, 24)
                     .padding(.top, 60)
                     
-                    // Download/Share button
+                    // Replace the download/share button section with:
                     if showDownloadButton, let fileURL = distanceLogFileURL {
                         Button(action: {
-                            print("📥 [Download] Preparing to share distance log file...")
+                            print("📥 [Download] Preparing to share Excel file...")
                             Task { @MainActor in
                                 await presentDistanceFile(fileURL)
                             }
@@ -147,7 +157,7 @@ struct FaceDetectionView: View {
                                 HStack(spacing: 8) {
                                     Image(systemName: "square.and.arrow.up.fill")
                                         .font(.system(size: 16))
-                                    Text("Share Distance Log")
+                                    Text("Share Excel File")
                                         .font(.system(size: 14, weight: .semibold))
                                 }
                                 Text("(\(faceManager.totalFramesCollected) frames collected)")
@@ -172,7 +182,7 @@ struct FaceDetectionView: View {
                             }
                         }
                     }
-
+                    
                     // Collection complete indicator
                     if faceManager.totalFramesCollected >= targetFrameCount && !showDownloadButton {
                         HStack(spacing: 8) {
@@ -187,87 +197,8 @@ struct FaceDetectionView: View {
                         .foregroundColor(.white)
                         .padding(.top, 8)
                     }
-
+                    
                     Spacer()
-                    
-                    // Normalized Points Card at Bottom
-                    if showNormalizedPoints {
-                        VStack(spacing: 0) {
-                            // Header with dismiss button
-                            HStack {
-                                Image(systemName: "point.3.connected.trianglepath.dotted")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.white)
-                                
-                                Text("Face Landmarks")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.white)
-                                
-                                Spacer()
-                                
-                                Text("\(faceManager.NormalizedPoints.count) points")
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.7))
-                                
-                                // Dismiss button
-                                Button(action: {
-                                    print("🗑️ [NormalizedPoints] Dismissing overlay")
-                                    withAnimation(.spring(duration: 0.3)) {
-                                        showNormalizedPoints = false
-                                    }
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 18))
-                                        .foregroundColor(.white.opacity(0.8))
-                                }
-                                .padding(.leading, 8)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(Color.purple.opacity(0.8))
-                            
-                            // Overlay visualization
-                            NormalizedPointsOverlay(points: faceManager.NormalizedPoints)
-                                .frame(width: 280, height: 280)
-                                .background(Color.black)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 0)
-                                        .stroke(Color.purple.opacity(0.5), lineWidth: 2)
-                                )
-                        }
-                        .background(Color.black)
-                        .cornerRadius(16)
-                        .shadow(color: .black.opacity(0.5), radius: 15, x: 0, y: -5)
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 40)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
-                    
-                    // Show button to reveal overlay if dismissed
-                    if !showNormalizedPoints {
-                        Button(action: {
-                            print("👁️ [NormalizedPoints] Showing overlay")
-                            withAnimation(.spring(duration: 0.3)) {
-                                showNormalizedPoints = true
-                            }
-                        }) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "point.3.connected.trianglepath.dotted")
-                                    .font(.system(size: 12))
-                                Text("Show Landmarks")
-                                    .font(.system(size: 12, weight: .semibold))
-                            }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.purple.opacity(0.8))
-                            )
-                        }
-                        .padding(.bottom, 40)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
                 }
             }
             .onChange(of: faceManager.EAR) { newEAR in
@@ -279,11 +210,11 @@ struct FaceDetectionView: View {
             }
             
             .onReceive(faceManager.$NormalizedPoints) { points in
-                #if DEBUG
+              #if DEBUG
                 print("📍 [NormalizedPoints] Updated: \(points.count) points")
-                #endif
+              #endif
             }
-
+            
             .onReceive(
                 faceManager.$NormalizedPoints
                     .throttle(for: .milliseconds(100), scheduler: RunLoop.main, latest: true)
@@ -292,12 +223,12 @@ struct FaceDetectionView: View {
                     var p = pitchSeries; p.append(CGFloat(pitch))
                     var y = yawSeries;   y.append(CGFloat(yaw))
                     var r = rollSeries;  r.append(CGFloat(roll))
-
+                    
                     let cap = poseMaxSamples
                     if p.count > cap { p.removeFirst(p.count - cap) }
                     if y.count > cap { y.removeFirst(y.count - cap) }
                     if r.count > cap { r.removeFirst(r.count - cap) }
-
+                    
                     pitchSeries = p
                     yawSeries = y
                     rollSeries = r
@@ -308,20 +239,30 @@ struct FaceDetectionView: View {
             
             .onChange(of: faceManager.frameRecordedTrigger) { _ in
                 showRecordingFlash = true
-                print("📸 [Recording] Frame recorded! Total: \(faceManager.totalFramesCollected)")
+                let currentFrameIndex = faceManager.totalFramesCollected - 1
+                print("📸 [Recording] Frame \(currentFrameIndex) recorded! Total: \(faceManager.totalFramesCollected)")
+                
+                // Capture pixel buffer immediately for upload
+                if let pixelBuffer = faceManager.latestPixelBuffer {
+                    print("☁️ [Upload] Capturing frame \(currentFrameIndex) for upload")
+                    faceManager.enqueueAcceptedFrameUpload(frameIndex: currentFrameIndex, pixelBuffer: pixelBuffer)
+                } else {
+                    print("❌ [Upload] No pixel buffer available for frame \(currentFrameIndex)")
+                }
+                
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                     showRecordingFlash = false
                 }
             }
-
+            
             .onAppear {
                 print("🎬 [FaceDetectionView] View appeared - Distance Collection Mode")
             }
-
+            
             // Distance logging logic
             .onChange(of: faceManager.totalFramesCollected) { oldValue, newValue in
                 print("📊 [FrameCount] Current: \(newValue) | Target: \(targetFrameCount)")
-
+                
                 // Start logging on first frame
                 if !isDistanceLoggingStarted && newValue > 0 {
                     print("📝 [DistanceLog] Starting distance logging...")
@@ -354,7 +295,29 @@ struct FaceDetectionView: View {
                     }
                 }
             }
-
+            
+            // Monitor upload progress
+            .onReceive(faceManager.$acceptedFrameUploads) { uploads in
+                let uploaded = uploads.filter { $0.url != nil }.count
+                let errors = uploads.filter { $0.error != nil }.count
+                let pending = uploads.count - uploaded - errors
+                
+                print("☁️ [UploadStatus] Total: \(uploads.count) | Uploaded: \(uploaded) | Errors: \(errors) | Pending: \(pending)")
+                
+                // Log individual upload results
+                for upload in uploads {
+                    if let url = upload.url {
+                        print("✅ [Upload] Frame \(upload.frameIndex) uploaded: \(url)")
+                    } else if let error = upload.error {
+                        print("❌ [Upload] Frame \(upload.frameIndex) failed: \(error)")
+                    }
+                }
+                
+                if isUploadComplete && faceManager.totalFramesCollected >= targetFrameCount {
+                    print("🎉 [Upload] All \(faceManager.totalFramesCollected) frames uploaded successfully!")
+                }
+            }
+            
             .alert(alertTitle, isPresented: $showAlert) {
                 Button("OK") {
                     showAlert = false
@@ -368,13 +331,14 @@ struct FaceDetectionView: View {
             ncnnViewModel.onLivenessUpdated = { [weak faceManager] score in
                 faceManager?.updateFaceLivenessScore(score)
             }
-
+            
             // Reset distance logging state
             isDistanceLoggingStarted = false
             showDownloadButton = false
             distanceLogFileURL = nil
             
             print("🎯 [FaceDetectionView] Ready to collect \(targetFrameCount) frames")
+            print("☁️ [Upload] Upload tracking initialized - acceptedFrameUploads count: \(faceManager.acceptedFrameUploads.count)")
         }
         .onReceive(
             faceManager.$latestPixelBuffer
@@ -384,9 +348,9 @@ struct FaceDetectionView: View {
             ncnnViewModel.processFrame(buffer)
         }
     }
-
+    
     // MARK: - Download Distance File
-
+    
     @MainActor
     private func presentDistanceFile(_ fileURL: URL) async {
         // Verify file exists

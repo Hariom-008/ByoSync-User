@@ -135,10 +135,8 @@ struct AuthenticationView: View {
                 }
             }
             .toolbar {
-                #if DEBUG
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
-                        print("🧪 Opening Testing View")
                         openTestingView.toggle()
                     } label: {
                         Text("Testing")
@@ -152,7 +150,6 @@ struct AuthenticationView: View {
                             )
                     }
                 }
-                #endif
             }
             // 🔁 Decide what to do when API call finishes
             .onChange(of: deviceRegistrationVM.isLoading) { isLoading in

@@ -1,5 +1,4 @@
 import Foundation
-
 enum DistanceGuidance: String {
     case moveCloser
     case moveFarther

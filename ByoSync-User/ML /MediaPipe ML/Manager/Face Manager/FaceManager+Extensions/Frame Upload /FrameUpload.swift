@@ -4,53 +4,80 @@ import CoreImage
 
 extension FaceManager {
 
-    // Convert the current preview buffer to UIImage
-    // Note: orientation may need tweaking depending on your pipeline.
-    func currentFrameUIImage() -> UIImage? {
-        guard let pixelBuffer = latestPixelBuffer else { return nil }
-
+    // Convert a pixel buffer to UIImage
+    func pixelBufferToUIImage(_ pixelBuffer: CVPixelBuffer) -> UIImage? {
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         let context = CIContext()
 
-        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return nil }
+        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+            print("❌ [ImageConversion] Failed to create CGImage from pixel buffer")
+            return nil
+        }
 
-        // If your uploaded images look rotated/mirrored, adjust orientation here.
-        // Common front-cam choices: .rightMirrored or .leftMirrored
-        return UIImage(cgImage: cgImage, scale: UIScreen.main.scale, orientation: .rightMirrored)
+        let image = UIImage(cgImage: cgImage, scale: UIScreen.main.scale, orientation: .rightMirrored)
+        print("✅ [ImageConversion] Successfully converted pixel buffer to UIImage - Size: \(image.size)")
+        return image
     }
 
-    func enqueueAcceptedFrameUpload(frameIndex: Int) {
+    func enqueueAcceptedFrameUpload(frameIndex: Int, pixelBuffer: CVPixelBuffer) {
         let ts = lastDetectionTimestampMs
+        print("📤 [Upload] Starting upload for frame \(frameIndex) at timestamp \(ts)ms")
 
         // Create a tracking row immediately (so UI can show progress)
         let tracking = AcceptedFrameUpload(frameIndex: frameIndex, timestampMs: ts)
         acceptedFrameUploads.append(tracking)
         let trackingId = tracking.id
+        
+        print("📊 [Upload] Created tracking ID: \(trackingId) | Total uploads tracked: \(acceptedFrameUploads.count)")
 
-        guard let image = currentFrameUIImage() else {
+        // Convert pixel buffer to image
+        guard let image = pixelBufferToUIImage(pixelBuffer) else {
+            print("❌ [Upload] Frame \(frameIndex) - Image conversion failed")
             if let idx = acceptedFrameUploads.firstIndex(where: { $0.id == trackingId }) {
-                acceptedFrameUploads[idx].error = "No pixelBuffer / image conversion failed"
+                acceptedFrameUploads[idx].error = "Image conversion failed"
             }
             return
         }
+        
+        print("✅ [Upload] Frame \(frameIndex) - Image ready for upload (Size: \(image.size))")
 
         // Upload off the main thread, with concurrency limit
         Task.detached { [weak self] in
-            guard let self else { return }
+            guard let self else {
+                print("❌ [Upload] Frame \(frameIndex) - FaceManager deallocated")
+                return
+            }
+            
+            print("⏳ [Upload] Frame \(frameIndex) - Waiting for semaphore...")
             self.frameUploadSemaphore.wait()
-            defer { self.frameUploadSemaphore.signal() }
+            print("🚀 [Upload] Frame \(frameIndex) - Semaphore acquired, starting upload...")
+            
+            defer {
+                self.frameUploadSemaphore.signal()
+                print("✅ [Upload] Frame \(frameIndex) - Semaphore released")
+            }
 
             do {
+                print("☁️ [Upload] Frame \(frameIndex) - Uploading to Cloudinary...")
                 let url = try await CloudinaryManager.shared.uploadImage(image)
+                print("🎉 [Upload] Frame \(frameIndex) - Upload successful! URL: \(url)")
+                
                 await MainActor.run {
                     if let idx = self.acceptedFrameUploads.firstIndex(where: { $0.id == trackingId }) {
                         self.acceptedFrameUploads[idx].url = url
+                        print("✅ [Upload] Frame \(frameIndex) - URL saved to tracking array")
+                    } else {
+                        print("⚠️ [Upload] Frame \(frameIndex) - Tracking ID not found in array")
                     }
                 }
             } catch {
+                print("❌ [Upload] Frame \(frameIndex) - Upload failed: \(error.localizedDescription)")
                 await MainActor.run {
                     if let idx = self.acceptedFrameUploads.firstIndex(where: { $0.id == trackingId }) {
                         self.acceptedFrameUploads[idx].error = "\(error)"
+                        print("❌ [Upload] Frame \(frameIndex) - Error saved to tracking array")
+                    } else {
+                        print("⚠️ [Upload] Frame \(frameIndex) - Tracking ID not found in array for error update")
                     }
                 }
             }

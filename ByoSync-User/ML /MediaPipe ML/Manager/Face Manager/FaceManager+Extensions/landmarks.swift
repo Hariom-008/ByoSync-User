@@ -1,3 +1,5 @@
+import SwiftUI
+
 extension FaceManager {
 
     @inline(__always)
@@ -20,7 +22,7 @@ extension FaceManager {
         }
 
         let mand = mandatoryLandmarkPoints.sorted()
-        let opt  = selectedOptionalLandmarks
+        var opt  = selectedOptionalLandmarks
 
         let maxIdx = max(mand.max() ?? 0, opt.max() ?? 0)
         guard maxIdx < points.count else {
@@ -37,29 +39,59 @@ extension FaceManager {
 
         var allDistances: [Float] = []
         allDistances.reserveCapacity(316)
+        
+        #if DEBUG
+        var distanceOrder: [(String, Int, Int)] = []
+        #endif
 
         // 1). mandatory×mandatory
+        print("\n📏 === DISTANCE CALCULATION ORDER ===")
+        print("🔵 MANDATORY × MANDATORY PAIRS:")
         for i in 0..<mand.count {
             let idxA = mand[i]
             for j in (i + 1)..<mand.count {
                 let idxB = mand[j]
-                allDistances.append(trunc4(d(idxA, idxB)))
+                let distance = trunc4(d(idxA, idxB))
+                allDistances.append(distance)
+                print("   [\(allDistances.count - 1)] mand[\(i)] × mand[\(j)] → landmark(\(idxA), \(idxB)) = \(distance)")
+                #if DEBUG
+                distanceOrder.append(("mand×mand", idxA, idxB))
+                #endif
             }
         }
 
         // 2). optional chain
+        print("\n🟢 OPTIONAL CHAIN (consecutive pairs):")
         for i in 0..<opt.count {
             let idxA = opt[i]
             let idxB = opt[(i + 1) % opt.count]
-            allDistances.append(trunc4(d(idxA, idxB)))
+            let distance = trunc4(d(idxA, idxB))
+            allDistances.append(distance)
+            print("   [\(allDistances.count - 1)] opt[\(i)] → opt[\((i + 1) % opt.count)] → landmark(\(idxA), \(idxB)) = \(distance)")
+            #if DEBUG
+            distanceOrder.append(("opt→opt", idxA, idxB))
+            #endif
         }
 
         // 3). mandatory×optional
+        print("\n🟣 MANDATORY × OPTIONAL CROSS PAIRS:")
+        opt = opt.sorted()
         for a in mand {
             for b in opt {
-                allDistances.append(trunc4(d(a, b)))
+                let distance = trunc4(d(a, b))
+                allDistances.append(distance)
+                print("   [\(allDistances.count - 1)] mand × opt → landmark(\(a), \(b)) = \(distance)")
+                #if DEBUG
+                distanceOrder.append(("mand×opt", a, b))
+                #endif
             }
         }
+        
+        print("\n📊 SUMMARY:")
+        print("   Total distances calculated: \(allDistances.count)")
+        print("   Mandatory landmarks: \(mand)")
+        print("   Optional landmarks: \(opt)")
+        print("=================================\n")
 
         //Gate right before storing
         guard iodIsValid,
@@ -83,7 +115,7 @@ extension FaceManager {
             self.totalFramesCollected = self.AllFramesOptionalAndMandatoryDistance.count
             self.frameRecordedTrigger.toggle()
             
-            self.enqueueAcceptedFrameUpload(frameIndex: self.totalFramesCollected)
+            self.enqueueAcceptedFrameUpload(frameIndex: self.totalFramesCollected, pixelBuffer: latestPixelBuffer!)
             #if DEBUG
             print("""
             ✅ FRAME ACCEPTED & STORED:

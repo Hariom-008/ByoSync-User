@@ -1,12 +1,44 @@
 import Foundation
 
 extension FaceManager {
-    
     // MARK: - Distance File Logging
     
     private static var distanceFileURL: URL? {
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
-        return documentsPath?.appendingPathComponent("frame_distances.txt")
+        return documentsPath?.appendingPathComponent("frame_distances.csv")
+    }
+    
+    /// Generate column headers based on landmark pairs in calculation order
+    private func generateDistanceColumnHeaders() -> [String] {
+        let mand = mandatoryLandmarkPoints.sorted()
+        let opt = selectedOptionalLandmarks
+        
+        var headers: [String] = []
+        
+        // 1) Mandatory × Mandatory
+        for i in 0..<mand.count {
+            let idxA = mand[i]
+            for j in (i + 1)..<mand.count {
+                let idxB = mand[j]
+                headers.append("[\(idxA)-\(idxB)]")
+            }
+        }
+        
+        // 2) Optional chain
+        for i in 0..<opt.count {
+            let idxA = opt[i]
+            let idxB = opt[(i + 1) % opt.count]
+            headers.append("[\(idxA)-\(idxB)]")
+        }
+        
+        // 3) Mandatory × Optional
+        for a in mand {
+            for b in opt {
+                headers.append("[\(a)-\(b)]")
+            }
+        }
+        
+        return headers
     }
     
     /// Start a fresh distance log file (clears any existing file)
@@ -16,18 +48,21 @@ extension FaceManager {
             return
         }
         
-        // Create header
-        let header = """
-        Frame Distance Log
-        Generated: \(Date())
-        Format: Frame index followed by 316 distances per line
-        ==========================================
+        // Generate headers with actual landmark pairs
+        let pairHeaders = generateDistanceColumnHeaders()
         
-        """
+        var header = "Frame"
+        for pairLabel in pairHeaders {
+            header += ",\(pairLabel)"
+        }
+        header += "\n"
         
         do {
             try header.write(to: fileURL, atomically: true, encoding: .utf8)
-            print("✅ [DistanceLog] Started new log file at: \(fileURL.path)")
+            print("✅ [DistanceLog] Started new Excel file at: \(fileURL.path)")
+            print("📋 [DistanceLog] Column headers: \(pairHeaders.count) landmark pairs")
+            print("   First 5 pairs: \(pairHeaders.prefix(5).joined(separator: ", "))")
+            print("   Last 5 pairs: \(pairHeaders.suffix(5).joined(separator: ", "))")
         } catch {
             print("❌ [DistanceLog] Failed to create file: \(error.localizedDescription)")
         }
@@ -46,14 +81,17 @@ extension FaceManager {
             return appendFrameDistances(frameIndex: frameIndex, distances: distances)
         }
         
-        // Format: "Frame X: dist1, dist2, dist3, ...\n"
-        let distanceString = distances.map { String(format: "%.6f", $0) }.joined(separator: ", ")
-        let line = "Frame \(frameIndex): \(distanceString)\n"
+        // Format as CSV row: frameIndex,dist1,dist2,dist3,...
+        var row = "\(frameIndex)"
+        for distance in distances {
+            row += ",\(String(format: "%.6f", distance))"
+        }
+        row += "\n"
         
         do {
             let fileHandle = try FileHandle(forWritingTo: fileURL)
             fileHandle.seekToEndOfFile()
-            if let data = line.data(using: .utf8) {
+            if let data = row.data(using: .utf8) {
                 fileHandle.write(data)
             }
             fileHandle.closeFile()
@@ -75,7 +113,7 @@ extension FaceManager {
             return nil
         }
         
-        print("📂 [DistanceLog] File available at: \(fileURL.path)")
+        print("📂 [DistanceLog] Excel file available at: \(fileURL.path)")
         return fileURL
     }
     

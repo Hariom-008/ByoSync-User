@@ -24,7 +24,7 @@ extension FaceManager {
             // 🔒 Increase thresholds to be stricter about “face detected”
             options.minFaceDetectionConfidence = 0.80
             options.minFacePresenceConfidence = 0.80
-            options.minTrackingConfidence = 0.70
+            options.minTrackingConfidence = 0.60
 
             faceLandmarker = try FaceLandmarker(options: options)
             print("✅ MediaPipe Face Landmarker initialized")
@@ -122,8 +122,9 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
                     )
                     return (x: screenPoint.x, y: screenPoint.y)
                 }
-
-                self.CalculationCoordinates = screenCoords
+                DispatchQueue.main.async { [weak self] in
+                    self?.CalculationCoordinates = screenCoords
+                }
             } else {
                 self.ScreenCoordinates = []
                 self.TransalatedScaledFaceOvalCoordinates.removeAll()
