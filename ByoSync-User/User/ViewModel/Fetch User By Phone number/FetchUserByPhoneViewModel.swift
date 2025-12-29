@@ -25,7 +25,17 @@ final class FetchUserByPhoneNumberViewModel: ObservableObject {
 
     /// Clears old data and fetches fresh data. `faceIds` is replaced (not appended).
     func fetch(phoneNumber: String) async {
-        guard !isLoading else { return }
+        guard !isLoading else {
+            Logger.shared.d("FETCH_USER_PHONE", "Skipped: already loading", user: UserSession.shared.currentUser?.userId)
+            return
+        }
+
+        // NOTE: avoid logging raw phoneNumber (PII). Log length / last2 only.
+        let phoneHint: String = {
+            let trimmed = phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+            let last2 = String(trimmed.suffix(2))
+            return "len=\(trimmed.count),last2=\(last2)"
+        }()
 
         isLoading = true
         errorText = nil
@@ -37,12 +47,23 @@ final class FetchUserByPhoneNumberViewModel: ObservableObject {
         salt = nil
         deviceKeyHash = nil
 
+        Logger.shared.i("FETCH_USER_PHONE", "Fetch start | \(phoneHint)", user: UserSession.shared.currentUser?.userId)
+        let startTime = CFAbsoluteTimeGetCurrent()
+
         do {
             let res = try await repo.fetchUserByPhoneNumber(phoneNumber: phoneNumber)
+            let elapsedMs = Int64((CFAbsoluteTimeGetCurrent() - startTime) * 1000.0)
 
             guard res.success else {
                 errorText = res.message
                 isLoading = false
+
+                Logger.shared.e(
+                    "FETCH_USER_PHONE",
+                    "Backend failure | msg=\(res.message) | \(phoneHint)",
+                    timeTakenMs: elapsedMs,
+                    user: UserSession.shared.currentUser?.userId
+                )
                 return
             }
 
@@ -52,14 +73,46 @@ final class FetchUserByPhoneNumberViewModel: ObservableObject {
             deviceKeyHash = res.data.deviceKeyHash
             faceIds = res.data.faceData
             message = res.message
+
+            Logger.shared.i(
+                "FETCH_USER_PHONE",
+                "Fetch success | userId=\(res.data.userId) | faceIds=\(res.data.faceData.count) | \(phoneHint)",
+                timeTakenMs: elapsedMs,
+                user: UserSession.shared.currentUser?.userId
+            )
+
+            #if DEBUG
+            print("✅ [FetchUserByPhoneNumberVM] success userId=\(res.data.userId) faceIds=\(res.data.faceData.count)")
+            #endif
+
         } catch {
-            errorText = String(describing: error)
+            let elapsedMs = Int64((CFAbsoluteTimeGetCurrent() - startTime) * 1000.0)
+
+            // Prefer LocalizedError if present
+            let msg = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            errorText = msg
+
+            Logger.shared.e(
+                "FETCH_USER_PHONE",
+                "Fetch threw | msg=\(msg) | \(phoneHint)",
+                error: error,
+                timeTakenMs: elapsedMs,
+                user: UserSession.shared.currentUser?.userId
+            )
+
+            #if DEBUG
+            print("❌ [FetchUserByPhoneNumberVM] failed: \(msg)")
+            #endif
         }
 
         isLoading = false
     }
 
     func reset() {
+        #if DEBUG
+        print("🧹 [FetchUserByPhoneNumberVM] reset()")
+        #endif
+
         isLoading = false
         faceIds.removeAll()
         userId = nil
@@ -67,5 +120,7 @@ final class FetchUserByPhoneNumberViewModel: ObservableObject {
         deviceKeyHash = nil
         message = nil
         errorText = nil
+
+        Logger.shared.d("FETCH_USER_PHONE", "reset()", user: UserSession.shared.currentUser?.userId)
     }
 }

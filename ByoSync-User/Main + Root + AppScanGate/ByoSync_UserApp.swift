@@ -14,20 +14,20 @@ struct ByoSync_UserApp: App {
     @StateObject private var faceAuthManager = FaceAuthManager.shared
     @StateObject private var enrollmentGate = EnrollmentGate.shared
 
-
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @Environment(\.scenePhase) private var scenePhase
-    
-    // ✅ guarantees we don't accidentally log twice
-        private static var didLogAppStart = false
+
+    // ✅ guarantees one-time logger init + one-time app-start log
+    private static var didInitLogger = false
+    private static var didLogAppStart = false
 
     init() {
-         if !Self.didLogAppStart {
-             Self.didLogAppStart = true
-            Logger.shared.info("APP_STARTED bundle=\(Bundle.main.bundleIdentifier ?? "unknown")", type: .success)
-         }
-     }
-    
+        if !Self.didInitLogger {
+            Self.didInitLogger = true
+            Logger.shared.initialize() // starts timers, crash handling, lifecycle observers :contentReference[oaicite:1]{index=1}
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             ZStack {
@@ -38,18 +38,26 @@ struct ByoSync_UserApp: App {
                     .environmentObject(cryptoManager)
                     .environmentObject(scanGate)
                     .environmentObject(enrollmentGate)
-
                     .environment(\.locale, .init(identifier: languageManager.currentLanguageCode))
                     .preferredColorScheme(.light)
             }
             .onOpenURL { url in
-                Auth.auth().canHandle(url)
+                _ = Auth.auth().canHandle(url)
+                Logger.shared.i("DEEPLINK", "onOpenURL: \(url.absoluteString)")
             }
             .onAppear {
+                // ✅ log once here (gives Logger.initialize() time to flip isInitialized) :contentReference[oaicite:2]{index=2}
+                if !Self.didLogAppStart {
+                    Self.didLogAppStart = true
+                    let bundle = Bundle.main.bundleIdentifier ?? "unknown"
+                    Logger.shared.i("APP", "APP_STARTED bundle=\(bundle)")
+                }
+
                 socketManager.connect()
+                Logger.shared.i("SOCKET", "connect() requested")
             }
             .onChange(of: scenePhase) { oldPhase, newPhase in
-                print("🔄 [APP] Scene phase changed: \(oldPhase) -> \(newPhase)")
+                Logger.shared.d("APP_LIFECYCLE", "Scene phase: \(String(describing: oldPhase)) -> \(String(describing: newPhase))")
 
                 // Only enforce re-scan if user is already logged in
                 let isLoggedIn = (userSession.currentUser != nil)
@@ -62,15 +70,17 @@ struct ByoSync_UserApp: App {
                    isUserAccount,
                    enrollmentGate.isEnrolled
                 {
-                    print("🔐 [APP] Leaving foreground -> require verification scan on return")
+                    Logger.shared.i("SCAN_GATE", "Leaving foreground -> require verification scan on return")
                     scanGate.markRequiredDueToInactive()
                 }
 
                 switch newPhase {
                 case .active:
                     socketManager.connectIfNeeded()
+                    Logger.shared.i("SOCKET", "connectIfNeeded()")
                 case .inactive, .background:
                     socketManager.disconnect()
+                    Logger.shared.i("SOCKET", "disconnect()")
                 @unknown default:
                     break
                 }
@@ -78,10 +88,13 @@ struct ByoSync_UserApp: App {
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willTerminateNotification)) { _ in
                 // Optional: extra safety if app is killed
                 if userSession.currentUser != nil,
-                   UserDefaults.standard.string(forKey: "accountType") == "user" {
-                    print("🧨 [APP] willTerminate -> require scan on next launch")
+                   UserDefaults.standard.string(forKey: "accountType") == "user"
+                {
+                    Logger.shared.i("SCAN_GATE", "willTerminate -> require scan on next launch")
                     scanGate.markRequiredOnTerminate()
                 }
+
+                Logger.shared.i("APP_LIFECYCLE", "willTerminate received")
             }
         }
     }

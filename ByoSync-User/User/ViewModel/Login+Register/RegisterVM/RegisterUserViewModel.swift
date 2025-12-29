@@ -48,13 +48,33 @@ final class RegisterUserViewModel: ObservableObject {
 
     // MARK: - Register
     func registerUser() {
+        let tag = "REGISTER_USER"
+        let preAuthUser = "PRE_AUTH"
+
         guard canSubmit else {
+            #if DEBUG
+            print("❌ [RegisterUserVM] Validation failed: canSubmit=false")
+            #endif
+            Logger.shared.e(tag, "Validation failed (canSubmit=false)", user: preAuthUser)
             showErrorMessage("Please fill all fields correctly.")
+            return
+        }
+
+        guard !deviceId.isEmpty else {
+            #if DEBUG
+            print("❌ [RegisterUserVM] Missing deviceId")
+            #endif
+            Logger.shared.e(tag, "Missing deviceId", user: preAuthUser)
+            showErrorMessage("Device identifier unavailable.")
             return
         }
 
         isLoading = true
         errorMessage = nil
+        showError = false
+
+        Logger.shared.i(tag, "Register start", user: preAuthUser)
+        let startTime = CFAbsoluteTimeGetCurrent()
 
         repository.registerUser(
             firstName: firstName,
@@ -64,24 +84,35 @@ final class RegisterUserViewModel: ObservableObject {
             deviceId: deviceId,
             deviceName: deviceName
         ) { [weak self] result in
+            guard let self else { return }
+
+            let elapsedMs = Int64((CFAbsoluteTimeGetCurrent() - startTime) * 1000.0)
+
             DispatchQueue.main.async {
-                self?.isLoading = false
-                self?.handleRegistrationResult(result)
+                self.isLoading = false
+                self.handleRegistrationResult(result, elapsedMs: elapsedMs)
             }
         }
     }
 
     // MARK: - Result Handling
     private func handleRegistrationResult(
-        _ result: Result<APIResponse<RegisterUserData>, APIError>
+        _ result: Result<APIResponse<RegisterUserData>, APIError>,
+        elapsedMs: Int64
     ) {
-        switch result {
+        let tag = "REGISTER_USER"
+        let preAuthUser = "PRE_AUTH"
 
+        switch result {
         case .success(let response):
             guard
                 let userData = response.data?.newUser,
                 let device = response.data?.newDevice
             else {
+                #if DEBUG
+                print("❌ [RegisterUserVM] Invalid server response (missing newUser/newDevice)")
+                #endif
+                Logger.shared.e(tag, "Invalid server response (missing newUser/newDevice)", timeTakenMs: elapsedMs, user: preAuthUser)
                 showErrorMessage("Invalid server response.")
                 return
             }
@@ -107,11 +138,34 @@ final class RegisterUserViewModel: ObservableObject {
             UserSession.shared.setEmailVerified(userData.emailVerified)
             UserSession.shared.setProfilePicture(userData.profilePic ?? "")
 
+            Logger.shared.i(
+                tag,
+                "Register success | userId=\(userData.id) | deviceId=\(device.id) | isPrimary=\(device.isPrimary)",
+                timeTakenMs: elapsedMs,
+                user: userData.id
+            )
+
+            #if DEBUG
+            print("✅ [RegisterUserVM] Registration success userId=\(userData.id) deviceId=\(device.id)")
+            #endif
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 self.navigateToMainTab = true
             }
 
         case .failure(let error):
+            #if DEBUG
+            print("❌ [RegisterUserVM] Registration failed: \(error.localizedDescription)")
+            #endif
+
+            Logger.shared.e(
+                tag,
+                "Register failed | msg=\(error.localizedDescription)",
+                error: error,
+                timeTakenMs: elapsedMs,
+                user: preAuthUser
+            )
+
             showErrorMessage(error.localizedDescription)
         }
     }
