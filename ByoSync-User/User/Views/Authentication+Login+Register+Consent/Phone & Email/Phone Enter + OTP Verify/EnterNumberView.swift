@@ -112,7 +112,9 @@ struct EnterNumberView: View {
                 // Continue Button
                 Button {
                     isPhoneFieldFocused = false
-                    Task { await handleContinueTapped() }
+                    Task {
+                        await handleContinueTapped()
+                    }
                 } label: {
                     HStack(spacing: 8) {
                         if isBusy {
@@ -213,27 +215,15 @@ struct EnterNumberView: View {
             return
         }
 
-        // If backend returned an error, decide whether it's "not found" or real failure
+        // Any error from lookup now means we can proceed to send OTP
         if let err = findUserByPhoneVM.errorText, !err.isEmpty {
-            if isNotFoundError(err) {
-                // Not found => proceed
-                viewModel.sendOTP()
-                return
-            } else {
-                // Real error => show
-                lookupErrorMessage = err
-                showLookupErrorAlert = true
-                return
-            }
+            // Proceed despite error
+            viewModel.sendOTP()
+            return
         }
 
-        // No userId and no error => treat as not found
+        // No userId and no error => treat as not found and proceed
         viewModel.sendOTP()
-    }
-
-    private func isNotFoundError(_ message: String) -> Bool {
-        let m = message.lowercased()
-        return m.contains("not found") || m.contains("404") || m.contains("no user")
     }
 }
 
