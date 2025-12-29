@@ -1,12 +1,25 @@
 import SwiftUI
 
 struct EnterNumberView: View {
+    @StateObject private var findUserByPhoneVM = FetchUserByPhoneNumberViewModel()
     @StateObject private var viewModel = PhoneOTPViewModel()
+
     @EnvironmentObject var router: Router
     @FocusState private var isPhoneFieldFocused: Bool
     @Environment(\.dismiss) var dismiss
 
+    // ✅ New alerts
+    @State private var showPhoneExistsAlert: Bool = false
+    @State private var phoneExistsMessage: String = ""
+
+    @State private var showLookupErrorAlert: Bool = false
+    @State private var lookupErrorMessage: String = ""
+
     let countryCodes = ["+91"]
+
+    private var isBusy: Bool {
+        viewModel.isLoading || findUserByPhoneVM.isLoading
+    }
 
     var body: some View {
         ZStack {
@@ -71,7 +84,6 @@ struct EnterNumberView: View {
                             .background(Color(.systemGray6))
                             .cornerRadius(10)
                             .onChange(of: viewModel.phoneNumber) { _, newValue in
-                                // Keep digits only + max 10
                                 let filtered = newValue.filter { $0.isNumber }
                                 let clipped = String(filtered.prefix(10))
                                 if viewModel.phoneNumber != clipped {
@@ -100,10 +112,10 @@ struct EnterNumberView: View {
                 // Continue Button
                 Button {
                     isPhoneFieldFocused = false
-                    viewModel.sendOTP() // ✅ Firebase
+                    Task { await handleContinueTapped() }
                 } label: {
                     HStack(spacing: 8) {
-                        if viewModel.isLoading {
+                        if isBusy {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         } else {
@@ -117,19 +129,19 @@ struct EnterNumberView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(
-                        viewModel.isValidPhoneNumber && !viewModel.isLoading
+                        viewModel.isValidPhoneNumber && !isBusy
                         ? Color.indigo
                         : Color.gray
                     )
                     .cornerRadius(12)
                 }
-                .disabled(!viewModel.isValidPhoneNumber || viewModel.isLoading)
+                .disabled(!viewModel.isValidPhoneNumber || isBusy)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 40)
             }
             .onTapGesture { isPhoneFieldFocused = false }
 
-            if viewModel.isLoading {
+            if isBusy {
                 Color.black.opacity(0.2)
                     .ignoresSafeArea()
                     .allowsHitTesting(false)
@@ -145,14 +157,34 @@ struct EnterNumberView: View {
                 }
             }
         }
+
+        // Existing OTP error
         .alert("Error", isPresented: $viewModel.showError) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(viewModel.errorMessage ?? "Something went wrong.")
         }
+
+        // ✅ New: phone already exists
+        .alert("Phone number already exists", isPresented: $showPhoneExistsAlert) {
+            Button("OK", role: .cancel) {
+                // optional: clear + refocus
+                // viewModel.phoneNumber = ""
+                // isPhoneFieldFocused = true
+            }
+        } message: {
+            Text(phoneExistsMessage)
+        }
+
+        // ✅ New: lookup error (network/server)
+        .alert("Error", isPresented: $showLookupErrorAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(lookupErrorMessage)
+        }
+
         .onChange(of: viewModel.otpSent) { _, sent in
             guard sent else { return }
-
             router.navigate(
                 to: .otpVerification(
                     phoneNumber: viewModel.fullPhoneNumber,
@@ -161,6 +193,47 @@ struct EnterNumberView: View {
                 style: .push
             )
         }
+    }
+
+    // MARK: - Logic
+
+    @MainActor
+    private func handleContinueTapped() async {
+        guard viewModel.isValidPhoneNumber else { return }
+
+        let phone = viewModel.fullPhoneNumber
+
+        // 1) Check if phone exists in backend
+        await findUserByPhoneVM.fetch(phoneNumber: phone)
+
+        // If found => block OTP
+        if findUserByPhoneVM.userId != nil {
+            phoneExistsMessage = "This phone number is already registered. Please use another number."
+            showPhoneExistsAlert = true
+            return
+        }
+
+        // If backend returned an error, decide whether it's "not found" or real failure
+        if let err = findUserByPhoneVM.errorText, !err.isEmpty {
+            if isNotFoundError(err) {
+                // Not found => proceed
+                viewModel.sendOTP()
+                return
+            } else {
+                // Real error => show
+                lookupErrorMessage = err
+                showLookupErrorAlert = true
+                return
+            }
+        }
+
+        // No userId and no error => treat as not found
+        viewModel.sendOTP()
+    }
+
+    private func isNotFoundError(_ message: String) -> Bool {
+        let m = message.lowercased()
+        return m.contains("not found") || m.contains("404") || m.contains("no user")
     }
 }
 

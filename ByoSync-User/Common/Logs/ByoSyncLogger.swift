@@ -185,7 +185,7 @@ final class Logger {
     }
     
     /// Log error message - for recoverable errors
-    func error(_ message: String, type: LogType = .serverError, error: Error? = nil, file: String = #file, function: String = #function, line: Int = #line) {
+    func error(_ message: String, type: LogType, error: Error? = nil, file: String = #file, function: String = #function, line: Int = #line) {
         var fullMessage = message
         if let error = error {
             fullMessage += " | Error: \(error.localizedDescription)"

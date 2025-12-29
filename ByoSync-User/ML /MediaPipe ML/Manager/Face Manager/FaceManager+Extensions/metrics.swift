@@ -71,7 +71,7 @@ extension FaceManager {
         let oneMinusR2 = max(0 as Float, 1 - (nose.x * nose.x + nose.y * nose.y))
         let den = sqrtf(oneMinusR2)
         
-        let pitch = atan2f(nose.y, den)
+        let pitch = atan2f(nose.y, den) 
         let yaw   = atan2f(nose.x, den)
         
         

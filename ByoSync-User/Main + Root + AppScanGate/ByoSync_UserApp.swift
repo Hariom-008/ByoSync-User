@@ -17,7 +17,17 @@ struct ByoSync_UserApp: App {
 
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @Environment(\.scenePhase) private var scenePhase
+    
+    // ✅ guarantees we don't accidentally log twice
+        private static var didLogAppStart = false
 
+    init() {
+         if !Self.didLogAppStart {
+             Self.didLogAppStart = true
+            Logger.shared.info("APP_STARTED bundle=\(Bundle.main.bundleIdentifier ?? "unknown")", type: .success)
+         }
+     }
+    
     var body: some Scene {
         WindowGroup {
             ZStack {

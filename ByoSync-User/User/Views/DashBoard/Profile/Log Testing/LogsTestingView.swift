@@ -472,7 +472,7 @@ struct LogsTestingView: View {
         case .warning:
             Logger.shared.warning("Test warning log generated at \(timestamp)")
         case .error:
-            Logger.shared.error("Test error log generated at \(timestamp)")
+            Logger.shared.error("Test error log generated at \(timestamp)", type: .serverError)
         case .critical:
             Logger.shared.critical("Test critical log generated at \(timestamp)")
         }

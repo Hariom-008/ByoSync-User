@@ -52,7 +52,11 @@ final class DeviceRegistrationViewModel: ObservableObject {
                 
                 switch result {
                 case .success(let resp):
+                    #if DEBUG
                     print("✅ [DeviceRegistrationVM] Received response: \(resp)")
+                    #endif
+                    Logger.shared.apiCall("Device Registration[VM] Check: ✅SUCCESS \(resp)")
+                   // Logger.shared.log("Device Registration[VM] Check: ✅SUCCESS \(resp)", level: , type: <#T##LogType#>)
                     
                     // Even on HTTP 200, backend can signal failure via `success` flag.
                     if resp.success {
@@ -77,8 +81,12 @@ final class DeviceRegistrationViewModel: ObservableObject {
                     self.isDeviceRegistered = false
                     self.hasFaceData = false
                     self.errorMessage = msg
-                    
+                    #if DEBUG
                     print("❌ [DeviceRegistrationVM] API failure: \(msg)")
+                    #endif
+                    Logger.shared.apiCall("Device Registration[VM] Check:❌Failure - \(msg)")
+                    Logger.shared.log("Device Registration[VM] Check: Failure-\(msg)", level: .error, type: .apiCall)
+                    
                 }
             }
         }
