@@ -123,11 +123,11 @@ struct AuthenticationView: View {
                 EnterNumberView()
             }
             .navigationDestination(isPresented: $openTestingView) {
-                #if DEBUG
+              //  #if DEBUG
                 MLScanView {
                     print("🧪 MLScan Opened!")
                 }
-                #endif
+              //  #endif
             }
             .alert(deviceAlertMessage, isPresented: $showDeviceAlert) {
                 Button("OK", role: .cancel) {
