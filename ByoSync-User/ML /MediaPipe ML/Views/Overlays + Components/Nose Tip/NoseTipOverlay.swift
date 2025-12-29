@@ -14,6 +14,7 @@ struct NoseCenterCircleOverlay: View {
     var body: some View {
         GeometryReader { geo in
             Image(systemName: "scope")
+                .fontWeight(.bold)
                 .foregroundStyle(isCentered ? Color.green : Color.red)
                 .frame(width: 10, height: 10)
                 .position(x: geo.size.width / 2,
