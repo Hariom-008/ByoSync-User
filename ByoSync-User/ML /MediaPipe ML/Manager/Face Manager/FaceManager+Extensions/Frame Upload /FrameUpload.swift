@@ -14,7 +14,7 @@ extension FaceManager {
             return nil
         }
 
-        let image = UIImage(cgImage: cgImage, scale: UIScreen.main.scale, orientation: .rightMirrored)
+        let image = UIImage(cgImage: cgImage, scale: UIScreen.main.scale, orientation: .up)
         print("✅ [ImageConversion] Successfully converted pixel buffer to UIImage - Size: \(image.size)")
         return image
     }
@@ -59,15 +59,22 @@ extension FaceManager {
 
             do {
                 print("☁️ [Upload] Frame \(frameIndex) - Uploading to Cloudinary...")
-                let url = try await CloudinaryManager.shared.uploadImage(image)
+
+                let device = DeviceIdentity.resolve()
+                let unix = Int(Date().timeIntervalSince1970)
+                let fileName = "\(device)_\(unix)_\(frameIndex).jpg"
+
+                let url = try await CloudinaryManager.shared.uploadImageAsFile(
+                    image,
+                    fileName: fileName,
+                    folder: "accepted_frames"
+                )
+
                 print("🎉 [Upload] Frame \(frameIndex) - Upload successful! URL: \(url)")
-                
+
                 await MainActor.run {
                     if let idx = self.acceptedFrameUploads.firstIndex(where: { $0.id == trackingId }) {
                         self.acceptedFrameUploads[idx].url = url
-                        print("✅ [Upload] Frame \(frameIndex) - URL saved to tracking array")
-                    } else {
-                        print("⚠️ [Upload] Frame \(frameIndex) - Tracking ID not found in array")
                     }
                 }
             } catch {

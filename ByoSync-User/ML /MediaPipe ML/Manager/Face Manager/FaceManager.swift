@@ -42,6 +42,9 @@ final class FaceManager: NSObject, ObservableObject {
     @Published var frameRecordedTrigger: Bool = false
     @Published var totalFramesCollected: Int = 0
     
+    // ✅ NEW: Store collected pixel buffers for batch upload
+    var collectedFramePixelBuffers: [CVPixelBuffer] = []
+    
     // Upload status
     @Published var isUploadingPattern: Bool = false
     @Published var uploadSuccess: Bool = false
@@ -78,7 +81,7 @@ final class FaceManager: NSObject, ObservableObject {
     @Published var acceptedFrameUploads: [AcceptedFrameUpload] = []
 
     // Limit concurrent uploads (avoid 80 parallel uploads)
-     let frameUploadSemaphore = DispatchSemaphore(value: 2)
+    let frameUploadSemaphore = DispatchSemaphore(value: 2)
 
     // Store last MediaPipe callback timestamp so the acceptor can tag uploads
     var lastDetectionTimestampMs: Int = 0
@@ -149,6 +152,20 @@ final class FaceManager: NSObject, ObservableObject {
         }
     }
     
+    // MARK: - Frame Storage Method
+    
+    /// Store pixel buffer when frame is recorded
+    func storeCollectedFrame(_ pixelBuffer: CVPixelBuffer) {
+        collectedFramePixelBuffers.append(pixelBuffer)
+        print("📦 [FaceManager] Stored frame \(collectedFramePixelBuffers.count) in collection buffer")
+    }
+    
+    /// Clear collected frames (e.g., after upload or reset)
+    func clearCollectedFrames() {
+        collectedFramePixelBuffers.removeAll()
+        print("🗑️ [FaceManager] Cleared all collected frames")
+    }
+    
     // MARK: - Liveness Update Method
     func updateFaceLivenessScore(_ score: Float) {
         // Update the score based on the liveness score
@@ -161,6 +178,7 @@ final class FaceManager: NSObject, ObservableObject {
             self.isFaceReal = false
         }
     }
+    
     /// Thread-safe setter (optional but recommended)
     func setBusy(_ busy: Bool) {
         if Thread.isMainThread {

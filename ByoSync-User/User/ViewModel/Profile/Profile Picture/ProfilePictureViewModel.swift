@@ -40,7 +40,8 @@ final class ProfilePictureViewModel: ObservableObject {
             do {
                 // Step 1: Upload to Cloudinary
                 print("☁️ [VM] Uploading to Cloudinary...")
-                uploadedUrl = try await cloudinary.uploadImage(image)
+               // uploadedUrl = try await cloudinary.uploadImage(image)
+                
                 print("✅ [VM] Cloudinary upload successful: \(uploadedUrl ?? "no URL")")
                 
                 // Step 2: Save URL to UserSession

@@ -106,24 +106,40 @@ extension FaceManager {
             return
         }
 
-        // Publish state on main
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             guard !self.isBusy else { return }
 
             self.AllFramesOptionalAndMandatoryDistance.append(allDistances)
+
+            // totalFramesCollected becomes count (1..N)
             self.totalFramesCollected = self.AllFramesOptionalAndMandatoryDistance.count
+
+            // Use a 0-based frame number for upload naming / tracking
+            let frameNo = self.totalFramesCollected - 1
+
             self.frameRecordedTrigger.toggle()
-            
-            self.enqueueAcceptedFrameUpload(frameIndex: self.totalFramesCollected, pixelBuffer: latestPixelBuffer!)
+
+            // ✅ Snapshot safely (NO force unwrap)
+            guard let pb = self.latestPixelBuffer else {
+                #if DEBUG
+                print("❌ [Upload] latestPixelBuffer is nil at accept-time; skipping upload for frame \(frameNo)")
+                #endif
+                return
+            }
+
+            // ✅ Upload ONLY here (remove the SwiftUI-side enqueue)
+            self.enqueueAcceptedFrameUpload(frameIndex: frameNo, pixelBuffer: pb)
+
             #if DEBUG
             print("""
             ✅ FRAME ACCEPTED & STORED:
-               frameIndex (1-based) = \(totalFramesCollected)
-               vector length        = \(allDistances.count)
-               total stored frames  = \(AllFramesOptionalAndMandatoryDistance.count)
+               frameNo (0-based)     = \(frameNo)
+               vector length         = \(allDistances.count)
+               total stored frames   = \(self.AllFramesOptionalAndMandatoryDistance.count)
             """)
             #endif
         }
+
     }
 }
