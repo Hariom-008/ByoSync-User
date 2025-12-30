@@ -50,33 +50,33 @@ final class LoginUserRepository {
                 #if DEBUG
                 print("✅ User is Logged In Successfully")
                 #endif
-                Logger.shared.log(
-                    "Login successful for user: \(name) | Message: \(response.message)",
-                    level: .info,
-                    type: .apiCall,
-                    performanceTime: timeElapsed
-                )
-                
-                Logger.shared.info(
-                    "User authenticated successfully",
-                    type: .success
-                )
-                
+//                Logger.shared.log(
+//                    "Login successful for user: \(name) | Message: \(response.message)",
+//                    level: .info,
+//                    type: .apiCall,
+//                    performanceTime: timeElapsed
+//                )
+//                
+//                Logger.shared.info(
+//                    "User authenticated successfully",
+//                    type: .success
+//                )
+//                
                 completion(.success(response))
             
             case .failure(let error):
-                Logger.shared.log(
-                    "Login API call failed for user: \(name)",
-                    level: .error,
-                    type: .badRequest,
-                    performanceTime: timeElapsed
-                )
-                
-                Logger.shared.error(
-                    "Authentication failed: \(error.localizedDescription)",
-                    type: .badRequest,
-                    error: error
-                )
+//                Logger.shared.log(
+//                    "Login API call failed for user: \(name)",
+//                    level: .error,
+//                    type: .badRequest,
+//                    performanceTime: timeElapsed
+//                )
+//                
+//                Logger.shared.error(
+//                    "Authentication failed: \(error.localizedDescription)",
+//                    type: .badRequest,
+//                    error: error
+//                )
                 
                 completion(.failure(error))
             }

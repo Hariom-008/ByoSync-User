@@ -55,7 +55,7 @@ final class DeviceRegistrationViewModel: ObservableObject {
                     #if DEBUG
                     print("✅ [DeviceRegistrationVM] Received response: \(resp)")
                     #endif
-                    Logger.shared.apiCall("Device Registration[VM] Check: ✅SUCCESS \(resp)")
+                   // Logger.shared.apiCall("Device Registration[VM] Check: ✅SUCCESS \(resp)")
                    // Logger.shared.log("Device Registration[VM] Check: ✅SUCCESS \(resp)", level: , type: <#T##LogType#>)
                     
                     // Even on HTTP 200, backend can signal failure via `success` flag.
@@ -84,8 +84,8 @@ final class DeviceRegistrationViewModel: ObservableObject {
                     #if DEBUG
                     print("❌ [DeviceRegistrationVM] API failure: \(msg)")
                     #endif
-                    Logger.shared.apiCall("Device Registration[VM] Check:❌Failure - \(msg)")
-                    Logger.shared.log("Device Registration[VM] Check: Failure-\(msg)", level: .error, type: .apiCall)
+//                    Logger.shared.apiCall("Device Registration[VM] Check:❌Failure - \(msg)")
+//                    Logger.shared.log("Device Registration[VM] Check: Failure-\(msg)", level: .error, type: .apiCall)
                     
                 }
             }

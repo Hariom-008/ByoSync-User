@@ -24,7 +24,7 @@ struct ByoSync_UserApp: App {
     init() {
          if !Self.didLogAppStart {
              Self.didLogAppStart = true
-            Logger.shared.info("APP_STARTED bundle=\(Bundle.main.bundleIdentifier ?? "unknown")", type: .success)
+           // Logger.shared.info("APP_STARTED bundle=\(Bundle.main.bundleIdentifier ?? "unknown")", type: .success)
          }
      }
     
