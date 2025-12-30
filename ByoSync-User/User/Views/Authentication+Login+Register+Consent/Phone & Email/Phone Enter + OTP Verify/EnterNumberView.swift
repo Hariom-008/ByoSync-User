@@ -121,10 +121,8 @@ struct EnterNumberView: View {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         } else {
-                            Text("Continue")
+                            Text("Send OTP")
                                 .font(.headline)
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 14, weight: .semibold))
                         }
                     }
                     .foregroundColor(.white)
@@ -132,7 +130,7 @@ struct EnterNumberView: View {
                     .padding(.vertical, 16)
                     .background(
                         viewModel.isValidPhoneNumber && !isBusy
-                        ? Color.indigo
+                        ? Color.black
                         : Color.gray
                     )
                     .cornerRadius(12)

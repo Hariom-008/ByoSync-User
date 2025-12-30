@@ -5,17 +5,13 @@ struct AuthenticationView: View {
     @State private var openLoginSheet: Bool = false
     @Environment(\.dismiss) var dismiss
     
-    // 🔍 Device registration check VM
     @StateObject private var deviceRegistrationVM = DeviceRegistrationViewModel()
     
-    // Only used to know this change came from "Register" button
     @State private var didTapRegister: Bool = false
     
-    // Alert only for "already registered" case
     @State private var showDeviceAlert: Bool = false
     @State private var deviceAlertMessage: String = ""
     
-    // Same key we used in RegisterUserViewModel
     private let deviceKeyUserDefaultKey = "deviceKey"
     @State var openTestingView: Bool = false
     
@@ -108,9 +104,9 @@ struct AuthenticationView: View {
                     }
                 }
                 
-                // Start feature rotation
-                Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in
-                    withAnimation(.easeInOut(duration: 0.6)) {
+                // Start feature rotation with smoother animation
+                Timer.scheduledTimer(withTimeInterval: 3.5, repeats: true) { _ in
+                    withAnimation(.spring(response: 0.8, dampingFraction: 0.85)) {
                         currentFeature = (currentFeature + 1) % features.count
                     }
                 }
@@ -124,9 +120,10 @@ struct AuthenticationView: View {
             }
             .navigationDestination(isPresented: $openTestingView) {
                 #if DEBUG
-                MLScanView {
-                    print("🧪 MLScan Opened!")
-                }
+               // UserDataByIdView(mode: .mockContent)
+                CameraPreparationView(onReady: {
+                    
+                })
                 #endif
             }
             .alert(deviceAlertMessage, isPresented: $showDeviceAlert) {
@@ -136,37 +133,33 @@ struct AuthenticationView: View {
             }
             .toolbar {
                 #if DEBUG
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        print("🧪 Opening Testing View")
-                        openTestingView.toggle()
-                    } label: {
-                        Text("Testing")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [logoBlue, logoPurple],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                    }
-                }
+//                ToolbarItem(placement: .navigationBarTrailing) {
+//                    Button {
+//                        print("🧪 Opening Testing View")
+//                        openTestingView.toggle()
+//                    } label: {
+//                        Text("Testing")
+//                            .font(.system(size: 12, weight: .medium))
+//                            .foregroundStyle(
+//                                LinearGradient(
+//                                    colors: [logoBlue, logoPurple],
+//                                    startPoint: .leading,
+//                                    endPoint: .trailing
+//                                )
+//                            )
+//                    }
+//                }
                 #endif
             }
-            // 🔁 Decide what to do when API call finishes
             .onChange(of: deviceRegistrationVM.isLoading) { isLoading in
                 guard !isLoading, didTapRegister else { return }
                 didTapRegister = false
                 
-                // 👉 ONLY BLOCK if backend clearly says: device is already registered
                 if deviceRegistrationVM.isDeviceRegistered {
                     deviceAlertMessage = "This device is already registered with an existing ByoSync account. You can't register a new account from this device."
                     showDeviceAlert = true
                     print("⛔️ Device already registered – blocking registration flow")
                 } else {
-                    // ✅ For ALL other cases (not registered, API error, decode error):
-                    // proceed to registration flow
                     print("✅ Device not registered or API failed – proceeding to EnterNumberView")
                     openEnterNumber = true
                 }
@@ -212,7 +205,7 @@ struct AuthenticationView: View {
             
             Spacer().frame(height: 28)
             
-            // Rotating feature pill
+            // Rotating feature pill with smooth animation
             FeaturePill(
                 icon: features[currentFeature].icon,
                 title: features[currentFeature].title,
@@ -222,9 +215,10 @@ struct AuthenticationView: View {
             )
             .id(currentFeature)
             .transition(.asymmetric(
-                insertion: .move(edge: .bottom).combined(with: .opacity),
-                removal: .move(edge: .top).combined(with: .opacity)
+                insertion: .scale(scale: 0.9).combined(with: .opacity),
+                removal: .scale(scale: 0.9).combined(with: .opacity)
             ))
+            .animation(.spring(response: 0.6, dampingFraction: 0.8), value: currentFeature)
         }
         .padding(.horizontal, 16)
     }
@@ -249,14 +243,40 @@ struct AuthenticationView: View {
             .disabled(deviceRegistrationVM.isLoading)
             .opacity(deviceRegistrationVM.isLoading ? 0.6 : 1.0)
             
-            Text("Your data is encrypted and secure")
-                .font(.system(size: 10, weight: .regular, design: .rounded))
-                .foregroundColor(Color(red: 0.580, green: 0.639, blue: 0.722))
-                .multilineTextAlignment(.center)
+            HStack{
+                Text("Your data is encrypted and secure")
+                    .font(.system(size: 10, weight: .regular, design: .rounded))
+                    .foregroundColor(Color(red: 0.580, green: 0.639, blue: 0.722))
+                    .multilineTextAlignment(.center)
+                
+                // Policy link button
+                Link(destination: URL(string: "https://www.byosync.com/policy")!) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "doc.text.fill")
+                            .font(.system(size: 9))
+                        Text("Privacy Policy")
+                            .font(.system(size: 10, weight: .medium))
+                            .underline()
+                    }
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [logoBlue, logoPurple],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .padding(.vertical, 4)
+                }
+                .onTapGesture {
+                    #if DEBUG
+                    print("🔗 Opening Privacy Policy at https://www.byosync.com/policy")
+                    #endif
+                }
+            }
             
             HStack {
                 Text("powered by")
-                    .font(.system(size: 7))
+                    .font(.system(size: 8))
                     .foregroundColor(Color(red: 0.580, green: 0.639, blue: 0.722))
                     .multilineTextAlignment(.center)
                 Text("KAVION")
@@ -277,13 +297,11 @@ struct AuthenticationView: View {
         
         didTapRegister = true
         
-        // 1️⃣ Try to read deviceKey
         let deviceKey = DeviceIdentity.resolve()
         if !deviceKey.isEmpty {
             print("🔐 Using deviceKey from UserDefaults for registration check")
             deviceRegistrationVM.checkDeviceRegistration()
         } else {
-            // 2️⃣ No deviceKey stored → probably first time: just proceed
             print("⚠️ No deviceKey in User Defaults, proceeding to EnterNumberView directly")
             openEnterNumber = true
         }
