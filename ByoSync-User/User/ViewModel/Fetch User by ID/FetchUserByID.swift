@@ -55,13 +55,14 @@ final class UserDataByIdViewModel: ObservableObject {
             user = res.data.user
             device = res.data.device
             message = res.message
-
+            Logger.shared.i("User Data by ID", "\(res.message)")
             // Derived values (safe defaults)
             wallet = res.data.user.wallet
             chai = res.data.user.chai
             isPrimaryDevice = res.data.device.isPrimary
         } catch {
             errorText = String(describing: error)
+            Logger.shared.e("Failed to fetch user data by ID", "\(error)")
         }
 
         isLoading = false

@@ -83,7 +83,7 @@ extension FaceManager {
             self.totalFramesCollected = self.AllFramesOptionalAndMandatoryDistance.count
             self.frameRecordedTrigger.toggle()
             
-            self.enqueueAcceptedFrameUpload(frameIndex: self.totalFramesCollected)
+            self.enqueueAcceptedFrameUpload(frameIndex: self.totalFramesCollected,pixelBuffer: latestPixelBuffer!)
             #if DEBUG
             print("""
             ✅ FRAME ACCEPTED & STORED:

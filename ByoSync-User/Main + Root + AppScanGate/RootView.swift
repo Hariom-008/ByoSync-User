@@ -1,15 +1,16 @@
 import SwiftUI
 internal import AVFoundation
 
+
 private enum AppStep {
     case loading, auth, consent, cameraPrep, mlScan, mainTab
 }
+
 private enum LaunchDeviceState {
     case unknown
     case registered
     case notRegistered
 }
-
 
 struct RootView: View {
     @EnvironmentObject var userSession: UserSession
@@ -17,17 +18,18 @@ struct RootView: View {
     @EnvironmentObject var router: Router
     @EnvironmentObject var faceAuthManager: FaceAuthManager
     @EnvironmentObject var enrollmentGate: EnrollmentGate
-    
+
     @StateObject private var deviceRegistrationVM = DeviceRegistrationViewModel()
-    @State private var didRunLaunchDeviceCheck = false
-    @State private var launchDeviceState: LaunchDeviceState = .unknown
-
-
 
     @State private var step: AppStep = .loading
     @State private var consentAccepted = false
-
     private let consentKey = "consentAccepted"
+
+    @State private var didRunLaunchDeviceCheck = false
+    @State private var launchDeviceState: LaunchDeviceState = .unknown
+
+    // ✅ NEW: device-check routing should only apply during initial launch gating
+    @State private var launchRoutingActive = true
 
     private var hasCameraPermission: Bool {
         AVCaptureDevice.authorizationStatus(for: .video) == .authorized
@@ -62,15 +64,17 @@ struct RootView: View {
 
                     scanGate.markScanCompleted()
 
-                    // Optional but useful: refresh user session after verification
+                    // Refresh session after verification/enrollment
                     userSession.loadUser()
+                    enrollmentGate.reload()
 
-                    // Release launch routing so future transitions use normal logic
+                    // ✅ Release launch routing after scan completes
+                    launchRoutingActive = false
                     launchDeviceState = .unknown
 
-                    withAnimation(.easeInOut) { step = .mainTab }
+                    // ✅ Let normal routing decide where to go next
+                    withAnimation(.easeInOut) { step = nextStep() }
                 })
-
 
             case .mainTab:
                 MainTabView()
@@ -82,7 +86,7 @@ struct RootView: View {
             consentAccepted = UserDefaults.standard.bool(forKey: consentKey)
             scanGate.reloadFromStorage()
 
-            // ✅ Run only once per app launch of RootView
+            // ✅ Run only once
             guard !didRunLaunchDeviceCheck else { return }
             didRunLaunchDeviceCheck = true
 
@@ -103,12 +107,18 @@ struct RootView: View {
             guard didRunLaunchDeviceCheck else { return }
             guard !isLoading else { return }
             guard launchDeviceState == .unknown else { return }
+            guard launchRoutingActive else { return }
 
             launchDeviceState = deviceRegistrationVM.isDeviceRegistered ? .registered : .notRegistered
             step = nextStep()
         }
-
-        .onChange(of: userSession.currentUser) { _, _ in
+        .onChange(of: userSession.currentUser) { _, newUser in
+            // ✅ Once user becomes non-nil (login/register), stop forcing launch routing
+            if newUser != nil {
+                launchRoutingActive = false
+                launchDeviceState = .unknown
+                enrollmentGate.reload()
+            }
             step = nextStep()
         }
         .onChange(of: scanGate.requireScan) { _, _ in
@@ -118,22 +128,22 @@ struct RootView: View {
 
     private func nextStep() -> AppStep {
 
-        // ✅ Launch routing requirement:
-        // - registered => go to ML scan for verification
-        // - not registered => go to AuthenticationView
-        switch launchDeviceState {
-        case .registered:
-            faceAuthManager.setVerificationMode()
-            return hasCameraPermission ? .mlScan : .cameraPrep
+        // ✅ Launch routing applies ONLY while launchRoutingActive is true
+        if launchRoutingActive {
+            switch launchDeviceState {
+            case .registered:
+                faceAuthManager.setVerificationMode()
+                return hasCameraPermission ? .mlScan : .cameraPrep
 
-        case .notRegistered:
-            return .auth
+            case .notRegistered:
+                return .auth
 
-        case .unknown:
-            break
+            case .unknown:
+                break
+            }
         }
 
-        // ---- Existing logic below (unchanged) ----
+        // ---- Normal logic ----
         guard UserDefaults.standard.string(forKey: "accountType") == "user" else { return .auth }
         guard userSession.currentUser != nil else { return .auth }
         guard consentAccepted else { return .consent }
@@ -151,6 +161,7 @@ struct RootView: View {
         return .mainTab
     }
 }
+
 
 
 // Camera preparation view - handles permissions and pre-initialization

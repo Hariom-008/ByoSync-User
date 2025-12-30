@@ -134,7 +134,7 @@ struct FaceDetectionView: View {
     private var targetFrameCount: Int {
         switch faceAuthManager.currentMode {
         case .registration: return 80
-        case .verification: return 10
+        case .verification: return 20
         }
     }
 
@@ -154,14 +154,6 @@ struct FaceDetectionView: View {
                 DirectionalGuidanceOverlay(faceManager: faceManager)
                 NoseCenterCircleOverlay(isCentered: faceManager.isNoseTipCentered)
 
-                if faceManager.isMovementTracking {
-                    GazeVectorCard(
-                        gazeVector: faceManager.GazeVector,
-                        screenSize: geometry.size
-                    )
-                    .transition(.opacity.combined(with: .scale))
-                    .animation(.easeInOut(duration: 0.3), value: faceManager.isMovementTracking)
-                }
                 
                 // ✅ Busy overlay now driven by FaceManager
                 if faceManager.isBusy {
@@ -187,10 +179,11 @@ struct FaceDetectionView: View {
                     HStack(spacing: 16) {
                         HStack(spacing: 8) {
                             Image(systemName: currentModeIcon).foregroundColor(currentModeColor)
+                                .font(.system(size: 6, weight: .thin))
                             Text(currentModeText)
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.system(size: 6, weight: .semibold))
                         }
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, 10)
                         .padding(.vertical, 8)
                         .background(RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.7)))
                         .foregroundColor(.white)
@@ -245,83 +238,83 @@ struct FaceDetectionView: View {
                     Spacer()
                     
                     // ✅ Normalized Points Card at Bottom - Now with dismiss button and better visibility
-                    if showNormalizedPoints {
-                        VStack(spacing: 0) {
-                            // Header with dismiss button
-                            HStack {
-                                Image(systemName: "point.3.connected.trianglepath.dotted")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.white)
-                                
-                                Text("Face Landmarks")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.white)
-                                
-                                Spacer()
-                                
-                                Text("\(faceManager.NormalizedPoints.count) points")
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.7))
-                                
-                                // Dismiss button
-                                Button(action: {
-                                    print("🗑️ [NormalizedPoints] Dismissing overlay")
-                                    withAnimation(.spring(duration: 0.3)) {
-                                        showNormalizedPoints = false
-                                    }
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 18))
-                                        .foregroundColor(.white.opacity(0.8))
-                                }
-                                .padding(.leading, 8)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(Color.blue.opacity(0.8))
-                            
-                            // Overlay visualization
-                            NormalizedPointsOverlay(points: faceManager.NormalizedPoints)
-                                .frame(width: 280, height: 280)
-                                .background(Color.black)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 0)
-                                        .stroke(Color.blue.opacity(0.5), lineWidth: 2)
-                                )
-                        }
-                        .background(Color.black)
-                        .cornerRadius(16)
-                        .shadow(color: .black.opacity(0.5), radius: 15, x: 0, y: -5)
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 40)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
-                    
+//                    if showNormalizedPoints {
+//                        VStack(spacing: 0) {
+//                            // Header with dismiss button
+//                            HStack {
+//                                Image(systemName: "point.3.connected.trianglepath.dotted")
+//                                    .font(.system(size: 12))
+//                                    .foregroundColor(.white)
+//                                
+//                                Text("Face Landmarks")
+//                                    .font(.system(size: 12, weight: .semibold))
+//                                    .foregroundColor(.white)
+//                                
+//                                Spacer()
+//                                
+//                                Text("\(faceManager.NormalizedPoints.count) points")
+//                                    .font(.system(size: 10, weight: .medium))
+//                                    .foregroundColor(.white.opacity(0.7))
+//                                
+//                                // Dismiss button
+//                                Button(action: {
+//                                    print("🗑️ [NormalizedPoints] Dismissing overlay")
+//                                    withAnimation(.spring(duration: 0.3)) {
+//                                        showNormalizedPoints = false
+//                                    }
+//                                }) {
+//                                    Image(systemName: "xmark.circle.fill")
+//                                        .font(.system(size: 18))
+//                                        .foregroundColor(.white.opacity(0.8))
+//                                }
+//                                .padding(.leading, 8)
+//                            }
+//                            .padding(.horizontal, 16)
+//                            .padding(.vertical, 10)
+//                            .background(Color.blue.opacity(0.8))
+//                            
+//                            // Overlay visualization
+//                            NormalizedPointsOverlay(points: faceManager.NormalizedPoints)
+//                                .frame(width: 280, height: 280)
+//                                .background(Color.black)
+//                                .overlay(
+//                                    RoundedRectangle(cornerRadius: 0)
+//                                        .stroke(Color.blue.opacity(0.5), lineWidth: 2)
+//                                )
+//                        }
+//                        .background(Color.black)
+//                        .cornerRadius(16)
+//                        .shadow(color: .black.opacity(0.5), radius: 15, x: 0, y: -5)
+//                        .padding(.horizontal, 24)
+//                        .padding(.bottom, 40)
+//                        .transition(.move(edge: .bottom).combined(with: .opacity))
+//                    }
+//                    
                     // Show button to reveal overlay if dismissed
-                    if !showNormalizedPoints {
-                        Button(action: {
-                            print("👁️ [NormalizedPoints] Showing overlay")
-                            withAnimation(.spring(duration: 0.3)) {
-                                showNormalizedPoints = true
-                            }
-                        }) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "point.3.connected.trianglepath.dotted")
-                                    .font(.system(size: 12))
-                                Text("Show Landmarks")
-                                    .font(.system(size: 12, weight: .semibold))
-                            }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.blue.opacity(0.8))
-                            )
-                        }
-                        .padding(.bottom, 40)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
+//                    if !showNormalizedPoints {
+//                        Button(action: {
+//                            print("👁️ [NormalizedPoints] Showing overlay")
+//                            withAnimation(.spring(duration: 0.3)) {
+//                                showNormalizedPoints = true
+//                            }
+//                        }) {
+//                            HStack(spacing: 8) {
+//                                Image(systemName: "point.3.connected.trianglepath.dotted")
+//                                    .font(.system(size: 12))
+//                                Text("Show Landmarks")
+//                                    .font(.system(size: 12, weight: .semibold))
+//                            }
+//                            .foregroundColor(.white)
+//                            .padding(.horizontal, 16)
+//                            .padding(.vertical, 10)
+//                            .background(
+//                                RoundedRectangle(cornerRadius: 8)
+//                                    .fill(Color.blue.opacity(0.8))
+//                            )
+//                        }
+//                        .padding(.bottom, 40)
+//                        .transition(.move(edge: .bottom).combined(with: .opacity))
+//                    }
                 }
             }
             .onChange(of: faceManager.EAR) { newEAR in

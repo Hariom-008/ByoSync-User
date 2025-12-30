@@ -37,29 +37,55 @@ final class PhoneOTPViewModel: ObservableObject {
     func sendOTP() {
         guard isValidPhoneNumber else {
             showErrorMessage("Please enter a valid 10-digit mobile number starting with 6-9")
+            Logger.shared.e("OTP", "sendOTP blocked: invalid phone", user: "PRE_AUTH")
             return
         }
+
         isLoading = true
         errorMessage = nil
-        sendVerificationCode()
+
+        #if DEBUG
+        print("📨 [PhoneOTPVM] sendOTP() -> verifyPhoneNumber start for \(fullPhoneNumber)")
+        #endif
+
+        Logger.shared.i("OTP", "sendOTP start", user: "PRE_AUTH")
+        sendVerificationCode(flow: "send")
     }
 
     func resendOTP() {
-        guard canResend else { return }
+        guard canResend else {
+            Logger.shared.d("OTP", "resendOTP blocked: canResend=false", user: "PRE_AUTH")
+            return
+        }
+
         isLoading = true
         errorMessage = nil
         canResend = false
-        sendVerificationCode()
+
+        #if DEBUG
+        print("🔁 [PhoneOTPVM] resendOTP() -> verifyPhoneNumber start for \(fullPhoneNumber)")
+        #endif
+
+        Logger.shared.i("OTP", "resendOTP start", user: "PRE_AUTH")
+        sendVerificationCode(flow: "resend")
     }
 
     func verifyOTP(code: String) {
         guard code.count == 6, code.allSatisfy({ $0.isNumber }) else {
             showErrorMessage("Please enter a valid 6-digit OTP")
+            Logger.shared.e("OTP", "verifyOTP blocked: invalid code format", user: "PRE_AUTH")
             return
         }
+
         verificationCode = code
         isLoading = true
         errorMessage = nil
+
+        #if DEBUG
+        print("🔐 [PhoneOTPVM] verifyOTP() -> signIn start (code len=6)")
+        #endif
+
+        Logger.shared.i("OTP", "verifyOTP start", user: "PRE_AUTH")
         verifyCode()
     }
 
@@ -70,20 +96,45 @@ final class PhoneOTPViewModel: ObservableObject {
     }
 
     // MARK: - Firebase internals
-    private func sendVerificationCode() {
+    private func sendVerificationCode(flow: String) {
         let phone = fullPhoneNumber
+        let startTime = CFAbsoluteTimeGetCurrent()
 
         PhoneAuthProvider.provider()
             .verifyPhoneNumber(phone, uiDelegate: nil) { [weak self] verificationID, error in
                 guard let self = self else { return }
+                let elapsedMs = Int64((CFAbsoluteTimeGetCurrent() - startTime) * 1000.0)
+
                 DispatchQueue.main.async {
                     self.isLoading = false
 
                     if let error = error {
+                        #if DEBUG
+                        print("❌ [PhoneOTPVM] verifyPhoneNumber failed (\(flow)): \(error.localizedDescription)")
+                        #endif
+
+                        Logger.shared.e(
+                            "OTP",
+                            "verifyPhoneNumber failed | flow=\(flow) | msg=\(error.localizedDescription)",
+                            error: error,
+                            timeTakenMs: elapsedMs,
+                            user: "PRE_AUTH"
+                        )
                         self.handleVerificationError(error)
                         return
                     }
+
                     guard let verificationID else {
+                        #if DEBUG
+                        print("❌ [PhoneOTPVM] verifyPhoneNumber returned nil verificationID (\(flow))")
+                        #endif
+
+                        Logger.shared.e(
+                            "OTP",
+                            "verifyPhoneNumber missing verificationID | flow=\(flow)",
+                            timeTakenMs: elapsedMs,
+                            user: "PRE_AUTH"
+                        )
                         self.showErrorMessage("Failed to get verification ID")
                         return
                     }
@@ -92,6 +143,17 @@ final class PhoneOTPViewModel: ObservableObject {
                     self.otpSent = true
                     self.startResendTimer()
                     self.errorMessage = nil
+
+                    #if DEBUG
+                    print("✅ [PhoneOTPVM] OTP sent (\(flow)) | verificationID len=\(verificationID.count)")
+                    #endif
+
+                    Logger.shared.i(
+                        "OTP",
+                        "OTP sent | flow=\(flow) | verificationID_len=\(verificationID.count)",
+                        timeTakenMs: elapsedMs,
+                        user: "PRE_AUTH"
+                    )
                 }
             }
     }
@@ -100,8 +162,12 @@ final class PhoneOTPViewModel: ObservableObject {
         guard let verificationID else {
             isLoading = false
             showErrorMessage("Verification ID is missing. Please request a new code.")
+
+            Logger.shared.e("OTP", "verifyCode blocked: missing verificationID", user: "PRE_AUTH")
             return
         }
+
+        let startTime = CFAbsoluteTimeGetCurrent()
 
         let credential = PhoneAuthProvider.provider().credential(
             withVerificationID: verificationID,
@@ -110,14 +176,38 @@ final class PhoneOTPViewModel: ObservableObject {
 
         Auth.auth().signIn(with: credential) { [weak self] authResult, error in
             guard let self = self else { return }
+            let elapsedMs = Int64((CFAbsoluteTimeGetCurrent() - startTime) * 1000.0)
+
             DispatchQueue.main.async {
                 self.isLoading = false
 
                 if let error = error {
+                    #if DEBUG
+                    print("❌ [PhoneOTPVM] signIn failed: \(error.localizedDescription)")
+                    #endif
+
+                    Logger.shared.e(
+                        "OTP",
+                        "signIn failed | msg=\(error.localizedDescription)",
+                        error: error,
+                        timeTakenMs: elapsedMs,
+                        user: "PRE_AUTH"
+                    )
                     self.handleSignInError(error)
                     return
                 }
+
                 guard authResult != nil else {
+                    #if DEBUG
+                    print("❌ [PhoneOTPVM] signIn returned nil authResult")
+                    #endif
+
+                    Logger.shared.e(
+                        "OTP",
+                        "signIn returned nil authResult",
+                        timeTakenMs: elapsedMs,
+                        user: "PRE_AUTH"
+                    )
                     self.showErrorMessage("Authentication failed. Please try again.")
                     return
                 }
@@ -125,16 +215,47 @@ final class PhoneOTPViewModel: ObservableObject {
                 self.generateAndSaveFCMToken()
                 self.isAuthenticated = true
                 self.errorMessage = nil
+
+                #if DEBUG
+                print("✅ [PhoneOTPVM] signIn success (Firebase) | isAuthenticated=true")
+                #endif
+
+                Logger.shared.i(
+                    "OTP",
+                    "signIn success (Firebase) | isAuthenticated=true",
+                    timeTakenMs: elapsedMs,
+                    user: "PRE_AUTH"
+                )
             }
         }
     }
 
     // MARK: - FCM
     private func generateAndSaveFCMToken() {
-        Messaging.messaging().token { token, _ in
-            guard let token else { return }
+        Messaging.messaging().token { token, error in
+            if let error = error {
+                #if DEBUG
+                print("❌ [PhoneOTPVM] FCM token fetch failed: \(error.localizedDescription)")
+                #endif
+                Logger.shared.e("FCM", "token fetch failed", error: error, user: "PRE_AUTH")
+                return
+            }
+
+            guard let token else {
+                #if DEBUG
+                print("❌ [PhoneOTPVM] FCM token is nil")
+                #endif
+                Logger.shared.e("FCM", "token is nil", user: "PRE_AUTH")
+                return
+            }
+
             UserDefaults.standard.set(token, forKey: "fcmToken")
             UserDefaults.standard.synchronize()
+
+            #if DEBUG
+            print("✅ [PhoneOTPVM] FCM token saved | len=\(token.count)")
+            #endif
+            Logger.shared.i("FCM", "token saved | len=\(token.count)", user: "PRE_AUTH")
         }
     }
 
@@ -165,6 +286,13 @@ final class PhoneOTPViewModel: ObservableObject {
         } else {
             showErrorMessage(error.localizedDescription)
         }
+
+        Logger.shared.e(
+            "OTP",
+            "verification error mapped | msg=\(errorMessage ?? error.localizedDescription)",
+            error: error,
+            user: "PRE_AUTH"
+        )
     }
 
     private func handleSignInError(_ error: Error) {
@@ -187,6 +315,13 @@ final class PhoneOTPViewModel: ObservableObject {
         } else {
             showErrorMessage(error.localizedDescription)
         }
+
+        Logger.shared.e(
+            "OTP",
+            "signIn error mapped | msg=\(errorMessage ?? error.localizedDescription)",
+            error: error,
+            user: "PRE_AUTH"
+        )
     }
 
     // MARK: - Timer
@@ -202,6 +337,11 @@ final class PhoneOTPViewModel: ObservableObject {
             } else {
                 self.canResend = true
                 timer.invalidate()
+
+                #if DEBUG
+                print("✅ [PhoneOTPVM] canResend=true")
+                #endif
+                Logger.shared.i("OTP", "resend unlocked | canResend=true", user: "PRE_AUTH")
             }
         }
     }
@@ -209,7 +349,18 @@ final class PhoneOTPViewModel: ObservableObject {
     private func showErrorMessage(_ message: String) {
         errorMessage = message
         showError = true
+
+        #if DEBUG
+        print("⚠️ [PhoneOTPVM] UI error: \(message)")
+        #endif
+        Logger.shared.e("OTP", "UI error: \(message)", user: "PRE_AUTH")
     }
 
-    deinit { resendTimer?.invalidate() }
+    deinit {
+        resendTimer?.invalidate()
+        #if DEBUG
+        print("🍀 [PhoneOTPVM] deinit")
+        #endif
+        Logger.shared.d("OTP", "deinit", user: "PRE_AUTH")
+    }
 }
