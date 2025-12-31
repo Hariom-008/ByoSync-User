@@ -75,8 +75,8 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
             return
         }
         
-        let frameWidth = Float(imageSize.width)
-        let frameHeight = Float(imageSize.height)
+        let imageWidth = Float(imageSize.width)
+        let imageHeight = Float(imageSize.height)
 
         // RAW MediaPipe normalized points (0–1)
         let rawPoints: [(x: Float, y: Float)] = firstFace.map { lm in
@@ -85,7 +85,7 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
         
         // Transform landmarks to camera feed coordinates
         let coords: [(x: Float, y: Float)] = firstFace.map { lm in
-            (x: lm.x * frameWidth, y: lm.y * frameHeight)
+            (x: lm.x * imageWidth, y: lm.y * imageHeight)
         }
         
 //        // Transform landmarks for calculations (flipped)
@@ -107,11 +107,11 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
             self.rawMediaPipePoints = rawPoints
 
             // IOD gate (per-frame)
-            self.updateIODGate(frameWidth: frameWidth, frameHeight: frameHeight)
+            self.updateIODGate(imageWidth: imageWidth, imageHeight: imageHeight)
 
             // Convert to screen coordinates (kept; other UI may still use this)
             if let previewLayer = self.previewLayer {
-                let cameraResolution = CGSize(width: CGFloat(frameWidth), height: CGFloat(frameHeight))
+                let cameraResolution = CGSize(width: CGFloat(imageWidth), height: CGFloat(imageHeight))
 
                 let screenCoords: [(x: Float, y: Float)] = firstFace.map { lm in
                     let screenPoint = self.convertToScreenCoordinates(

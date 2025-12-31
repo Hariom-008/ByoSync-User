@@ -2,8 +2,7 @@ import Foundation
 import CoreGraphics
 
 extension FaceManager {
-    
-    /// Builds the on-screen oval from **NormalizedPoints** (Android-style).
+    /// Builds the on-screen oval from **NormalizedPoints.
     ///
     /// Mapping:
     ///   screen = center + normalized * scale
@@ -26,6 +25,7 @@ extension FaceManager {
             guard idx >= 0, idx < NormalizedPoints.count else { return nil }
             return NormalizedPoints[idx]
         }
+        
         guard !normOval.isEmpty else { return }
 
         // 2) Compute IOD in normalized space
@@ -59,7 +59,7 @@ extension FaceManager {
         TransalatedScaledFaceOvalCoordinates.reserveCapacity(normOval.count)
         for p in normOval {
             TransalatedScaledFaceOvalCoordinates.append(
-                (x: cx + CGFloat(p.x) * scale,
+                (x: cx - CGFloat(p.x) * scale,
                  y: cy - CGFloat(p.y) * scale)   // ✅ invert Y for screen space
             )
         }

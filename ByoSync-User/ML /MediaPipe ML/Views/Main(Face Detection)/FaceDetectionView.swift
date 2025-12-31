@@ -179,9 +179,9 @@ struct FaceDetectionView: View {
                     HStack(spacing: 16) {
                         HStack(spacing: 8) {
                             Image(systemName: currentModeIcon).foregroundColor(currentModeColor)
-                                .font(.system(size: 6, weight: .thin))
+                                .font(.system(size: 8, weight: .thin))
                             Text(currentModeText)
-                                .font(.system(size: 6, weight: .semibold))
+                                .font(.system(size: 10, weight: .semibold))
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
