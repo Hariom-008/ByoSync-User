@@ -172,6 +172,8 @@ private func sha256(_ data: Data) -> Data {
     Data(SHA256.hash(data: data))
 }
 
+
+
 // MARK: - Enrollment
 extension FaceManager {
 
@@ -181,15 +183,13 @@ extension FaceManager {
         viewModel: FaceIdViewModel,
         completion: ((Result<Void, Error>) -> Void)? = nil
     ) {
-        let trimmedFrames = save316LengthDistanceArray()
-        
+        let samples = enrollmentFrames80()   // ✅ [FrameDistance]
 
-        guard trimmedFrames.count == 80 else {
+        guard samples.count == 80 else {
             DispatchQueue.main.async { completion?(.failure(BCHBiometricError.noDistanceArrays)) }
             return
         }
 
-        // ONE SALT for all frames (32 bytes)
         let saltBytes = randomBytes(32)
         let saltHex = hexFromData(saltBytes)
 
@@ -198,8 +198,8 @@ extension FaceManager {
 
         var failureCount = 0
 
-        for (index, distances) in trimmedFrames.enumerated() {
-            let distancesDouble = distances.map { Double($0) }
+        for (index, sample) in samples.enumerated() {
+            let distancesDouble = sample.distances.map(Double.init)
 
             do {
                 let frameRec: BCHBiometric.FrameRecord = try bchQueue.sync {
@@ -207,41 +207,34 @@ extension FaceManager {
                     return try BCHShared.registerFrame(distances: distancesDouble)
                 }
 
-                // Android:
-                // K1 = R32 XOR SALT
                 let k1Bytes = xorData(frameRec.rBytes32, saltBytes)
-
-                // random 32-byte K
-                let kBytes = randomBytes(32)
-
-                // K2 = K XOR K1
+                let kBytes  = randomBytes(32)
                 let k2Bytes = xorData(kBytes, k1Bytes)
-
-                // token = SHA256(K || R-32Byte)
                 let tokenBytes = sha256(kBytes + frameRec.rBytes32)
 
                 addFaceIdPayload.append(
                     AddFaceIdRequestBody(
                         helper: frameRec.helper,
                         k2: hexFromData(k2Bytes),
-                        token: hexFromData(tokenBytes), iod: String(iodNormalized)
+                        token: hexFromData(tokenBytes),
+                        iod: String(sample.iod) // ✅ per-frame iod
                     )
                 )
 
             } catch {
                 failureCount += 1
+                #if DEBUG
                 print("❌ Enrollment frame \(index + 1) failed: \(error)")
+                #endif
             }
         }
 
         guard addFaceIdPayload.count == 80 else {
-            print("❌ Enrollment failed — only \(addFaceIdPayload.count)/80 generated (failures=\(failureCount))")
             DispatchQueue.main.async { completion?(.failure(LocalEnrollmentError.noLocalEnrollment)) }
             return
         }
 
         viewModel.uploadFaceIdList(salt: saltHex, list: addFaceIdPayload)
-
         DispatchQueue.main.async { completion?(.success(())) }
     }
 }

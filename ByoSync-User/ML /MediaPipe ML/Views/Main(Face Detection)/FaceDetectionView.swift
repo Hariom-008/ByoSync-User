@@ -531,20 +531,17 @@ struct FaceDetectionView: View {
     // MARK: - Register Handler
 
     private func handleRegister() {
-        print("🚀 [Register] Starting registration process...")
         isProcessing = true
 
-        let allFrames = faceManager.save316LengthDistanceArray()
-        let validFrames = allFrames.filter { $0.count == 316 }
-        let invalidCount = allFrames.count - validFrames.count
+        let allFrames = faceManager.enrollmentFrames80()
+        let validFrames = allFrames.filter { $0.distances.count == 316 }
+      //  let invalidCount = allFrames.count - validFrames.count
 
-        print("📦 [Register] Total frames: \(allFrames.count) | Valid: \(validFrames.count) | Invalid: \(invalidCount)")
 
         guard validFrames.count >= 80 else {
-            print("❌ [Register] Insufficient valid frames")
             isProcessing = false
             alertTitle = "❌ Registration Failed"
-            alertMessage = "Need at least 80 valid frames.\n\nFound: \(validFrames.count) valid\nInvalid: \(invalidCount)"
+            alertMessage = "Need at least 80 valid frames.\n\nFound: \(validFrames.count) valid"
             showAlert = true
             return
         }
@@ -557,9 +554,10 @@ struct FaceDetectionView: View {
                 self.isProcessing = false
                 switch result {
                 case .success:
+                    #if DEBUG
                     print("✅ [Register] Face ID generated and uploaded successfully")
+                    #endif
                 case .failure(let error):
-                    print("❌ [Register] Failed: \(error.localizedDescription)")
                     self.alertTitle = "❌ Registration Failed"
                     self.alertMessage = "Error: \(error.localizedDescription)"
                     self.showAlert = true
@@ -571,11 +569,9 @@ struct FaceDetectionView: View {
     // MARK: - Login Handler
 
     private func handleLogin() {
-        print("🔐 [Login] Starting verification process...")
         isProcessing = true
 
         guard backendEnrollmentValid else {
-            print("❌ [Login] No valid enrollment found")
             enrollmentGate.markNotEnrolled()
 
             isProcessing = false
@@ -585,7 +581,7 @@ struct FaceDetectionView: View {
             return
         }
 
-        let allFrames = faceManager.VerifyFrameDistanceArray()
+        let allFrames = faceManager.verificationFrames10()
         let validFrames = allFrames.filter { $0.count == 316 }
         let invalidCount = allFrames.count - validFrames.count
 

@@ -110,6 +110,10 @@ final class FaceManager: NSObject, ObservableObject {
     var landmarkDistanceLists: [[Float]] = []
     @Published var AllFramesOptionalAndMandatoryDistance: [[Float]] = []
     
+    // Array used to store the frame details when all Gates Cleared
+    @Published var capturedFrames: [FrameDistance] = []
+
+    
     
     // MARK: - Camera Components
     var previewLayer: AVCaptureVideoPreviewLayer?
