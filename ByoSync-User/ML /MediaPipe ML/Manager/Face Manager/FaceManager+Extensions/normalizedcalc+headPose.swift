@@ -224,6 +224,9 @@ extension FaceManager {
         abs(Yaw) <= threshold &&
         abs(Roll) <= 0.05
     }
+    func isPoseStable(pitchThr: Float, yawThr: Float, rollThr: Float) -> Bool {
+        abs(Pitch) <= pitchThr && abs(Yaw) <= yawThr && abs(Roll) <= rollThr
+    }
     
     
 //    LEFT: yaw <= -0.30

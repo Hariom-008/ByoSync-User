@@ -3,188 +3,211 @@ import SwiftUI
 struct DirectionalGuidanceOverlay: View {
     @ObservedObject var faceManager: FaceManager
 
-    // Match Android thresholds
-    private let PITCH_THRESHOLD: Float = 0.12
-    private let YAW_THRESHOLD: Float = 0.12
-    private let ROLL_THRESHOLD: Float = 0.05
+    // Center-stability thresholds
+    private let CENTER_PITCH_THR: Float = 0.10
+    private let CENTER_YAW_THR:   Float = 0.10
+    private let ROLL_THR:         Float = 0.05
 
     var body: some View {
         ZStack {
-            // Priority 1: Show stable indicator when everything is perfect
-            if allConditionsMet {
-                stableIndicator
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.85).combined(with: .opacity),
-                        removal: .opacity
-                    ))
-            }
-            // Priority 2: Show IOD distance guidance when not stable
-            else if !faceManager.iodIsValid {
+            if !faceManager.iodIsValid {
                 distanceGuidanceText
-                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
-            }
-            
-            // Directional arrows (shown when pose needs correction)
-            if !poseIsCentered {
-                directionalArrows
-                    .transition(.opacity)
+            } else {
+                switch faceManager.frameCollectionMode{
+                case .registration:
+                    registrationOverlay
+                case .verification:
+                    verificationOverlay
+                }
             }
         }
-        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: allConditionsMet)
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: faceManager.iodIsValid)
-        .animation(.spring(response: 0.25, dampingFraction: 0.85), value: poseIsCentered)
         .allowsHitTesting(false)
     }
 
-    // MARK: - Gates
+    // MARK: - Registration
 
-    private var allConditionsMet: Bool {
-        print("✅ [Gates] IOD:\(faceManager.iodIsValid) Pose:\(poseIsCentered) Stable:\(faceManager.isHeadPoseStable())")
-        return faceManager.iodIsValid &&
-               poseIsCentered &&
-               faceManager.isHeadPoseStable()
-    }
+    private var registrationOverlay: some View {
+        ZStack {
+            switch faceManager.registrationPhase {
+            case .centerCollecting:
+                // no nose gate here
+                if faceManager.isPoseStable(pitchThr: CENTER_PITCH_THR, yawThr: CENTER_YAW_THR, rollThr: ROLL_THR) {
+                    stablePill(text: "Hold steady • \(faceManager.centerFramesCount)/60")
+                } else {
+                    centerCorrectionArrows
+                    topPill(text: "Center your face • \(faceManager.centerFramesCount)/60")
+                }
 
-    private var poseIsCentered: Bool {
-        let centered = abs(faceManager.Pitch) <= PITCH_THRESHOLD &&
-                      abs(faceManager.Yaw) <= YAW_THRESHOLD &&
-                      abs(faceManager.Roll) <= ROLL_THRESHOLD
-        
-        print("🎯 [Pose Check] P:\(String(format: "%.3f", faceManager.Pitch)) Y:\(String(format: "%.3f", faceManager.Yaw)) R:\(String(format: "%.3f", faceManager.Roll)) → \(centered ? "✓" : "✗")")
-        return centered
-    }
+            case .movementCollecting:
+                movementTargetUI
 
-    // MARK: - Stable Indicator (Priority 1)
-
-    private var stableIndicator: some View {
-        VStack {
-            Spacer().frame(height: 120) // Match Android's 120dp top padding
-            
-            HStack(spacing: 10) {
-                Text("✓")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.green)
-                    .modifier(GlowPulseModifier())
-                
-                Text("Hold steady")
-                    .font(.system(size: 18, weight: .medium, design: .rounded))
-                    .foregroundColor(.white)
+            case .done:
+                stablePill(text: "Processing…")
             }
-            .padding(.horizontal, 28)
-            .padding(.vertical, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color(red: 0.11, green: 0.37, blue: 0.13).opacity(0.95)) // #1B5E20
-            )
-            
-            Spacer()
         }
     }
 
-    // MARK: - Distance Guidance Text (Priority 2)
+    private var movementTargetUI: some View {
+        let target = faceManager.currentTarget
+        let dirNow = classifyDirection(pitch: faceManager.Pitch, yaw: faceManager.Yaw)
+
+        return ZStack {
+            topPill(text: "Move head • \(faceManager.movementSecondsRemaining)s")
+
+            VStack {
+                Spacer().frame(height: 170)
+
+                Text("Look \(label(target))")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .background(RoundedRectangle(cornerRadius: 16).fill(Color.black.opacity(0.65)))
+
+                if abs(faceManager.Roll) > ROLL_THR {
+                    Text("Keep your head straight")
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundColor(.red)
+                        .padding(.top, 6)
+                } else if dirNow == target {
+                    Text("✓ Captured")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.green)
+                        .padding(.top, 6)
+                }
+
+                Spacer()
+            }
+
+            movementArrows(for: target)
+        }
+    }
+
+    private func movementArrows(for target: HeadDirection) -> some View {
+        ZStack {
+            switch target {
+            case .left:
+                AnimatedArrow(imageName: "left_arrow", alignment: .leading, offset: CGPoint(x: 20, y: 0))
+            case .right:
+                AnimatedArrow(imageName: "right_arrow", alignment: .trailing, offset: CGPoint(x: -20, y: 0))
+            case .up:
+                AnimatedArrow(imageName: "up_arrow", alignment: .top, offset: CGPoint(x: 0, y: 500))
+            case .down:
+                AnimatedArrow(imageName: "down_arrow", alignment: .bottom, offset: CGPoint(x: 0, y: -500))
+            case .center:
+                EmptyView()
+            }
+        }
+    }
+
+    private var centerCorrectionArrows: some View {
+        // Same style as your existing arrows, but centered-threshold based
+        ZStack {
+            if faceManager.Pitch < -CENTER_PITCH_THR {
+                AnimatedArrow(imageName: "up_arrow", alignment: .top, offset: CGPoint(x: 0, y: 500))
+            }
+            if faceManager.Pitch > CENTER_PITCH_THR {
+                AnimatedArrow(imageName: "down_arrow", alignment: .bottom, offset: CGPoint(x: 0, y: -500))
+            }
+            if faceManager.Yaw > CENTER_YAW_THR {
+                AnimatedArrow(imageName: "left_arrow", alignment: .leading, offset: CGPoint(x: 20, y: 0))
+            }
+            if faceManager.Yaw < -CENTER_YAW_THR {
+                AnimatedArrow(imageName: "right_arrow", alignment: .trailing, offset: CGPoint(x: -20, y: 0))
+            }
+            if faceManager.Roll > ROLL_THR {
+                AnimatedArrow(imageName: "round_right_arrow", alignment: .topLeading, offset: CGPoint(x: 16, y: 100))
+            }
+            if faceManager.Roll < -ROLL_THR {
+                AnimatedArrow(imageName: "round_left_arrow", alignment: .topTrailing, offset: CGPoint(x: -16, y: 100))
+            }
+        }
+    }
+
+    // MARK: - Verification (keep your previous behavior)
+
+    private var verificationOverlay: some View {
+        ZStack {
+            // show "hold steady" only if stable + centered-ish (your old logic)
+            if faceManager.isPoseStable(pitchThr: 0.12, yawThr: 0.12, rollThr: 0.05) {
+                stablePill(text: "Hold steady")
+            } else {
+                centerCorrectionArrows
+                topPill(text: "Align your face")
+            }
+        }
+    }
+
+    // MARK: - IOD Guidance
 
     private var distanceGuidanceText: some View {
         VStack {
-            Spacer().frame(height: 120) // Match Android's 120dp top padding
-            
+            Spacer().frame(height: 120)
             Text(distanceText)
                 .font(.system(size: 18, weight: .bold, design: .rounded))
                 .foregroundColor(distanceColor)
-                .modifier(PulseOpacityModifier())
                 .padding(.horizontal, 20)
                 .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.black.opacity(0.6))
-                )
-            
+                .background(RoundedRectangle(cornerRadius: 16).fill(Color.black.opacity(0.6)))
             Spacer()
         }
     }
 
     private var distanceText: String {
-        print("📏 [Distance] Guidance: \(faceManager.iodGuidance)")
         switch faceManager.iodGuidance {
-        case .moveCloser:
-            return "Move closer"
-        case .moveFarther:
-            return "Move back"
-        case .ok:
-            return "Perfect distance"
-        case .noFace:
-            return "Position your face"
+        case .moveCloser: return "Move closer"
+        case .moveFarther: return "Move back"
+        case .ok: return "Perfect distance"
+        case .noFace: return "Position your face"
         }
     }
 
     private var distanceColor: Color {
         switch faceManager.iodGuidance {
-        case .ok:
-            return Color(red: 0.30, green: 0.69, blue: 0.31) // #4CAF50
-        case .moveCloser, .moveFarther, .noFace:
-            return Color(red: 1.0, green: 0.32, blue: 0.32) // #FF5252
+        case .ok: return .green
+        default: return .red
         }
     }
 
-    // MARK: - Directional Arrows (Fixed Positions)
+    // MARK: - UI helpers
 
-    private var directionalArrows: some View {
-        ZStack {
-            // Pitch: Up arrow (top center)
-            if faceManager.Pitch < -PITCH_THRESHOLD {
-                AnimatedArrow(
-                    imageName: "up_arrow",
-                    alignment: .top,
-                    offset: CGPoint(x: 0, y: 500)
-                )
-            }
+    private func label(_ d: HeadDirection) -> String {
+        switch d {
+        case .left: return "LEFT"
+        case .right: return "RIGHT"
+        case .up: return "UP"
+        case .down: return "DOWN"
+        case .center: return "CENTER"
+        }
+    }
 
-            // Pitch: Down arrow (bottom center)
-            if faceManager.Pitch > PITCH_THRESHOLD {
-                AnimatedArrow(
-                    imageName: "down_arrow",
-                    alignment: .bottom,
-                    offset: CGPoint(x: 0, y: -500)
-                )
-            }
+    private func topPill(text: String) -> some View {
+        VStack {
+            Spacer().frame(height: 120)
+            Text(text)
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .foregroundColor(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(RoundedRectangle(cornerRadius: 16).fill(Color.black.opacity(0.65)))
+            Spacer()
+        }
+    }
 
-            // Yaw: Left arrow (left center)
-            if faceManager.Yaw > YAW_THRESHOLD {
-                AnimatedArrow(
-                    imageName: "left_arrow",
-                    alignment: .leading,
-                    offset: CGPoint(x: 20, y: 0)
-                )
-            }
-
-            // Yaw: Right arrow (right center)
-            if faceManager.Yaw < -YAW_THRESHOLD {
-                AnimatedArrow(
-                    imageName: "right_arrow",
-                    alignment: .trailing,
-                    offset: CGPoint(x: -20, y: 0)
-                )
-            }
-
-            // Roll: Tilt left (top-start)
-            if faceManager.Roll > ROLL_THRESHOLD {
-                AnimatedArrow(
-                    imageName: "round_right_arrow",
-                    alignment: .topLeading,
-                    offset: CGPoint(x: 16, y: 100)
-                )
-            }
-
-            // Roll: Tilt right (top-end)
-            if faceManager.Roll < -ROLL_THRESHOLD {
-                AnimatedArrow(
-                    imageName: "round_left_arrow",
-                    alignment: .topTrailing,
-                    offset: CGPoint(x: -16, y: 100)
-                )
-            }
+    private func stablePill(text: String) -> some View {
+        VStack {
+            Spacer().frame(height: 120)
+            Text("✓ \(text)")
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
+                .background(RoundedRectangle(cornerRadius: 20).fill(Color.green.opacity(0.85)))
+            Spacer()
         }
     }
 }
+
 
 // MARK: - Animated Arrow Component
 

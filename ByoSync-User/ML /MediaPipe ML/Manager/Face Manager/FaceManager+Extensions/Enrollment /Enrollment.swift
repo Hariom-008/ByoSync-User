@@ -15,7 +15,7 @@ struct EnrollmentRecord: Codable {
     let helper: String          // codeword ⊕ biometricBits (as "0/1" string)
     let secretHash: String      // R = SHA256(secretKeyBitsString) hex
 
-    let salt: String            // 256-bit hex, per enrollment (same across 80 frames)
+    let salt: String            // 256-bit hex, per enrollment (same across all Collected frames)
     let k2: String              // 256-bit hex, per frame
     let token: String           // SHA256(K || R) hex, per frame
 
@@ -32,7 +32,7 @@ struct EnrollmentStore: Codable {
 fileprivate struct RemoteEnrollmentRecord {
     let helper: String
     //let secretHash: String  // R = SHA256(secretKeyBitsString)
-    let salt: String        // same for all 80 records for this user
+    let salt: String        // same for all Collected records for this user
     let k2: String          // per-frame
     let token: String       // SHA256(K || R)
     let timestamp: Date
@@ -172,33 +172,34 @@ private func sha256(_ data: Data) -> Data {
     Data(SHA256.hash(data: data))
 }
 
-
-
 // MARK: - Enrollment
 extension FaceManager {
 
-    /// Generate all 80 enrollment records and upload them in ONE API call.
+    /// Upload enrollment records for ALL collected registration frames.
     func generateAndUploadFaceID(
         authToken: String,
         viewModel: FaceIdViewModel,
+        frames: [FrameDistance],                          // ✅ NEW
+        minRequired: Int = 60,                            // ✅ at least center frames
         completion: ((Result<Void, Error>) -> Void)? = nil
     ) {
-        let samples = enrollmentFrames80()   // ✅ [FrameDistance]
-
-        guard samples.count == 80 else {
+        // 1) Validate frames
+        let valid = frames.filter { $0.distances.count == 316 }
+        guard valid.count >= minRequired else {
             DispatchQueue.main.async { completion?(.failure(BCHBiometricError.noDistanceArrays)) }
             return
         }
 
+        // 2) ONE SALT for all frames (32 bytes)
         let saltBytes = randomBytes(32)
         let saltHex = hexFromData(saltBytes)
 
         var addFaceIdPayload: [AddFaceIdRequestBody] = []
-        addFaceIdPayload.reserveCapacity(80)
+        addFaceIdPayload.reserveCapacity(valid.count)
 
         var failureCount = 0
 
-        for (index, sample) in samples.enumerated() {
+        for (index, sample) in valid.enumerated() {
             let distancesDouble = sample.distances.map(Double.init)
 
             do {
@@ -217,19 +218,18 @@ extension FaceManager {
                         helper: frameRec.helper,
                         k2: hexFromData(k2Bytes),
                         token: hexFromData(tokenBytes),
-                        iod: String(sample.iod) // ✅ per-frame iod
+                        iod: String(sample.iod)            // ✅ per-frame iod
                     )
                 )
-
             } catch {
                 failureCount += 1
-                #if DEBUG
                 print("❌ Enrollment frame \(index + 1) failed: \(error)")
-                #endif
             }
         }
 
-        guard addFaceIdPayload.count == 80 else {
+        // 3) Don’t require “all frames succeed” anymore — require enough records
+        guard addFaceIdPayload.count >= minRequired else {
+            print("❌ Enrollment failed — only \(addFaceIdPayload.count) generated (failures=\(failureCount))")
             DispatchQueue.main.async { completion?(.failure(LocalEnrollmentError.noLocalEnrollment)) }
             return
         }

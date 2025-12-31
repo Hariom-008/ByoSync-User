@@ -18,22 +18,28 @@ enum LocalEnrollmentError: Error {
 final class LocalEnrollmentCache {
     static let shared = LocalEnrollmentCache()
 
-    // New storage key for FE format (80 frames)
-    private let key = "LocalEnrollmentRecords_v3_FE_80Frames"
+    private let keyNew = "LocalEnrollmentRecords_v4_FE_Frames"
+    private let keyOld = "LocalEnrollmentRecords_v3_FE_80Frames"
+
+    private var keyToRead: String {
+        if UserDefaults.standard.data(forKey: keyNew) != nil { return keyNew }
+        return keyOld
+    }
+
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
     private init() {}
 
-    /// Save all 80 enrollment records
+    /// Save all All enrollment records
     func saveAll(_ records: [EnrollmentRecord]) {
         do {
             let data = try encoder.encode(records)
-            UserDefaults.standard.set(data, forKey: key)
+            UserDefaults.standard.set(data, forKey: keyToRead)
             UserDefaults.standard.synchronize()
             print("💾 ✅ Saved \(records.count) enrollment records to local storage")
 
-            if let _ = UserDefaults.standard.data(forKey: key) {
+            if let _ = UserDefaults.standard.data(forKey: keyToRead) {
                 print("✅ Verified: Data exists in UserDefaults")
             } else {
                 print("❌ WARNING: Data not found after save!")
@@ -43,9 +49,9 @@ final class LocalEnrollmentCache {
         }
     }
 
-    /// Load all 80 enrollment records
+    /// Load all All enrollment records
     func loadAll() -> [EnrollmentRecord]? {
-        guard let data = UserDefaults.standard.data(forKey: key) else {
+        guard let data = UserDefaults.standard.data(forKey: keyToRead) else {
             print("⚠️ No enrollment records found in UserDefaults")
             return nil
         }
@@ -60,7 +66,7 @@ final class LocalEnrollmentCache {
     }
 
     func clear() {
-        UserDefaults.standard.removeObject(forKey: key)
+        UserDefaults.standard.removeObject(forKey: keyToRead)
         print("🧹 Cleared all enrollment records")
     }
 }

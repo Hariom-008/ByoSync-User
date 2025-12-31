@@ -39,7 +39,6 @@ struct FaceDetectionView: View {
     private let poseMaxSamples = 180
 
     // Animation state for frame recording indicator
-    @State private var showRecordingFlash: Bool = false
     @State private var hideOverlays: Bool = false
 
     // UI State for enrollment/verification
@@ -133,14 +132,56 @@ struct FaceDetectionView: View {
     // ✅ Target frame count based on mode
     private var targetFrameCount: Int {
         switch faceAuthManager.currentMode {
-        case .registration: return 80
+        case .registration: return 60
         case .verification: return 20
         }
     }
+    private var registrationTopText: String {
+        // You’ll expose these from FaceManager (see overlay section)
+        switch faceManager.registrationPhase {
+        case .centerCollecting:
+            return "Center \(faceManager.centerFrames) / 60"
+        case .movementCollecting:
+            return "Move \(faceManager.movementFrames) • \(faceManager.movementSecondsRemaining)s"
+        case .done:
+            return "Processing…"
+        }
+    }
 
-    // ✅ Progress percentage
+    private var verificationTarget: Int { 10 }
+
+    private var topCounterText: String {
+        switch faceAuthManager.currentMode {
+        case .registration:
+            switch faceManager.registrationPhase {
+            case .centerCollecting:
+                return "Center \(faceManager.centerFramesCount)/60"
+            case .movementCollecting:
+                return "Move \(faceManager.movementFramesCount) • \(faceManager.movementSecondsRemaining)s"
+            case .done:
+                return "Processing…"
+            }
+        case .verification:
+            return "\(faceManager.totalFramesCollected)/\(verificationTarget)"
+        }
+    }
+
     private var frameProgress: Double {
-        Double(faceManager.totalFramesCollected) / Double(targetFrameCount)
+        switch faceAuthManager.currentMode {
+        case .registration:
+            switch faceManager.registrationPhase {
+            case .centerCollecting:
+                return Double(faceManager.centerFramesCount) / 60.0
+            case .movementCollecting:
+                // progress by time remaining
+                let done = max(0, 15 - faceManager.movementSecondsRemaining)
+                return Double(done) / 15.0
+            case .done:
+                return 1.0
+            }
+        case .verification:
+            return Double(faceManager.totalFramesCollected) / Double(verificationTarget)
+        }
     }
 
     var body: some View {
@@ -152,8 +193,9 @@ struct FaceDetectionView: View {
 
                 TargetFaceOvalOverlay(faceManager: faceManager)
                 DirectionalGuidanceOverlay(faceManager: faceManager)
-                NoseCenterCircleOverlay(isCentered: faceManager.isNoseTipCentered)
-
+                if faceAuthManager.currentMode == .verification {
+                    NoseCenterCircleOverlay(isCentered: faceManager.isNoseTipCentered)
+                }
                 
                 // ✅ Busy overlay now driven by FaceManager
                 if faceManager.isBusy {
@@ -182,6 +224,7 @@ struct FaceDetectionView: View {
                                 .font(.system(size: 8, weight: .thin))
                             Text(currentModeText)
                                 .font(.system(size: 10, weight: .semibold))
+                            
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
@@ -236,85 +279,6 @@ struct FaceDetectionView: View {
                     }
 
                     Spacer()
-                    
-                    // ✅ Normalized Points Card at Bottom - Now with dismiss button and better visibility
-//                    if showNormalizedPoints {
-//                        VStack(spacing: 0) {
-//                            // Header with dismiss button
-//                            HStack {
-//                                Image(systemName: "point.3.connected.trianglepath.dotted")
-//                                    .font(.system(size: 12))
-//                                    .foregroundColor(.white)
-//                                
-//                                Text("Face Landmarks")
-//                                    .font(.system(size: 12, weight: .semibold))
-//                                    .foregroundColor(.white)
-//                                
-//                                Spacer()
-//                                
-//                                Text("\(faceManager.NormalizedPoints.count) points")
-//                                    .font(.system(size: 10, weight: .medium))
-//                                    .foregroundColor(.white.opacity(0.7))
-//                                
-//                                // Dismiss button
-//                                Button(action: {
-//                                    print("🗑️ [NormalizedPoints] Dismissing overlay")
-//                                    withAnimation(.spring(duration: 0.3)) {
-//                                        showNormalizedPoints = false
-//                                    }
-//                                }) {
-//                                    Image(systemName: "xmark.circle.fill")
-//                                        .font(.system(size: 18))
-//                                        .foregroundColor(.white.opacity(0.8))
-//                                }
-//                                .padding(.leading, 8)
-//                            }
-//                            .padding(.horizontal, 16)
-//                            .padding(.vertical, 10)
-//                            .background(Color.blue.opacity(0.8))
-//                            
-//                            // Overlay visualization
-//                            NormalizedPointsOverlay(points: faceManager.NormalizedPoints)
-//                                .frame(width: 280, height: 280)
-//                                .background(Color.black)
-//                                .overlay(
-//                                    RoundedRectangle(cornerRadius: 0)
-//                                        .stroke(Color.blue.opacity(0.5), lineWidth: 2)
-//                                )
-//                        }
-//                        .background(Color.black)
-//                        .cornerRadius(16)
-//                        .shadow(color: .black.opacity(0.5), radius: 15, x: 0, y: -5)
-//                        .padding(.horizontal, 24)
-//                        .padding(.bottom, 40)
-//                        .transition(.move(edge: .bottom).combined(with: .opacity))
-//                    }
-//                    
-                    // Show button to reveal overlay if dismissed
-//                    if !showNormalizedPoints {
-//                        Button(action: {
-//                            print("👁️ [NormalizedPoints] Showing overlay")
-//                            withAnimation(.spring(duration: 0.3)) {
-//                                showNormalizedPoints = true
-//                            }
-//                        }) {
-//                            HStack(spacing: 8) {
-//                                Image(systemName: "point.3.connected.trianglepath.dotted")
-//                                    .font(.system(size: 12))
-//                                Text("Show Landmarks")
-//                                    .font(.system(size: 12, weight: .semibold))
-//                            }
-//                            .foregroundColor(.white)
-//                            .padding(.horizontal, 16)
-//                            .padding(.vertical, 10)
-//                            .background(
-//                                RoundedRectangle(cornerRadius: 8)
-//                                    .fill(Color.blue.opacity(0.8))
-//                            )
-//                        }
-//                        .padding(.bottom, 40)
-//                        .transition(.move(edge: .bottom).combined(with: .opacity))
-//                    }
                 }
             }
             .onChange(of: faceManager.EAR) { newEAR in
@@ -351,14 +315,6 @@ struct FaceDetectionView: View {
                     print("🎯 [HeadPose] Pitch: \(String(format: "%.1f°", pitch)) | Yaw: \(String(format: "%.1f°", yaw)) | Roll: \(String(format: "%.1f°", roll))")
                 }
             }
-            .onChange(of: faceManager.frameRecordedTrigger) { _ in
-                showRecordingFlash = true
-                print("📸 [Recording] Frame recorded! Total: \(faceManager.totalFramesCollected)")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    showRecordingFlash = false
-                }
-            }
-
             // ✅ Keep FaceManager busy synced whenever drivers change
             .onAppear {
                 syncBusy()
@@ -377,29 +333,12 @@ struct FaceDetectionView: View {
                 print("⬆️ [Upload] Status: \(newValue)")
             }
 
-            // ✅ Auto-trigger based on frame count and mode
             .onChange(of: faceManager.totalFramesCollected) { _, newValue in
                 guard !hasAutoTriggered && !faceManager.isBusy else { return }
 
-                print("📊 [FrameCount] Current: \(newValue) | Target: \(targetFrameCount) | Mode: \(faceAuthManager.currentMode)")
-
-                switch faceAuthManager.currentMode {
-                case .registration:
-                    if newValue >= 80 {
-                        hasAutoTriggered = true
-                        print("✅ [Registration] Auto-triggering registration...")
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            handleRegister()
-                        }
-                    }
-                case .verification:
-                    if newValue >= 10 {
-                        hasAutoTriggered = true
-                        print("✅ [Verification] Auto-triggering verification...")
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            handleLogin()
-                        }
-                    }
+                if faceAuthManager.currentMode == .verification, newValue >= 10 {
+                    hasAutoTriggered = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { handleLogin() }
                 }
             }
 
@@ -429,7 +368,7 @@ struct FaceDetectionView: View {
                 enrollmentGate.markEnrolled()
                 faceIdFetchViewModel.fetchFaceIds()
 
-                faceManager.AllFramesOptionalAndMandatoryDistance = []
+                faceManager.capturedFrames = []
                 faceManager.totalFramesCollected = 0
                 hasAutoTriggered = false
 
@@ -439,6 +378,13 @@ struct FaceDetectionView: View {
 
                 faceIdUploadViewModel.resetState()
             }
+            
+            .onChange(of: faceManager.registrationComplete) { _, done in
+                guard done, !hasAutoTriggered, !faceManager.isBusy else { return }
+                hasAutoTriggered = true
+                handleRegister()
+            }
+
 
             .onChange(of: faceIdFetchViewModel.showError) { show in
                 guard show else { return }
@@ -471,7 +417,7 @@ struct FaceDetectionView: View {
 
                     if alertTitle.contains("Failed") || alertTitle.contains("Error") {
                         print("🔄 [Alert] Error acknowledged, resetting frames...")
-                        faceManager.AllFramesOptionalAndMandatoryDistance = []
+                        faceManager.capturedFrames = []
                         faceManager.totalFramesCollected = 0
                         hasAutoTriggered = false
                     }
@@ -533,30 +479,29 @@ struct FaceDetectionView: View {
     private func handleRegister() {
         isProcessing = true
 
-        let allFrames = faceManager.enrollmentFrames80()
-        let validFrames = allFrames.filter { $0.distances.count == 316 }
-      //  let invalidCount = allFrames.count - validFrames.count
+        // ✅ you define this helper in FaceManager (see next section)
+        let frames = faceManager.registrationFramesForUpload()
+        let valid = frames.filter { $0.distances.count == 316 }
 
-
-        guard validFrames.count >= 80 else {
+        guard valid.count >= 60 else {
             isProcessing = false
             alertTitle = "❌ Registration Failed"
-            alertMessage = "Need at least 80 valid frames.\n\nFound: \(validFrames.count) valid"
+            alertMessage = "Need at least 60 valid frames.\n\nFound: \(valid.count) valid"
             showAlert = true
             return
         }
 
         faceManager.generateAndUploadFaceID(
             authToken: authToken,
-            viewModel: faceIdUploadViewModel
+            viewModel: faceIdUploadViewModel,
+            frames: valid,
+            minRequired: 60
         ) { result in
             DispatchQueue.main.async {
                 self.isProcessing = false
                 switch result {
                 case .success:
-                    #if DEBUG
-                    print("✅ [Register] Face ID generated and uploaded successfully")
-                    #endif
+                    print("✅ [Register] uploaded")
                 case .failure(let error):
                     self.alertTitle = "❌ Registration Failed"
                     self.alertMessage = "Error: \(error.localizedDescription)"
@@ -575,23 +520,25 @@ struct FaceDetectionView: View {
             enrollmentGate.markNotEnrolled()
 
             isProcessing = false
-            alertTitle = "❌ No Enrollment Found"
-            alertMessage = "No usable face data found for this device on backend. Please register first."
+            alertTitle = "No usable face data"
+            alertMessage = "You have no usable face data for this device please register first."
             showAlert = true
             return
         }
 
         let allFrames = faceManager.verificationFrames10()
         let validFrames = allFrames.filter { $0.count == 316 }
-        let invalidCount = allFrames.count - validFrames.count
+       // let invalidCount = allFrames.count - validFrames.count
 
-        print("📦 [Login] Total frames: \(allFrames.count) | Valid: \(validFrames.count) | Invalid: \(invalidCount)")
+       // print("📦 [Login] Total frames: \(allFrames.count) | Valid: \(validFrames.count) | Invalid: \(invalidCount)")
 
         guard validFrames.count >= 10 else {
+            #if DEBUG
             print("❌ [Login] Insufficient valid frames")
+            #endif
             isProcessing = false
-            alertTitle = "❌ Login Failed"
-            alertMessage = "Need at least 10 valid frames.\n\nFound: \(validFrames.count) valid\nInvalid: \(invalidCount)"
+            alertTitle = "Failed to Login"
+            alertMessage = "Need at least 10 valid frames.\n\nFound: \(validFrames.count) valid"
             showAlert = true
             return
         }
@@ -604,27 +551,27 @@ struct FaceDetectionView: View {
             DispatchQueue.main.async {
                 self.isProcessing = false
 
-                self.faceManager.AllFramesOptionalAndMandatoryDistance = []
+                self.faceManager.capturedFrames = []
                 self.faceManager.totalFramesCollected = 0
                 self.hasAutoTriggered = false
 
                 switch result {
                 case .success(let verification):
                     let matchPercent = verification.matchPercentage
+                    #if DEBUG
                     print("📊 [Login] Verification result - Success: \(verification.success) | Match: \(String(format: "%.1f", matchPercent))%")
-                    
+                    #endif
                     if verification.success {
-                        self.alertTitle = "✅ Login Successful!"
+                        self.alertTitle = "Login Successful!"
                         self.alertMessage = "Welcome back!\n\nMatch: \(String(format: "%.1f", matchPercent))%"
                         self.showAlert = true
                     } else {
-                        self.alertTitle = "❌ Login Failed"
+                        self.alertTitle = "Failed to Login"
                         self.alertMessage = "Face verification failed.\n\nMatch: \(String(format: "%.1f", matchPercent))%\n\n\(verification.notes)"
                         self.showAlert = true
                     }
                 case .failure(let error):
-                    print("❌ [Login] Error: \(error.localizedDescription)")
-                    self.alertTitle = "❌ Verification Error"
+                    self.alertTitle = "⚠️Verification Error"
                     self.alertMessage = "Error: \(error.localizedDescription)"
                     self.showAlert = true
                 }
@@ -632,3 +579,87 @@ struct FaceDetectionView: View {
         }
     }
 }
+
+
+
+
+
+
+// ✅ Normalized Points Card at Bottom - Now with dismiss button and better visibility
+//                    if showNormalizedPoints {
+//                        VStack(spacing: 0) {
+//                            // Header with dismiss button
+//                            HStack {
+//                                Image(systemName: "point.3.connected.trianglepath.dotted")
+//                                    .font(.system(size: 12))
+//                                    .foregroundColor(.white)
+//
+//                                Text("Face Landmarks")
+//                                    .font(.system(size: 12, weight: .semibold))
+//                                    .foregroundColor(.white)
+//
+//                                Spacer()
+//
+//                                Text("\(faceManager.NormalizedPoints.count) points")
+//                                    .font(.system(size: 10, weight: .medium))
+//                                    .foregroundColor(.white.opacity(0.7))
+//
+//                                // Dismiss button
+//                                Button(action: {
+//                                    print("🗑️ [NormalizedPoints] Dismissing overlay")
+//                                    withAnimation(.spring(duration: 0.3)) {
+//                                        showNormalizedPoints = false
+//                                    }
+//                                }) {
+//                                    Image(systemName: "xmark.circle.fill")
+//                                        .font(.system(size: 18))
+//                                        .foregroundColor(.white.opacity(0.8))
+//                                }
+//                                .padding(.leading, 8)
+//                            }
+//                            .padding(.horizontal, 16)
+//                            .padding(.vertical, 10)
+//                            .background(Color.blue.opacity(0.8))
+//
+//                            // Overlay visualization
+//                            NormalizedPointsOverlay(points: faceManager.NormalizedPoints)
+//                                .frame(width: 280, height: 280)
+//                                .background(Color.black)
+//                                .overlay(
+//                                    RoundedRectangle(cornerRadius: 0)
+//                                        .stroke(Color.blue.opacity(0.5), lineWidth: 2)
+//                                )
+//                        }
+//                        .background(Color.black)
+//                        .cornerRadius(16)
+//                        .shadow(color: .black.opacity(0.5), radius: 15, x: 0, y: -5)
+//                        .padding(.horizontal, 24)
+//                        .padding(.bottom, 40)
+//                        .transition(.move(edge: .bottom).combined(with: .opacity))
+//                    }
+//
+// Show button to reveal overlay if dismissed
+//                    if !showNormalizedPoints {
+//                        Button(action: {
+//                            print("👁️ [NormalizedPoints] Showing overlay")
+//                            withAnimation(.spring(duration: 0.3)) {
+//                                showNormalizedPoints = true
+//                            }
+//                        }) {
+//                            HStack(spacing: 8) {
+//                                Image(systemName: "point.3.connected.trianglepath.dotted")
+//                                    .font(.system(size: 12))
+//                                Text("Show Landmarks")
+//                                    .font(.system(size: 12, weight: .semibold))
+//                            }
+//                            .foregroundColor(.white)
+//                            .padding(.horizontal, 16)
+//                            .padding(.vertical, 10)
+//                            .background(
+//                                RoundedRectangle(cornerRadius: 8)
+//                                    .fill(Color.blue.opacity(0.8))
+//                            )
+//                        }
+//                        .padding(.bottom, 40)
+//                        .transition(.move(edge: .bottom).combined(with: .opacity))
+//                    }

@@ -108,11 +108,31 @@ final class FaceManager: NSObject, ObservableObject {
     var actualRightList: [(x: Float, y: Float)] = []
     
     var landmarkDistanceLists: [[Float]] = []
-    @Published var AllFramesOptionalAndMandatoryDistance: [[Float]] = []
+   // @Published var AllFramesOptionalAndMandatoryDistance: [[Float]] = []
     
     // Array used to store the frame details when all Gates Cleared
     @Published var capturedFrames: [FrameDistance] = []
+    
+    @Published var registrationPhase: RegistrationPhase = .centerCollecting
+    @Published var registrationComplete: Bool = false
 
+    // optional: for UI guidance + balanced sampling
+    @Published var currentTarget: HeadDirection = .left
+
+    var centerFrames: [FrameDistance] = []
+    var movementFrames: [FrameDistance] = []
+    var capturedPerDir: [HeadDirection:Int] = [.left:0,.right:0,.up:0,.down:0,.center:0]
+    var movementTimer: DispatchSourceTimer?
+    
+    
+    @Published var frameCollectionMode: FrameCollectionMode = .registration
+
+    // UI-friendly counters (because centerFrames/movementFrames are not @Published)
+    @Published var centerFramesCount: Int = 0
+    @Published var movementFramesCount: Int = 0
+    @Published var movementSecondsRemaining: Int = 0
+
+    var totalRegistrationFrames: Int { centerFramesCount + movementFramesCount }
     
     
     // MARK: - Camera Components
