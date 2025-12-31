@@ -41,8 +41,8 @@ extension FaceManager{
         let iodPx = sqrt(dx * dx + dy * dy)
         let iodNorm = iodPx / imageWidth
 
-        self.iodPixels = iodPx
-        iodNormalized = iodNorm
+        iodPixels = iodPx
+        self.iodNormalized = iodNorm
 
         let valid = (iodNorm >= iodMin && iodNorm <= iodMax)
         iodIsValid = valid

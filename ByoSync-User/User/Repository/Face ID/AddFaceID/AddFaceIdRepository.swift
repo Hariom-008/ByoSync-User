@@ -11,6 +11,7 @@ struct AddFaceIdRequestBody: Codable {
     let helper: String
     let k2: String
     let token: String
+    let iod : String
 }
 
 final class FaceIdRepository {
@@ -68,9 +69,10 @@ final class FaceIdRepository {
         helper: String,
         k2: String,
         token: String,
+        iod: String,
         completion: @escaping (Result<Void, APIError>) -> Void
     ) {
-        let item = AddFaceIdRequestBody(helper: helper, k2: k2, token: token)
+        let item = AddFaceIdRequestBody(helper: helper, k2: k2, token: token,iod: iod)
         addFaceIds(salt: salt, records: [item], completion: completion)
     }
 }

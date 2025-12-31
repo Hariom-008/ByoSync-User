@@ -182,6 +182,7 @@ extension FaceManager {
         completion: ((Result<Void, Error>) -> Void)? = nil
     ) {
         let trimmedFrames = save316LengthDistanceArray()
+        
 
         guard trimmedFrames.count == 80 else {
             DispatchQueue.main.async { completion?(.failure(BCHBiometricError.noDistanceArrays)) }
@@ -223,7 +224,7 @@ extension FaceManager {
                     AddFaceIdRequestBody(
                         helper: frameRec.helper,
                         k2: hexFromData(k2Bytes),
-                        token: hexFromData(tokenBytes)
+                        token: hexFromData(tokenBytes), iod: String(iodNormalized)
                     )
                 )
 
