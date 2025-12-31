@@ -21,8 +21,6 @@ struct DeviceRegistrationResponse: Codable {
     let success: Bool
 }
 
-
-
 /// Repository responsible for checking if a device is registered
 final class DeviceRegistrationRepository {
     
@@ -49,11 +47,11 @@ final class DeviceRegistrationRepository {
         let body: [String: Any] = [
             "deviceKeyHash": deviceKeyHash
         ]
-        
+        #if DEBUG
         print("📤 [DeviceRegistrationRepository] isDeviceRegistered -> URL: \(UserAPIEndpoint.UserDeviceManagement.isDeviceRegistered)")
         print("📤 [DeviceRegistrationRepository] Headers: \(headers)")
         print("📤 [DeviceRegistrationRepository] Body: \(body)")
-        
+        #endif
         // 4. POST call using APIClient
         APIClient.shared.request(
             UserAPIEndpoint.UserDeviceManagement.isDeviceRegistered,

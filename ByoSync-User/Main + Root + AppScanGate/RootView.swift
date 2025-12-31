@@ -27,6 +27,8 @@ struct RootView: View {
 
     @State private var didRunLaunchDeviceCheck = false
     @State private var launchDeviceState: LaunchDeviceState = .unknown
+    @State private var launchHasFaceData: Bool? = nil
+
 
     // ✅ NEW: device-check routing should only apply during initial launch gating
     @State private var launchRoutingActive = true
@@ -58,21 +60,15 @@ struct RootView: View {
 
             case .mlScan:
                 MLScanView(onDone: {
-                    #if DEBUG
-                    print("✅ ML scan completed")
-                    #endif
-
                     scanGate.markScanCompleted()
-
-                    // Refresh session after verification/enrollment
                     userSession.loadUser()
                     enrollmentGate.reload()
 
-                    // ✅ Release launch routing after scan completes
+                    // ✅ stop launch routing
                     launchRoutingActive = false
                     launchDeviceState = .unknown
+                    launchHasFaceData = nil
 
-                    // ✅ Let normal routing decide where to go next
                     withAnimation(.easeInOut) { step = nextStep() }
                 })
 
@@ -86,32 +82,39 @@ struct RootView: View {
             consentAccepted = UserDefaults.standard.bool(forKey: consentKey)
             scanGate.reloadFromStorage()
 
-            // ✅ Run only once
             guard !didRunLaunchDeviceCheck else { return }
             didRunLaunchDeviceCheck = true
 
-            // 🔍 Device check: if deviceKey missing => treat as not registered
             let deviceKey = DeviceIdentity.resolve()
             if deviceKey.isEmpty {
                 launchDeviceState = .notRegistered
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    step = nextStep()
-                }
+                launchHasFaceData = nil
+                step = nextStep()
                 return
             }
 
-            // ✅ Ask backend
+            // ask backend
+            launchDeviceState = .unknown
+            launchHasFaceData = nil
             deviceRegistrationVM.checkDeviceRegistration()
         }
+
         .onChange(of: deviceRegistrationVM.isLoading) { _, isLoading in
             guard didRunLaunchDeviceCheck else { return }
             guard !isLoading else { return }
-            guard launchDeviceState == .unknown else { return }
             guard launchRoutingActive else { return }
 
-            launchDeviceState = deviceRegistrationVM.isDeviceRegistered ? .registered : .notRegistered
+            if deviceRegistrationVM.isDeviceRegistered {
+                launchDeviceState = .registered
+                launchHasFaceData = deviceRegistrationVM.hasFaceData
+            } else {
+                launchDeviceState = .notRegistered
+                launchHasFaceData = nil
+            }
+
             step = nextStep()
         }
+
         .onChange(of: userSession.currentUser) { _, newUser in
             // ✅ Once user becomes non-nil (login/register), stop forcing launch routing
             if newUser != nil {
@@ -131,15 +134,22 @@ struct RootView: View {
         // ✅ Launch routing applies ONLY while launchRoutingActive is true
         if launchRoutingActive {
             switch launchDeviceState {
-            case .registered:
-                faceAuthManager.setVerificationMode()
-                return hasCameraPermission ? .mlScan : .cameraPrep
-
             case .notRegistered:
                 return .auth
 
+            case .registered:
+                // if API hasn't filled it yet, stay on splash
+                guard let hasFaceData = launchHasFaceData else { return .loading }
+
+                if hasFaceData {
+                    faceAuthManager.setVerificationMode()
+                } else {
+                    faceAuthManager.setRegistrationMode()
+                }
+                return hasCameraPermission ? .mlScan : .cameraPrep
+
             case .unknown:
-                break
+                return .loading
             }
         }
 
