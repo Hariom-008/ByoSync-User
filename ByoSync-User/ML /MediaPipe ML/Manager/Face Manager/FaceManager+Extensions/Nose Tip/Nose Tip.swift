@@ -3,8 +3,7 @@ import Foundation
 import CoreGraphics
 
 extension FaceManager {
-
-    /// Android-equivalent: pixel coordinates + Euclidean distance + pixel tolerance
+    /// pixel coordinates + Euclidean distance + pixel tolerance
     func updateNoseTipCenterStatusFromCalcCoords(
         pixelPoints: [CGPoint],
         screenCenterX: CGFloat,

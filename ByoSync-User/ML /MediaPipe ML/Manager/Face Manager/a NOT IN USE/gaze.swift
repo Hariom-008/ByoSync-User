@@ -11,27 +11,26 @@ import Foundation
 // MARK: - Gaze Tracking
 extension FaceManager {
     // MARK: - Helper Functions
-    
     /// Calculates mean of subset of coordinates by landmark indices
-    func meanOfCalculationCoordinates(_ coords: [(x: Float, y: Float)],
-                                      indices: [Int]) -> (x: Float, y: Float)? {
-        guard !coords.isEmpty, !indices.isEmpty else { return nil }
-        
-        var sx: Float = 0
-        var sy: Float = 0
-        var cnt: Int = 0
-        
-        for i in indices {
-            if i >= 0, i < coords.count {
-                sx += coords[i].x
-                sy += coords[i].y
-                cnt += 1
-            }
-        }
-        guard cnt > 0 else { return nil }
-        let n = Float(cnt)
-        return (x: sx / n, y: sy / n)
-    }
+//    func meanOfCalculationCoordinates(_ coords: [(x: Float, y: Float)],
+//                                      indices: [Int]) -> (x: Float, y: Float)? {
+//        guard !coords.isEmpty, !indices.isEmpty else { return nil }
+//        
+//        var sx: Float = 0
+//        var sy: Float = 0
+//        var cnt: Int = 0
+//        
+//        for i in indices {
+//            if i >= 0, i < coords.count {
+//                sx += coords[i].x
+//                sy += coords[i].y
+//                cnt += 1
+//            }
+//        }
+//        guard cnt > 0 else { return nil }
+//        let n = Float(cnt)
+//        return (x: sx / n, y: sy / n)
+//    }
     
     // MARK: - Iris & Eye Center Calculations
     

@@ -8,7 +8,6 @@ enum DistanceGuidance: String {
 }
 
 extension FaceManager{
-    
     func updateIODGate(
         imageWidth: Float,
         imageHeight: Float,
