@@ -13,8 +13,8 @@ extension FaceManager{
         imageHeight: Float,
         leftIdx: Int = 33,
         rightIdx: Int = 263,
-        iodMin: Float = 0.30,
-        iodMax: Float = 0.31
+        iodMin: Float,
+        iodMax: Float
     ){
 
         guard imageWidth > 0, imageHeight > 0 else {

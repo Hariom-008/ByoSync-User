@@ -105,7 +105,21 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
             self.rawMediaPipePoints = rawPoints
             
             // IOD gate (per-frame)
-            self.updateIODGate(imageWidth: imageWidth, imageHeight: imageHeight)
+            var iodMin : Float
+            var iodMax : Float
+            if faceAuthManager.currentMode == .verification{
+                iodMin = 0.30
+                iodMax = 0.31
+            }else{
+                if registrationPhase == .centerCollecting{
+                    iodMin = 0.30
+                    iodMax = 0.31
+                }else{
+                    iodMin = 0.24
+                    iodMax = 0.31
+                }
+            }
+            self.updateIODGate(imageWidth: imageWidth, imageHeight: imageHeight,iodMin: iodMin,iodMax: iodMax)
             
             // Convert to screen coordinates (kept; other UI may still use this)
             if let previewLayer = self.previewLayer {
