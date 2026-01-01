@@ -232,17 +232,6 @@ extension FaceManager {
 
 extension FaceManager {
     
-//    private func updateRegistrationCounters() {
-//        centerFramesCount = centerFrames.count
-//        movementFramesCount = movementFrames.count
-//        totalFramesCollected = totalRegistrationFrames
-//    }
-    
-//    private func movementRemainingSeconds() -> Int {
-//        guard case let .movementCollecting(endAt) = registrationPhase else { return 0 }
-//        return max(0, Int(ceil(endAt.timeIntervalSinceNow)))
-//    }
-    
     // Simple target cycle (you can replace with balancing logic)
     private func nextTarget(after d: HeadDirection) -> HeadDirection {
         switch d {

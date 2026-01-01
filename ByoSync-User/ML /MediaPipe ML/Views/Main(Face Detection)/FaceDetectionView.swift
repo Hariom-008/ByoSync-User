@@ -561,12 +561,15 @@ struct FaceDetectionView: View {
                     #endif
                     if verification.success {
                         self.alertTitle = "Login Successful!"
-                        self.alertMessage = "Welcome back!\n\nMatch: \(String(format: "%.1f", matchPercent))%"
+                        self.alertMessage = "Press ok to proceed further."
                         self.showAlert = true
                     } else {
                         self.alertTitle = "Failed to Login"
-                        self.alertMessage = "Face verification failed.\n\nMatch: \(String(format: "%.1f", matchPercent))%\n\n\(verification.notes)"
+                        self.alertMessage = "Face verification failed. Try again"
                         self.showAlert = true
+                        #if DEBUG
+                        print("Face verification failed.\n\nMatch: \(String(format: "%.1f", matchPercent))%\n\n\(String(describing: verification.notes))")
+                        #endif
                     }
                 case .failure(let error):
                     self.alertTitle = "⚠️Verification Error"

@@ -37,49 +37,6 @@ extension FaceManager {
         hasEnteredPhoneNumber = false
         
     }
-    
-    // MARK: - Data Export Helpers
-    
-    /// Returns the number of frames collected that passed liveness checks
-    func getValidFrameCount() -> Int {
-        return totalFramesCollected
-    }
-    
-    /// Returns the number of frames rejected due to liveness checks
-    func getRejectedFrameCount() -> Int {
-        return rejectedFrames
-    }
-    
-    /// Returns calibration data (mean iris positions)
-    func getCalibrationData() -> (leftMean: (x: Float, y: Float), rightMean: (x: Float, y: Float)) {
-        return (actualLeftMean, actualRightMean)
-    }
-    
-    // MARK: - Validation Helpers
-    
-    /// Checks if enough calibration data has been collected
-    func hasEnoughCalibrationData(minimumSamples: Int = 30) -> Bool {
-        return actualLeftList.count >= minimumSamples && actualRightList.count >= minimumSamples
-    }
-    
-    /// Checks if enough pattern frames have been collected
-    func hasEnoughPatternFrames(minimumFrames: Int = 50) -> Bool {
-        return totalFramesCollected >= minimumFrames
-    }
-    
-    /// Returns collection progress as a percentage (0.0 to 1.0)
-    func getCollectionProgress(targetFrames: Int = 100) -> Float {
-        guard targetFrames > 0 else { return 0.0 }
-        return min(Float(totalFramesCollected) / Float(targetFrames), 1.0)
-    }
-    
-    /// Returns calibration progress as a percentage (0.0 to 1.0)
-    func getCalibrationProgress(targetSamples: Int = 30) -> Float {
-        guard targetSamples > 0 else { return 0.0 }
-        let leftProgress = Float(actualLeftList.count) / Float(targetSamples)
-        let rightProgress = Float(actualRightList.count) / Float(targetSamples)
-        return min((leftProgress + rightProgress) / 2.0, 1.0)
-    }
 }
 
 //Reset After Verification Started or Registration Started
