@@ -125,7 +125,7 @@ final class FaceManager: NSObject, ObservableObject {
     var movementTimer: DispatchSourceTimer?
     
     
-    @Published var frameCollectionMode: FrameCollectionMode = .registration
+    let faceAuthManager: FaceAuthManager
 
     // UI-friendly counters (because centerFrames/movementFrames are not @Published)
     @Published var centerFramesCount: Int = 0
@@ -133,7 +133,7 @@ final class FaceManager: NSObject, ObservableObject {
     @Published var movementSecondsRemaining: Int = 0
 
     var totalRegistrationFrames: Int { centerFramesCount + movementFramesCount }
-    
+    @Published var verificationFrameCollectedDistances:[FrameDistance] = []
     
     // MARK: - Camera Components
     var previewLayer: AVCaptureVideoPreviewLayer?
@@ -164,14 +164,14 @@ final class FaceManager: NSObject, ObservableObject {
     let optionalLandmarks = [423, 357, 349, 347, 340, 266, 330, 427, 280, 203, 128, 120, 118, 111, 36, 101, 207, 50, 187, 147, 411, 376, 336, 107, 351, 399, 429, 363, 134, 209, 174, 122, 151, 69, 299, 63, 156, 293, 383]
     
     // MARK: - Initialization
-    init(cameraSpecManager: CameraSpecManager) {
-        self.cameraSpecManager = cameraSpecManager
-        super.init()
-        setupMediaPipe()
-        sessionQueue.async { [weak self] in
-            self?.setupCamera()
-        }
-    }
+    init(cameraSpecManager: CameraSpecManager,
+            faceAuthManager: FaceAuthManager = .shared) {
+           self.cameraSpecManager = cameraSpecManager
+           self.faceAuthManager = faceAuthManager
+           super.init()
+           setupMediaPipe()
+           sessionQueue.async { [weak self] in self?.setupCamera() }
+       }
     
     // MARK: - Liveness Update Method
     func updateFaceLivenessScore(_ score: Float) {

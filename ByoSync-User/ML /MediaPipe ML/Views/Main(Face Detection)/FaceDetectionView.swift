@@ -133,7 +133,7 @@ struct FaceDetectionView: View {
     private var targetFrameCount: Int {
         switch faceAuthManager.currentMode {
         case .registration: return 60
-        case .verification: return 20
+        case .verification: return 10
         }
     }
     private var registrationTopText: String {
@@ -528,9 +528,7 @@ struct FaceDetectionView: View {
 
         let allFrames = faceManager.verificationFrames10()
         let validFrames = allFrames.filter { $0.count == 316 }
-       // let invalidCount = allFrames.count - validFrames.count
-
-       // print("📦 [Login] Total frames: \(allFrames.count) | Valid: \(validFrames.count) | Invalid: \(invalidCount)")
+    
 
         guard validFrames.count >= 10 else {
             #if DEBUG

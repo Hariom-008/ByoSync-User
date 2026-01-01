@@ -36,7 +36,6 @@ extension FaceManager {
 
         hasEnteredPhoneNumber = false
         
-        print("🔄 Reset complete - ready for new user")
     }
     
     // MARK: - Data Export Helpers

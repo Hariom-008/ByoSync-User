@@ -13,7 +13,7 @@ struct DirectionalGuidanceOverlay: View {
             if !faceManager.iodIsValid {
                 distanceGuidanceText
             } else {
-                switch faceManager.frameCollectionMode{
+                switch faceManager.faceAuthManager.currentMode{
                 case .registration:
                     registrationOverlay
                 case .verification:

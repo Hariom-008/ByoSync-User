@@ -195,7 +195,7 @@ extension FaceManager {
         let saltHex = hexFromData(saltBytes)
 
         var addFaceIdPayload: [AddFaceIdRequestBody] = []
-        addFaceIdPayload.reserveCapacity(valid.count)
+       addFaceIdPayload.reserveCapacity(valid.count)
 
         var failureCount = 0
 
