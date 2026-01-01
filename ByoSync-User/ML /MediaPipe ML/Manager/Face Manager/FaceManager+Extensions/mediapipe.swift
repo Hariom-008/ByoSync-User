@@ -32,7 +32,6 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
         }
     }
     
-    
     func faceLandmarker(_ faceLandmarker: FaceLandmarker,
                         didFinishDetection result: FaceLandmarkerResult?,
                         timestampInMilliseconds: Int,
@@ -50,16 +49,20 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
                 guard let self = self else { return }
                 self.CameraFeedCoordinates = []
                 self.CalculationCoordinates = []
-                self.ScreenCoordinates = []
+                
+               // self.ScreenCoordinates = []
                 self.rawMediaPipePoints = []
                 self.irisDistanceRatio = nil
                 self.ratioIsInRange = false
+                self.verificationFrameCollectedDistances = []
                 
-                self.TargetFaceOvalCoordinates.removeAll()
-                self.TransalatedScaledFaceOvalCoordinates.removeAll()
+//                self.TargetFaceOvalCoordinates.removeAll()
+//                self.TransalatedScaledFaceOvalCoordinates.removeAll()
                 self.FaceOvalIsInTarget = false
                 
                 self.resetIODGate()
+                self.resetRegistrationState()
+                
             }
             return
         }
@@ -120,7 +123,7 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
                 
                 self.CalculationCoordinates = screenCoords
             } else {
-                self.ScreenCoordinates = []
+                //self.ScreenCoordinates = []
                 self.TransalatedScaledFaceOvalCoordinates.removeAll()
             }
             

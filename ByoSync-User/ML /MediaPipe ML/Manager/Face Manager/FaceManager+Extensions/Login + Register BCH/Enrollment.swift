@@ -10,28 +10,9 @@ import CryptoKit
 import Security
 
 
-struct EnrollmentRecord: Codable {
-    let index: Int
-    let helper: String          // codeword ⊕ biometricBits (as "0/1" string)
-    let secretHash: String      // R = SHA256(secretKeyBitsString) hex
-
-    let salt: String            // 256-bit hex, per enrollment (same across all Collected frames)
-    let k2: String              // 256-bit hex, per frame
-    let token: String           // SHA256(K || R) hex, per frame
-
-    let timestamp: Date
-}
-
-struct EnrollmentStore: Codable {
-    let savedAt: String
-    let enrollments: [EnrollmentRecord]
-}
-
 // MARK: - Remote FaceId cache (for backend verification)
-
 fileprivate struct RemoteEnrollmentRecord {
     let helper: String
-    //let secretHash: String  // R = SHA256(secretKeyBitsString)
     let salt: String        // same for all Collected records for this user
     let k2: String          // per-frame
     let token: String       // SHA256(K || R)
@@ -52,7 +33,6 @@ fileprivate enum RemoteEnrollmentCache {
     }
 }
 // MARK: - Remote FaceId cache (for backend verification)
-
 fileprivate struct RemoteFaceIdCache {
     static var salt: String?
     static var faceIds: [FaceId] = []
@@ -171,6 +151,7 @@ private func xorData(_ a: Data, _ b: Data) -> Data {
 private func sha256(_ data: Data) -> Data {
     Data(SHA256.hash(data: data))
 }
+
 
 // MARK: - Enrollment
 extension FaceManager {
@@ -333,18 +314,7 @@ extension FaceManager {
     }
 }
 
-
-// ========================================
-// ADD THIS TO YOUR Enrollment.swift FILE
-// ========================================
-//
-// Location: Add this AFTER the loadRemoteFaceIdsIfNeeded() function
-//           and BEFORE the "// MARK: - Shared BCH instance" line
-//
-// This is around line 140-180 in your Enrollment.swift
-// ========================================
-
-// MARK: - Public Helper for Testing (Load Remote Cache)
+// MARK: - Public Helper for (Load Remote Cache)
 extension FaceManager {
     
     /// Public wrapper to load FaceIds into RemoteFaceIdCache for testing

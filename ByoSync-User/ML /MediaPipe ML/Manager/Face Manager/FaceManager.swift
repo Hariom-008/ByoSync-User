@@ -96,7 +96,7 @@ final class FaceManager: NSObject, ObservableObject {
     var rawMediaPipePoints: [(x: Float, y: Float)] = []
     var CameraFeedCoordinates: [(x: Float, y: Float)] = []
     var CalculationCoordinates: [(x: Float, y: Float)] = []
-    var ScreenCoordinates:[(x: CGFloat, y: CGFloat)] = []
+   // var ScreenCoordinates:[(x: CGFloat, y: CGFloat)] = []
     
     var centroid: (x: Float, y: Float)?
     

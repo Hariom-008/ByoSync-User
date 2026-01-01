@@ -2,7 +2,7 @@ import Foundation
 import simd
 import CoreGraphics
 
-// MARK: - Geometric Calculations
+// MARK: - Normalized Calculations
 extension FaceManager {
     
     /// Calculates the centroid (center point) of the face using face oval landmarks
@@ -31,7 +31,6 @@ extension FaceManager {
         }
         centroid = (x: sumX / Float(count), y: sumY / Float(count))
     }
-    
     /// Translates all landmarks to be centered around the centroid
     func calculateTranslated() {
         guard let c = centroid else {
@@ -44,7 +43,6 @@ extension FaceManager {
             (x: p.x - c.x, y: p.y - c.y)
         }
     }
-    
     /// Calculates squared distances for each translated point (for RMS calculation)
     func calculateTranslatedSquareDistance() {
         guard !Translated.isEmpty else {
@@ -57,7 +55,6 @@ extension FaceManager {
             p.x * p.x + p.y * p.y
         }
     }
-    
     /// Calculates Root Mean Square (RMS) of translated points to determine scale
     func calculateRMSOfTransalted() {
         let n = TranslatedSquareDistance.count
@@ -124,7 +121,6 @@ extension FaceManager {
     }
     
     // MARK: - Head Pose Estimation (Pitch, Yaw, Roll)
-    
     /// Calculates face orientation angles from nose tip and vertical line
     /// Assumes normalized coordinates (within unit circle)
     @inline(__always)
@@ -217,21 +213,15 @@ extension FaceManager {
     }
     
     
-    /// Checks if head pose is stable (within ±0.1 radians for all angles)
+    /// Checks if head pose is stable (pitch ,yaw within ±0.1 radians && roll ±0.05)
     func isHeadPoseStable() -> Bool {
         let threshold: Float = 0.1
         return abs(Pitch) <= threshold &&
         abs(Yaw) <= threshold &&
         abs(Roll) <= 0.05
     }
+    // Variable Pitch ,Yaw and Roll thresholds check func
     func isPoseStable(pitchThr: Float, yawThr: Float, rollThr: Float) -> Bool {
         abs(Pitch) <= pitchThr && abs(Yaw) <= yawThr && abs(Roll) <= rollThr
     }
-    
-    
-//    LEFT: yaw <= -0.30
-//    RIGHT: yaw >= +0.30
-//    UP: pitch <= -0.27
-//    DOWN: pitch >= +0.27
-//    CENTER-ish: abs(yaw) < 0.12 and abs(pitch) < 0.10 (optional tighter label)
 }
