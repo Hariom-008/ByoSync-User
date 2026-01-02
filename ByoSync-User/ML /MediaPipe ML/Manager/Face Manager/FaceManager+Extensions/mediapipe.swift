@@ -105,18 +105,16 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
             self.rawMediaPipePoints = rawPoints
             
             // IOD gate (per-frame)
-            var iodMin : Float
-            var iodMax : Float
             if faceAuthManager.currentMode == .verification{
-                iodMin = 0.28
-                iodMax = 0.29
+                self.iodMin = 0.28
+                self.iodMax = 0.29
             }else{
                 if registrationPhase == .centerCollecting{
-                    iodMin = 0.28
-                    iodMax = 0.29
+                    self.iodMin = 0.28
+                    self.iodMax = 0.29
                 }else{
-                    iodMin = 0.26
-                    iodMax = 0.30
+                    self.iodMin = 0.26
+                    self.iodMax = 0.30
                 }
             }
             self.updateIODGate(imageWidth: imageWidth, imageHeight: imageHeight,iodMin: iodMin,iodMax: iodMax)

@@ -75,6 +75,9 @@ final class FaceManager: NSObject, ObservableObject {
     @Published var iodGuidance: DistanceGuidance = .noFace
     
     @Published var acceptedFrameUploads: [AcceptedFrameUpload] = []
+    
+    @Published var iodMin : Float = 0.28
+    @Published var iodMax:Float = 0.29
 
     // Limit concurrent uploads (avoid 80 parallel uploads)
      let frameUploadSemaphore = DispatchSemaphore(value: 2)

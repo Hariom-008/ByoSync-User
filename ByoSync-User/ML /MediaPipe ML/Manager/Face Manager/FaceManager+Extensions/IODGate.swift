@@ -45,7 +45,7 @@ extension FaceManager{
         self.iodNormalized = iodNorm
 
         let valid = (iodNorm >= iodMin && iodNorm <= iodMax)
-        iodIsValid = valid
+        self.iodIsValid = valid
 
         if iodNorm < iodMin {
             iodGuidance = .moveCloser
