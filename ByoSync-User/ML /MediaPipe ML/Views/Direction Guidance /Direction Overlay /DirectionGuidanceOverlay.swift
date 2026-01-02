@@ -3,22 +3,29 @@ import SwiftUI
 struct DirectionalGuidanceOverlay: View {
     @ObservedObject var faceManager: FaceManager
 
-    // Center-stability thresholds
-    private let CENTER_PITCH_THR: Float = 0.10
-    private let CENTER_YAW_THR:   Float = 0.10
-    private let ROLL_THR:         Float = 0.05
+    // MARK: - Thresholds
+    private let IOD_NORM_MAX: Float = 0.31
+
+    // If you want different stability thresholds per phase, tune here.
+    private let REG_CENTER_PITCH_THR: Float = 0.27
+    private let REG_CENTER_YAW_THR:   Float = 0.30
+    private let REG_CENTER_ROLL_THR:  Float = 0.05
+
+    private let MOVE_PITCH_THR: Float = 0.27
+    private let MOVE_YAW_THR:   Float = 0.30
+    private let MOVE_ROLL_THR:  Float = 0.05
+
+    private let VER_PITCH_THR: Float = 0.27
+    private let VER_YAW_THR:   Float = 0.30
+    private let VER_ROLL_THR:  Float = 0.05
 
     var body: some View {
         ZStack {
-            if !faceManager.iodIsValid {
-                distanceGuidanceText
-            } else {
-                switch faceManager.faceAuthManager.currentMode{
-                case .registration:
-                    registrationOverlay
-                case .verification:
-                    verificationOverlay
-                }
+            switch faceManager.faceAuthManager.currentMode {
+            case .registration:
+                registrationOverlay
+            case .verification:
+                verificationOverlay
             }
         }
         .allowsHitTesting(false)
@@ -29,17 +36,12 @@ struct DirectionalGuidanceOverlay: View {
     private var registrationOverlay: some View {
         ZStack {
             switch faceManager.registrationPhase {
+
             case .centerCollecting:
-                // no nose gate here
-                if faceManager.isPoseStable(pitchThr: CENTER_PITCH_THR, yawThr: CENTER_YAW_THR, rollThr: ROLL_THR) {
-                    stablePill(text: "Hold steady • \(faceManager.centerFramesCount)/60")
-                } else {
-                    centerCorrectionArrows
-                    topPill(text: "Center your face • \(faceManager.centerFramesCount)/60")
-                }
+                registrationCenterTrackingOverlay
 
             case .movementCollecting:
-                movementTargetUI
+                registrationMovementTrackingOverlay
 
             case .done:
                 stablePill(text: "Processing…")
@@ -47,30 +49,45 @@ struct DirectionalGuidanceOverlay: View {
         }
     }
 
-    private var movementTargetUI: some View {
-        let target = faceManager.currentTarget
-        let dirNow = classifyDirection(pitch: faceManager.Pitch, yaw: faceManager.Yaw)
+    /// Phase 1: centre tracking gates
+    /// iodIsValid && iodNormalized<=0.31 && headPoseStable && faceInsideOval
+    private var registrationCenterTrackingOverlay: some View {
+        let iodOk = faceManager.iodIsValid
+        let iodNormOk = faceManager.iodNormalized <= IOD_NORM_MAX
+        let stable = faceManager.isPoseStable(
+            pitchThr: REG_CENTER_PITCH_THR,
+            yawThr: REG_CENTER_YAW_THR,
+            rollThr: REG_CENTER_ROLL_THR
+        )
+        let inside = faceManager.faceisInsideFaceOval
+
+        let allOk = iodOk && iodNormOk && stable && inside
 
         return ZStack {
-            topPill(text: "Move head • \(faceManager.movementSecondsRemaining)s")
+            topPill(text: "Hold steady • \(faceManager.centerFramesCount)/60")
 
-            VStack {
+            VStack(spacing: 10) {
                 Spacer().frame(height: 170)
 
-                Text("Look \(label(target))")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
-                    .background(RoundedRectangle(cornerRadius: 16).fill(Color.black.opacity(0.65)))
+                VStack(spacing: 10) {
+                    gateRow(ok: iodOk && iodNormOk,
+                            okText: "✓ Distance OK",
+                            badText: iodBadText(iodOk: iodOk, iodNormOk: iodNormOk))
 
-                if abs(faceManager.Roll) > ROLL_THR {
-                    Text("Keep your head straight")
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .foregroundColor(.red)
-                        .padding(.top, 6)
-                } else if dirNow == target {
-                    Text("✓ Captured")
+                    gateRow(ok: stable,
+                            okText: "✓ Keep steady",
+                            badText: "Hold steady")
+
+                    gateRow(ok: inside,
+                            okText: "✓ Face inside oval",
+                            badText: "Fit your face inside the oval")
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(RoundedRectangle(cornerRadius: 18).fill(Color.black.opacity(0.65)))
+
+                if allOk {
+                    Text("Capturing… \(faceManager.centerFramesCount)/60")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundColor(.green)
                         .padding(.top, 6)
@@ -78,79 +95,131 @@ struct DirectionalGuidanceOverlay: View {
 
                 Spacer()
             }
-
-            movementArrows(for: target)
         }
     }
 
-    private func movementArrows(for target: HeadDirection) -> some View {
-        ZStack {
-            switch target {
-            case .left:
-                AnimatedArrow(imageName: "left_arrow", alignment: .leading, offset: CGPoint(x: 20, y: 0))
-            case .right:
-                AnimatedArrow(imageName: "right_arrow", alignment: .trailing, offset: CGPoint(x: -20, y: 0))
-            case .up:
-                AnimatedArrow(imageName: "up_arrow", alignment: .top, offset: CGPoint(x: 0, y: 500))
-            case .down:
-                AnimatedArrow(imageName: "down_arrow", alignment: .bottom, offset: CGPoint(x: 0, y: -500))
-            case .center:
-                EmptyView()
+    /// Phase 2: movement tracking gates
+    /// isHeadPoseStable && faceInsideOval
+    /// (NO direction UI, NO IOD guidance here)
+    private var registrationMovementTrackingOverlay: some View {
+        let stable = faceManager.isPoseStable(
+            pitchThr: MOVE_PITCH_THR,
+            yawThr: MOVE_YAW_THR,
+            rollThr: MOVE_ROLL_THR
+        )
+        let inside = faceManager.faceisInsideFaceOval
+        let allOk = stable && inside
+
+        return ZStack {
+            topPill(text: "Move naturally • \(faceManager.movementSecondsRemaining)s")
+
+            VStack(spacing: 10) {
+                Spacer().frame(height: 170)
+
+                VStack(spacing: 10) {
+                    gateRow(ok: stable,
+                            okText: "✓ Keep steady",
+                            badText: "Hold steady")
+
+                    gateRow(ok: inside,
+                            okText: "✓ Face inside oval",
+                            badText: "Fit your face inside the oval")
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(RoundedRectangle(cornerRadius: 18).fill(Color.black.opacity(0.65)))
+
+                if allOk {
+                    Text("Capturing… \(faceManager.movementFramesCount)")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.green)
+                        .padding(.top, 6)
+                }
+
+                Spacer()
             }
         }
     }
 
-    private var centerCorrectionArrows: some View {
-        // Same style as your existing arrows, but centered-threshold based
-        ZStack {
-            if faceManager.Pitch < -CENTER_PITCH_THR {
-                AnimatedArrow(imageName: "up_arrow", alignment: .top, offset: CGPoint(x: 0, y: 500))
-            }
-            if faceManager.Pitch > CENTER_PITCH_THR {
-                AnimatedArrow(imageName: "down_arrow", alignment: .bottom, offset: CGPoint(x: 0, y: -500))
-            }
-            if faceManager.Yaw > CENTER_YAW_THR {
-                AnimatedArrow(imageName: "left_arrow", alignment: .leading, offset: CGPoint(x: 20, y: 0))
-            }
-            if faceManager.Yaw < -CENTER_YAW_THR {
-                AnimatedArrow(imageName: "right_arrow", alignment: .trailing, offset: CGPoint(x: -20, y: 0))
-            }
-            if faceManager.Roll > ROLL_THR {
-                AnimatedArrow(imageName: "round_right_arrow", alignment: .topLeading, offset: CGPoint(x: 16, y: 100))
-            }
-            if faceManager.Roll < -ROLL_THR {
-                AnimatedArrow(imageName: "round_left_arrow", alignment: .topTrailing, offset: CGPoint(x: -16, y: 100))
-            }
-        }
-    }
+    // MARK: - Verification
 
-    // MARK: - Verification (keep your previous behavior)
-
+    /// Verification gates:
+    /// iodIsValid && iodNormalized<=0.31 && headPoseStable && faceInsideOval
     private var verificationOverlay: some View {
-        ZStack {
-            // show "hold steady" only if stable + centered-ish (your old logic)
-            if faceManager.isPoseStable(pitchThr: 0.12, yawThr: 0.12, rollThr: 0.05) {
-                stablePill(text: "Hold steady")
-            } else {
-                centerCorrectionArrows
-                topPill(text: "Align your face")
+        let iodOk = faceManager.iodIsValid
+        let iodNormOk = faceManager.iodNormalized <= IOD_NORM_MAX
+        let stable = faceManager.isPoseStable(
+            pitchThr: VER_PITCH_THR,
+            yawThr: VER_YAW_THR,
+            rollThr: VER_ROLL_THR
+        )
+        let inside = faceManager.faceisInsideFaceOval
+
+        let allOk = iodOk && iodNormOk && stable && inside
+
+        return ZStack {
+            topPill(text: "Align your face")
+
+            VStack(spacing: 10) {
+                Spacer().frame(height: 170)
+
+                VStack(spacing: 10) {
+                    gateRow(ok: iodOk && iodNormOk,
+                            okText: "✓ Distance OK",
+                            badText: iodBadText(iodOk: iodOk, iodNormOk: iodNormOk))
+
+                    gateRow(ok: stable,
+                            okText: "✓ Keep steady",
+                            badText: "Hold steady")
+
+                    gateRow(ok: inside,
+                            okText: "✓ Face inside oval",
+                            badText: "Fit your face inside the oval")
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(RoundedRectangle(cornerRadius: 18).fill(Color.black.opacity(0.65)))
+
+                if allOk {
+                    stablePill(text: "Capturing…")
+                        .padding(.top, 6)
+                }
+
+                Spacer()
             }
         }
     }
 
-    // MARK: - IOD Guidance
+    // MARK: - Gate Row UI
 
-    private var distanceGuidanceText: some View {
-        VStack {
-            Spacer().frame(height: 120)
-            Text(distanceText)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundColor(distanceColor)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
-                .background(RoundedRectangle(cornerRadius: 16).fill(Color.black.opacity(0.6)))
+    @ViewBuilder
+    private func gateRow(ok: Bool, okText: String, badText: String) -> some View {
+        HStack(spacing: 10) {
+            Circle()
+                .fill(ok ? Color.green : Color.red)
+                .frame(width: 10, height: 10)
+
+            Text(ok ? okText : badText)
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .foregroundColor(.white)
+
             Spacer()
         }
+    }
+
+    // MARK: - IOD Text Logic
+
+    /// Combines your old iodGuidance + new iodNormalized<=0.31 rule.
+    private func iodBadText(iodOk: Bool, iodNormOk: Bool) -> String {
+        if !iodOk {
+            // use your existing guidance wording
+            return distanceText
+        }
+        // iodOk == true but iodNormalized too large -> face too small / too far
+        if !iodNormOk {
+            return "Move closer"
+        }
+        return distanceText
     }
 
     private var distanceText: String {
@@ -162,24 +231,7 @@ struct DirectionalGuidanceOverlay: View {
         }
     }
 
-    private var distanceColor: Color {
-        switch faceManager.iodGuidance {
-        case .ok: return .green
-        default: return .red
-        }
-    }
-
-    // MARK: - UI helpers
-
-    private func label(_ d: HeadDirection) -> String {
-        switch d {
-        case .left: return "LEFT"
-        case .right: return "RIGHT"
-        case .up: return "UP"
-        case .down: return "DOWN"
-        case .center: return "CENTER"
-        }
-    }
+    // MARK: - Pills
 
     private func topPill(text: String) -> some View {
         VStack {

@@ -108,15 +108,15 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
             var iodMin : Float
             var iodMax : Float
             if faceAuthManager.currentMode == .verification{
-                iodMin = 0.30
-                iodMax = 0.31
+                iodMin = 0.28
+                iodMax = 0.29
             }else{
                 if registrationPhase == .centerCollecting{
-                    iodMin = 0.30
-                    iodMax = 0.31
+                    iodMin = 0.28
+                    iodMax = 0.29
                 }else{
-                    iodMin = 0.24
-                    iodMax = 0.31
+                    iodMin = 0.26
+                    iodMax = 0.30
                 }
             }
             self.updateIODGate(imageWidth: imageWidth, imageHeight: imageHeight,iodMin: iodMin,iodMax: iodMax)
@@ -148,24 +148,23 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
             self.calculateRMSOfTransalted()
             self.calculateNormalizedPoints()
             
-            // Nose center from normalized space
-            if let previewLayer = self.previewLayer {
-                let b = previewLayer.bounds
-                
-                // CalculationCoordinates are already in previewLayer.bounds space
-                let ptsCG: [CGPoint] = self.CalculationCoordinates.map {
-                    CGPoint(x: CGFloat($0.x), y: CGFloat($0.y))
-                }
-                
-                self.updateNoseTipCenterStatusFromCalcCoords(
-                    pixelPoints: ptsCG,
-                    screenCenterX: b.midX,
-                    screenCenterY: b.midY,
-                    tolerancePx: 10.0
-                )
-            } else {
-                self.isNoseTipCentered = false
-            }
+//            if let previewLayer = self.previewLayer {
+//                let b = previewLayer.bounds
+//                
+//                // CalculationCoordinates are already in previewLayer.bounds space
+//                let ptsCG: [CGPoint] = self.CalculationCoordinates.map {
+//                    CGPoint(x: CGFloat($0.x), y: CGFloat($0.y))
+//                }
+//                
+//                self.updateNoseTipCenterStatusFromCalcCoords(
+//                    pixelPoints: ptsCG,
+//                    screenCenterX: b.midX,
+//                    screenCenterY: b.midY,
+//                    tolerancePx: 10.0
+//                )
+//            } else {
+//                self.isNoseTipCentered = false
+//            }
             
             
             // Build face-oval overlay from NormalizedPoints

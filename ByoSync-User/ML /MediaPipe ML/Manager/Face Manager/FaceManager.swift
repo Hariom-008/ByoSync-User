@@ -64,7 +64,6 @@ final class FaceManager: NSObject, ObservableObject {
     @Published var FaceOvalIsInTarget:Bool = false
     
     @Published var currentDistanceRatio: CGFloat = 0.0
-    @Published var isNoseTipCentered:Bool = false
     
     // FaceManager.swift
     @Published var iodNormalized: Float = 0

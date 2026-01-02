@@ -193,9 +193,9 @@ struct FaceDetectionView: View {
 
                 TargetFaceOvalOverlay(faceManager: faceManager)
                 DirectionalGuidanceOverlay(faceManager: faceManager)
-                if faceAuthManager.currentMode == .verification {
-                    NoseCenterCircleOverlay(isCentered: faceManager.isNoseTipCentered)
-                }
+//                if faceAuthManager.currentMode == .verification {
+//                    NoseCenterCircleOverlay(isCentered: faceManager.isNoseTipCentered)
+//                }
                 
                 // ✅ Busy overlay now driven by FaceManager
                 if faceManager.isBusy {
