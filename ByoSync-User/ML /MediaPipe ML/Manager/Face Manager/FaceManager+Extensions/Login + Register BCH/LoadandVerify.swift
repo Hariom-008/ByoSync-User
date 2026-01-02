@@ -23,9 +23,11 @@ extension FaceManager {
         fetchViewModel: FaceIdFetchViewModel,
         completion: @escaping (Result<BCHBiometric.VerificationResult, Error>) -> Void
     ) {
+        #if DEBUG
         print("🔐 [FaceManager+Testing] Starting loadAndVerify flow...")
         print("   • Frames to verify: \(framesToVerify.count)")
         print("   • Required matches: \(requiredMatches)")
+        #endif
         
         // IMPORTANT: This must call the wrapper method you add to Enrollment.swift
         // The method will populate RemoteFaceIdCache which is needed for verification

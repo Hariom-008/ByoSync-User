@@ -232,6 +232,8 @@ extension FaceManager {
 
 extension FaceManager {
     
+
+    
     // Simple target cycle (you can replace with balancing logic)
     private func nextTarget(after d: HeadDirection) -> HeadDirection {
         switch d {

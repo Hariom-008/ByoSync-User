@@ -560,9 +560,10 @@ struct FaceDetectionView: View {
                     print("📊 [Login] Verification result - Success: \(verification.success) | Match: \(String(format: "%.1f", matchPercent))%")
                     #endif
                     if verification.success {
-                        self.alertTitle = "Login Successful!"
-                        self.alertMessage = "Press ok to proceed further."
+                        self.alertTitle = "👋 Login Successful"
+                        self.alertMessage = "Press this button to close the alert"
                         self.showAlert = true
+                        onComplete()
                     } else {
                         self.alertTitle = "Failed to Login"
                         self.alertMessage = "Face verification failed. Try again"

@@ -199,7 +199,7 @@ extension FaceManager {
                         helper: frameRec.helper,
                         k2: hexFromData(k2Bytes),
                         token: hexFromData(tokenBytes),
-                        iod: String(sample.iod)            // ✅ per-frame iod
+                        iod: String(sample.iod * 100)            // ✅ per-frame iod
                     )
                 )
             } catch {

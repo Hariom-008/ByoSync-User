@@ -50,7 +50,7 @@ extension FaceIdViewModel {
     }
     
     
-    /// Upload **multiple** FaceId records (e.g., 80 enrollment frames)
+    /// Upload **multiple** FaceId records
     func uploadFaceIdList(
         salt: String,
         list: [AddFaceIdRequestBody]
