@@ -154,9 +154,9 @@ struct RootView: View {
         }
 
         // ---- Normal logic ----
-        guard UserDefaults.standard.string(forKey: "accountType") == "user" else { return .auth }
-        guard userSession.currentUser != nil else { return .auth }
-        guard consentAccepted else { return .consent }
+       // guard UserDefaults.standard.string(forKey: "accountType") == "user" else { return .auth }
+       // guard userSession.currentUser != nil else { return .auth }
+       // guard consentAccepted else { return .consent }
 
         if enrollmentGate.needsEnrollment {
             faceAuthManager.setRegistrationMode()

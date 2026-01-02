@@ -9,6 +9,7 @@ final class UserSession: ObservableObject {
     @Published var userProfilePicture: String = ""
     @Published var currentUserDeviceID: String = ""
     @Published var thisDeviceIsPrimary: Bool = false
+    @Published var currentUserID:String = ""
     @Published var wallet: Double = 0
     
     private let userDefaultsKey = "currentUser"
@@ -17,6 +18,7 @@ final class UserSession: ObservableObject {
     private let currentUserDeviceIDKey = "currentUserDeviceID"
     private let thisDevicePrimaryKey = "thisDevicePrimaryKey"
     private let walletKey = "walletKey"
+    private let currentUserUserIDKey = "userIDKey"
     
     
     private init(){
@@ -26,14 +28,19 @@ final class UserSession: ObservableObject {
         loadCurrentDeviceID()
         loadThisDevicePrimary()
         loadWalletBalance()
+        loadCurrentUserID()
     }
-
+    
     // MARK: - Profile Picture
     func setProfilePicture(_ urlString: String) {
         self.userProfilePicture = urlString
         UserDefaults.standard.set(urlString, forKey: profilePictureKey)
     }
-
+    
+    func setCurrentUserId(_ id: String){
+        self.currentUserDeviceID = id
+        UserDefaults.standard.set(id, forKey: currentUserUserIDKey)
+    }
     func setUserWallet(_ balance: Double){
         self.wallet = balance
         UserDefaults.standard.set(balance, forKey: walletKey)
@@ -45,7 +52,10 @@ final class UserSession: ObservableObject {
     private func loadProfilePicture() {
         self.userProfilePicture = UserDefaults.standard.string(forKey: profilePictureKey) ?? ""
     }
-
+    
+    private func loadCurrentUserID(){
+    self.currentUserID = UserDefaults.standard.string(forKey: currentUserUserIDKey) ?? ""
+}
     // MARK: - Save and Load User
     func saveUser(_ user: User) {
         self.currentUser = user

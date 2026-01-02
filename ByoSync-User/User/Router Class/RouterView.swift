@@ -72,7 +72,7 @@ struct RouterView<Content: View>: View {
             
         case .mlScan:
             MLScanView(onDone: {
-                router.dismissFullScreen()
+                //router.dismissFullScreen()
                 router.navigate(to: .mainTab, style: .push)
             })
             
