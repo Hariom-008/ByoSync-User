@@ -1,5 +1,3 @@
-// UserDataByIdView.swift
-
 import SwiftUI
 
 // MARK: - Color Palette
@@ -22,14 +20,14 @@ struct UserDataByIdView: View {
         case mockError
 #endif
     }
-    
+
     private let mode: Mode
-    
+
     @StateObject private var viewModel: UserDataByIdViewModel
     @StateObject private var userSession: UserSession = UserSession.shared
     @Environment(\.dismiss) private var dismiss
     let cryptoManager = CryptoManager.shared
-    
+
     @MainActor
     init(mode: Mode = .live, viewModel: UserDataByIdViewModel? = nil) {
         self.mode = mode
@@ -39,25 +37,27 @@ struct UserDataByIdView: View {
             _viewModel = StateObject(wrappedValue: UserDataByIdViewModel())
         }
     }
-    
+
     var body: some View {
         ZStack {
-            // Light gradient background
             LinearGradient(
                 colors: [backgroundStart, backgroundMid, backgroundEnd],
                 startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea()
-            
+
+            // ✅ Prevent "No data" flash: show loading before first attempt
             if viewModel.isLoading {
                 loadingView
             } else if let error = viewModel.errorText {
                 errorView(error)
             } else if let user = viewModel.user {
                 userContentView(user: user)
-            } else {
+            } else if viewModel.hasAttemptedLoad {
                 emptyStateView
+            } else {
+                loadingView
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -73,7 +73,7 @@ struct UserDataByIdView: View {
                         )
                     )
             }
-            
+
             ToolbarItem(placement: .navigationBarTrailing) {
                 Link(destination: URL(string: "https://www.byosync.com/policy")!) {
                     Image(systemName: "info.circle")
@@ -93,11 +93,11 @@ struct UserDataByIdView: View {
         }
         .onAppear {
             print("👁️ UserDataByIdView appeared")
-            
+
             switch mode {
             case .live:
                 fetchUserData()
-                
+
 #if DEBUG
             case .mockContent:
                 viewModel.loadMock()
@@ -108,25 +108,31 @@ struct UserDataByIdView: View {
 #endif
             }
         }
+        // ✅ When data arrives, update session (no async needed)
+        .onChange(of: viewModel.user) { newUser in
+            guard let user = newUser else { return }
+            updateUserSession(with: user)
+        }
+        // SwiftUI requires async here, but we call sync refresh inside.
         .refreshable {
             print("🔄 Pull to refresh triggered")
-            await refreshUserData()
+            refreshUserData()
         }
     }
-    
+
     // MARK: - Loading View
     private var loadingView: some View {
         VStack(spacing: 16) {
             ProgressView()
                 .scaleEffect(1.5)
                 .tint(logoBlue)
-            
+
             Text("Loading your profile...")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(textSecondary)
         }
     }
-    
+
     // MARK: - Error View
     private func errorView(_ error: String) -> some View {
         VStack(spacing: 20) {
@@ -136,16 +142,16 @@ struct UserDataByIdView: View {
                         Circle()
                             .fill(Color.red.opacity(0.1))
                             .frame(width: 70, height: 70)
-                        
+
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 32))
                             .foregroundColor(.red)
                     }
-                    
+
                     Text("Unable to Load Profile")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(textPrimary)
-                    
+
                     Text(error)
                         .font(.system(size: 14, weight: .regular))
                         .foregroundColor(textSecondary)
@@ -154,7 +160,7 @@ struct UserDataByIdView: View {
                 }
                 .padding(32)
             }
-            
+
             Button(action: {
                 print("🔄 Retry button tapped")
                 fetchUserData()
@@ -182,7 +188,7 @@ struct UserDataByIdView: View {
         }
         .padding(24)
     }
-    
+
     // MARK: - Empty State
     private var emptyStateView: some View {
         VStack(spacing: 20) {
@@ -190,32 +196,25 @@ struct UserDataByIdView: View {
                 Circle()
                     .fill(logoBlue.opacity(0.1))
                     .frame(width: 100, height: 100)
-                
+
                 Image(systemName: "person.crop.circle.badge.questionmark")
                     .font(.system(size: 50))
                     .foregroundColor(logoBlue.opacity(0.5))
             }
-            
+
             Text("No profile data available")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(textSecondary)
         }
     }
-    
+
     // MARK: - User Content View
     private func userContentView(user: UserByIdDTO) -> some View {
         ScrollView {
             VStack(spacing: 16) {
-                // Profile Header
                 profileHeaderView(user: user)
-                
-                // Chai Balance Card
                 chaiBalanceCard
-                
-                // User Details Card
                 userDetailsCard(user: user)
-                
-                // Logout Button
                 logoutButton
             }
             .padding(.horizontal, 20)
@@ -223,12 +222,11 @@ struct UserDataByIdView: View {
             .padding(.bottom, 32)
         }
     }
-    
+
     // MARK: - Profile Header
     private func profileHeaderView(user: UserByIdDTO) -> some View {
         ModernCard {
             VStack(spacing: 16) {
-                // Avatar Circle with gradient ring
                 ZStack {
                     Circle()
                         .stroke(
@@ -240,17 +238,13 @@ struct UserDataByIdView: View {
                             lineWidth: 3
                         )
                         .frame(width: 94, height: 94)
-                    
+
                     if let profilePicUrl = user.profilePic, !profilePicUrl.isEmpty {
                         AsyncImage(url: URL(string: profilePicUrl)) { image in
-                            image
-                                .resizable()
-                                .scaledToFill()
+                            image.resizable().scaledToFill()
                         } placeholder: {
                             ZStack {
-                                Circle()
-                                    .fill(logoBlue.opacity(0.1))
-                                
+                                Circle().fill(logoBlue.opacity(0.1))
                                 Image(systemName: "person.fill")
                                     .font(.system(size: 40))
                                     .foregroundColor(logoBlue.opacity(0.5))
@@ -263,16 +257,15 @@ struct UserDataByIdView: View {
                             Circle()
                                 .fill(logoBlue.opacity(0.1))
                                 .frame(width: 88, height: 88)
-                            
+
                             Image(systemName: "person.fill")
                                 .font(.system(size: 40))
                                 .foregroundColor(logoBlue.opacity(0.5))
                         }
                     }
                 }
-                
+
                 VStack(spacing: 6) {
-                    // Name with gradient
                     Text("\(cryptoManager.decrypt(encryptedData: user.firstName) ?? "User") \(cryptoManager.decrypt(encryptedData: user.lastName) ?? "")")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(
@@ -282,8 +275,7 @@ struct UserDataByIdView: View {
                                 endPoint: .trailing
                             )
                         )
-                    
-                    // Member badge
+
                     HStack(spacing: 6) {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.system(size: 12))
@@ -301,7 +293,7 @@ struct UserDataByIdView: View {
             .padding(.horizontal, 20)
         }
     }
-    
+
     // MARK: - Chai Balance Card
     private var chaiBalanceCard: some View {
         ModernCard {
@@ -311,7 +303,7 @@ struct UserDataByIdView: View {
                         Text("Chai Balance")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(textSecondary)
-                        
+
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             Text("\(viewModel.chai)")
                                 .font(.system(size: 48, weight: .bold))
@@ -322,16 +314,15 @@ struct UserDataByIdView: View {
                                         endPoint: .bottomTrailing
                                     )
                                 )
-                            
+
                             Text("/ 5")
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(textSecondary)
                         }
                     }
-                    
+
                     Spacer()
-                    
-                    // Icon
+
                     ZStack {
                         Circle()
                             .fill(
@@ -342,7 +333,7 @@ struct UserDataByIdView: View {
                                 )
                             )
                             .frame(width: 64, height: 64)
-                        
+
                         Image(systemName: "cup.and.saucer.fill")
                             .font(.system(size: 28))
                             .foregroundStyle(
@@ -354,14 +345,13 @@ struct UserDataByIdView: View {
                             )
                     }
                 }
-                
-                // Progress bar with gradient
+
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 10)
                             .fill(logoBlue.opacity(0.1))
                             .frame(height: 12)
-                        
+
                         RoundedRectangle(cornerRadius: 10)
                             .fill(
                                 LinearGradient(
@@ -379,7 +369,7 @@ struct UserDataByIdView: View {
             .padding(24)
         }
     }
-    
+
     // MARK: - User Details Card
     private func userDetailsCard(user: UserByIdDTO) -> some View {
         ModernCard {
@@ -390,20 +380,18 @@ struct UserDataByIdView: View {
                         .foregroundColor(textPrimary)
                     Spacer()
                 }
-                
+
                 VStack(spacing: 16) {
-                    // Email
                     DetailRow(
                         icon: "envelope.fill",
                         iconColor: logoBlue,
                         label: "Email",
                         value: cryptoManager.decrypt(encryptedData: user.email) ?? "Not available"
                     )
-                    
+
                     Divider()
                         .background(logoBlue.opacity(0.1))
-                    
-                    // Phone
+
                     if !user.phoneNumber.isEmpty {
                         DetailRow(
                             icon: "phone.fill",
@@ -417,7 +405,7 @@ struct UserDataByIdView: View {
             .padding(24)
         }
     }
-    
+
     // MARK: - Detail Row Component
     private func DetailRow(icon: String, iconColor: Color, label: String, value: String) -> some View {
         HStack(spacing: 16) {
@@ -425,34 +413,34 @@ struct UserDataByIdView: View {
                 Circle()
                     .fill(iconColor.opacity(0.1))
                     .frame(width: 44, height: 44)
-                
+
                 Image(systemName: icon)
                     .font(.system(size: 18, weight: .medium))
                     .foregroundColor(iconColor)
             }
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(label)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(textSecondary)
-                
+
                 Text(value)
                     .font(.system(size: 15, weight: .regular))
                     .foregroundColor(textPrimary)
                     .lineLimit(1)
             }
-            
+
             Spacer()
         }
     }
-    
+
     // MARK: - Logout Button
     private var logoutButton: some View {
         Button(action: handleLogout) {
             HStack(spacing: 10) {
                 Image(systemName: "rectangle.portrait.and.arrow.right")
                     .font(.system(size: 18, weight: .semibold))
-                
+
                 Text("Logout")
                     .font(.system(size: 16, weight: .semibold))
             }
@@ -470,15 +458,12 @@ struct UserDataByIdView: View {
             .shadow(color: Color.red.opacity(0.3), radius: 8, y: 4)
         }
     }
-    
+
     // MARK: - Modern Card Component
     private struct ModernCard<Content: View>: View {
         let content: Content
-        
-        init(@ViewBuilder content: () -> Content) {
-            self.content = content()
-        }
-        
+        init(@ViewBuilder content: () -> Content) { self.content = content() }
+
         var body: some View {
             content
                 .background(
@@ -488,79 +473,64 @@ struct UserDataByIdView: View {
                 )
         }
     }
-    
-    // MARK: - Fetch User Data
+
+    // MARK: - Fetch User Data (SYNC kickoff)
     private func fetchUserData() {
         print("🔍 Starting to fetch user data...")
-        
+
         let deviceKey = DeviceIdentity.resolve()
         let deviceKeyHash = HMACGenerator.generateHMAC(jsonString: deviceKey)
         print("✅ Device Key Hash resolved: \(deviceKeyHash)")
-        
+
         let userId = userSession.currentUserID
         guard !userId.isEmpty else {
             print("❌ No userId found in UserSession")
+            viewModel.setError("No user session found. Please log in again.")
             return
         }
-        print("✅ User ID from session: \(userId)")
-        
-        Task {
-            print("🚀 Calling API to fetch user data...")
-            await viewModel.fetch(userId: userId, deviceKeyHash: deviceKeyHash)
-            
-            if let user = viewModel.user {
-                print("✅ Successfully fetched user data")
-                updateUserSession(with: user)
-            } else {
-                print("❌ Failed to fetch user data")
-            }
-        }
+
+        // ✅ update UI immediately
+        viewModel.beginLoading(clearOldData: true)
+
+        // ✅ completion-based fetch
+        viewModel.fetch(userId: userId, deviceKeyHash: deviceKeyHash)
     }
-    
-    // MARK: - Refresh User Data
-    private func refreshUserData() async {
+
+    // MARK: - Refresh User Data (SYNC kickoff)
+    private func refreshUserData() {
         print("🔄 Refreshing user data...")
-        
+
         let deviceKey = DeviceIdentity.resolve()
         let deviceKeyHash = HMACGenerator.generateHMAC(jsonString: deviceKey)
-        
+
         let userId = userSession.currentUserID
         guard !userId.isEmpty else {
             print("❌ No userId found in UserSession")
+            viewModel.setError("No user session found. Please log in again.")
             return
         }
-        
-        await viewModel.fetch(userId: userId, deviceKeyHash: deviceKeyHash)
-        
-        if let user = viewModel.user {
-            print("✅ Successfully refreshed user data")
-            updateUserSession(with: user)
-        }
+
+        // keep existing profile visible during refresh
+        viewModel.beginLoading(clearOldData: false)
+        viewModel.fetch(userId: userId, deviceKeyHash: deviceKeyHash)
     }
-    
+
     // MARK: - Update UserSession
     private func updateUserSession(with userData: UserByIdDTO) {
         print("💾 Updating UserSession with fetched data...")
-        
+
         userSession.setUserWallet(userData.wallet)
-        print("✅ Wallet updated: \(userData.wallet)")
-        
         userSession.setEmailVerified(userData.emailVerified)
-        print("✅ Email verification status updated: \(userData.emailVerified)")
-        
+
         if let profilePic = userData.profilePic {
             userSession.setProfilePicture(profilePic)
-            print("✅ Profile picture updated: \(profilePic)")
         }
-        
+
         if let device = viewModel.device {
             userSession.setThisDevicePrimary(device.isPrimary)
-            print("✅ Device primary status updated: \(device.isPrimary)")
-            
             userSession.setCurrentDeviceID(device.id)
-            print("✅ Device ID updated: \(device.id)")
         }
-        
+
         let updatedUser = User(
             firstName: userData.firstName,
             lastName: userData.lastName,
@@ -573,23 +543,16 @@ struct UserDataByIdView: View {
             userId: userData.id,
             userDeviceId: viewModel.device?.id
         )
-        
+
         userSession.saveUser(updatedUser)
-        print("✅ User object saved to UserSession")
         print("🎉 UserSession update complete!")
     }
-    
+
     // MARK: - Handle Logout
     private func handleLogout() {
         print("🚪 Logout button tapped")
-        
-        // Clear user session
         userSession.clearUser()
-        print("✅ User session cleared")
-        
-        // Navigate back or to login
         dismiss()
-        print("✅ Dismissed view")
     }
 }
 
@@ -598,4 +561,3 @@ struct UserDataByIdView: View {
         UserDataByIdView()
     }
 }
-

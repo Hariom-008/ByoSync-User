@@ -65,6 +65,10 @@ final class DeviceRegistrationRepository {
                       "success=\(response.success), message='\(response.message)'")
                 print("✅ [DeviceRegistrationRepository] userId=\(response.data.userId), " +
                       "hasFaceData=\(response.data.hasFaceData)")
+                
+                UserSession.shared.setCurrentUserId(response.data.userId)
+                print("UserID :\(response.data.userId)")
+                
                 completion(.success(response))
                 
             case .failure(let error):

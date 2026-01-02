@@ -65,8 +65,6 @@ final class DeviceRegistrationViewModel: ObservableObject {
                         self.isDeviceRegistered = true
                         self.hasFaceData = resp.data.hasFaceData
                         self.errorMessage = nil
-                        
-                        UserSession.shared.setCurrentUserId(resp.data.userId)
 
                         Logger.shared.i(
                             "DEVICE_REG",

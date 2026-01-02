@@ -38,7 +38,7 @@ final class UserSession: ObservableObject {
     }
     
     func setCurrentUserId(_ id: String){
-        self.currentUserDeviceID = id
+        self.currentUserID = id
         UserDefaults.standard.set(id, forKey: currentUserUserIDKey)
     }
     func setUserWallet(_ balance: Double){

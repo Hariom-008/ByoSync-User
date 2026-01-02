@@ -60,8 +60,8 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
 //                self.TransalatedScaledFaceOvalCoordinates.removeAll()
                 self.FaceOvalIsInTarget = false
                 
-                self.resetIODGate()
-                self.resetRegistrationState()
+               // self.resetIODGate()
+               // self.resetRegistrationState()
                 
             }
             return

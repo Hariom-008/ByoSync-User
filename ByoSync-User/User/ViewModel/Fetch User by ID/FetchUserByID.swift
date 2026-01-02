@@ -1,9 +1,6 @@
-// UserDataByIdViewModel.swift
-
 import Foundation
 import Combine
 import SwiftUI
-
 
 @MainActor
 final class UserDataByIdViewModel: ObservableObject {
@@ -15,10 +12,12 @@ final class UserDataByIdViewModel: ObservableObject {
     @Published private(set) var message: String? = nil
     @Published private(set) var errorText: String? = nil
 
-    // Convenience fields if your UI needs them directly
+    // Convenience fields
     @Published private(set) var wallet: Double = 0
     @Published private(set) var chai: Int = 0
     @Published private(set) var isPrimaryDevice: Bool = false
+
+    @Published private(set) var hasAttemptedLoad: Bool = false
 
     // MARK: - Dependencies
     private let repo: UserDataByIdRepositoryProtocol
@@ -27,49 +26,81 @@ final class UserDataByIdViewModel: ObservableObject {
         self.repo = repo
     }
 
-    // MARK: - Actions
+    // MARK: - State helpers
 
-    /// Fetches user+device. Clears old data on each call.
-    func fetch(userId: String, deviceKeyHash: String) async {
+    /// Call this right before starting the network call.
+    func beginLoading(clearOldData: Bool = true) {
         guard !isLoading else { return }
 
-        // Clear old data so UI doesn't show stale values
+        hasAttemptedLoad = true
         isLoading = true
         errorText = nil
         message = nil
-        user = nil
-        device = nil
-        wallet = 0
-        chai = 0
-        isPrimaryDevice = false
 
-        do {
-            let res = try await repo.fetchUserDataById(userId: userId, deviceKeyHash: deviceKeyHash)
-
-            guard res.success else {
-                errorText = res.message
-                isLoading = false
-                return
-            }
-
-            user = res.data.user
-            device = res.data.device
-            message = res.message
-            Logger.shared.i("User Data by ID", "\(res.message)")
-            // Derived values (safe defaults)
-            wallet = res.data.user.wallet
-            chai = res.data.user.chai
-            isPrimaryDevice = res.data.device.isPrimary
-        } catch {
-            errorText = String(describing: error)
-            Logger.shared.e("Failed to fetch user data by ID", "\(error)")
+        if clearOldData {
+            user = nil
+            device = nil
+            wallet = 0
+            chai = 0
+            isPrimaryDevice = false
         }
+    }
 
+    func finishLoading() {
         isLoading = false
+    }
+
+    func setError(_ text: String) {
+        errorText = text
+        isLoading = false
+        hasAttemptedLoad = true
+    }
+
+    // MARK: - Action (completion-based)
+
+    func fetch(userId: String, deviceKeyHash: String) {
+        // If caller forgot, ensure we still flip UI ASAP.
+        if !isLoading {
+            beginLoading(clearOldData: true)
+        } else {
+            hasAttemptedLoad = true
+        }   
+        let userID = UserSession.shared.currentUserID
+        let deviceKeyHASH = HMACGenerator.generateHMAC(jsonString: DeviceIdentity.resolve())
+        repo.fetchUserDataById(userId: userID, deviceKeyHash: deviceKeyHASH) { [weak self] result in
+            guard let self else { return }
+
+            // Ensure UI updates on main actor
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let res):
+                    guard res.success else {
+                        self.errorText = res.message
+                        self.isLoading = false
+                        return
+                    }
+
+                    self.user = res.data.user
+                    self.device = res.data.device
+                    self.message = res.message
+
+                    self.wallet = res.data.user.wallet
+                    self.chai = res.data.user.chai
+                    self.isPrimaryDevice = res.data.device.isPrimary
+
+                    self.isLoading = false
+
+                case .failure(let err):
+                    self.errorText = String(describing: err)
+                    self.isLoading = false
+                }
+            }
+        }
     }
 
     func reset() {
         isLoading = false
+        hasAttemptedLoad = false
         user = nil
         device = nil
         message = nil
@@ -79,10 +110,12 @@ final class UserDataByIdViewModel: ObservableObject {
         isPrimaryDevice = false
     }
 }
+
 #if DEBUG
 extension UserDataByIdViewModel {
     func loadMock() {
         isLoading = false
+        hasAttemptedLoad = true
         errorText = nil
         message = "Mock data loaded"
         user = .mock
@@ -95,11 +128,13 @@ extension UserDataByIdViewModel {
 
     func loadMockLoading() {
         reset()
+        hasAttemptedLoad = true
         isLoading = true
     }
 
     func loadMockError(_ text: String = "Mock error: something failed") {
         reset()
+        hasAttemptedLoad = true
         errorText = text
     }
 }

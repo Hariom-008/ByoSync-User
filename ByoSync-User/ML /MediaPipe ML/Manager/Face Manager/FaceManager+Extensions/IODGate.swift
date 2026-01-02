@@ -18,13 +18,13 @@ extension FaceManager{
     ){
 
         guard imageWidth > 0, imageHeight > 0 else {
-            resetIODGate()
+            //resetIODGate()
             return
         }
 
         let pts = rawMediaPipePoints
         guard pts.count > max(leftIdx, rightIdx) else{
-            resetIODGate()
+           // resetIODGate()
             return
         }
 
@@ -56,10 +56,10 @@ extension FaceManager{
         }
     }
 
-    func resetIODGate() {
-        iodPixels = 0
-        iodNormalized = 0
-        iodIsValid = false
-        iodGuidance = .noFace
-    }
+//    func resetIODGate() {
+//        iodPixels = 0
+//        iodNormalized = 0
+//        iodIsValid = false
+//        iodGuidance = .noFace
+//    }
 }

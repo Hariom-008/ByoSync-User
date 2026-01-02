@@ -1,9 +1,7 @@
-// Repo  // UserDataByIdRepository.swift
-
 import Foundation
 import Alamofire
 
-// MARK: - Response Models (match the JSON you shared)
+// MARK: - Response Models
 
 struct UserDataByIdResponse: Decodable {
     let statusCode: Int
@@ -17,7 +15,7 @@ struct UserDataByIdPayload: Decodable {
     let device: DeviceByIdDTO
 }
 
-struct UserByIdDTO: Decodable, Identifiable {
+struct UserByIdDTO: Decodable, Identifiable,Equatable {
     let id: String
     let email: String
     let firstName: String
@@ -48,7 +46,6 @@ struct UserByIdDTO: Decodable, Identifiable {
         case v = "__v"
     }
 
-    // wallet can come as Int or Double -> decode safely into Double
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
 
@@ -99,7 +96,7 @@ struct DeviceByIdDTO: Decodable, Identifiable {
     }
 }
 
-// MARK: - Protocol
+// MARK: - Protocol (completion-only)
 
 protocol UserDataByIdRepositoryProtocol {
     func fetchUserDataById(
@@ -107,8 +104,6 @@ protocol UserDataByIdRepositoryProtocol {
         deviceKeyHash: String,
         completion: @escaping (Result<UserDataByIdResponse, APIError>) -> Void
     )
-
-    func fetchUserDataById(userId: String, deviceKeyHash: String) async throws -> UserDataByIdResponse
 }
 
 // MARK: - Repository
@@ -129,6 +124,7 @@ final class UserDataByIdRepository: UserDataByIdRepositoryProtocol {
             userId: userId,
             deviceKeyHash: deviceKeyHash
         )
+
         client.request(
             endpoint,
             method: .get,
@@ -137,13 +133,4 @@ final class UserDataByIdRepository: UserDataByIdRepositoryProtocol {
             completion: completion
         )
     }
-
-    func fetchUserDataById(userId: String, deviceKeyHash: String) async throws -> UserDataByIdResponse {
-        try await withCheckedThrowingContinuation { cont in
-            fetchUserDataById(userId: userId, deviceKeyHash: deviceKeyHash) { result in
-                cont.resume(with: result)
-            }
-        }
-    }
 }
-

@@ -196,21 +196,21 @@ extension FaceManager {
         t.resume()
     }
 
-    func resetRegistrationState() {
-        movementTimer?.cancel()
-        movementTimer = nil
-
-        registrationPhase = .centerCollecting
-        registrationComplete = false
-
-        centerFrames.removeAll()
-        movementFrames.removeAll()
-
-        centerFramesCount = 0
-        movementFramesCount = 0
-        movementSecondsRemaining = 0
-        totalFramesCollected = 0
-    }
+//    func resetRegistrationState() {
+//        movementTimer?.cancel()
+//        movementTimer = nil
+//
+//        registrationPhase = .centerCollecting
+//        registrationComplete = false
+//
+//        centerFrames.removeAll()
+//        movementFrames.removeAll()
+//
+//        centerFramesCount = 0
+//        movementFramesCount = 0
+//        movementSecondsRemaining = 0
+//        totalFramesCollected = 0
+//    }
 }
 
 // MARK: - Upload helpers
