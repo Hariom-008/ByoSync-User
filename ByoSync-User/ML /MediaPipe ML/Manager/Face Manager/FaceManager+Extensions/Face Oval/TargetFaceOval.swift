@@ -67,4 +67,5 @@ extension FaceManager {
         // Keeping this for compatibility/debugging (same points, same meaning now)
         TargetFaceOvalCoordinates = TransalatedScaledFaceOvalCoordinates
     }
+
 }

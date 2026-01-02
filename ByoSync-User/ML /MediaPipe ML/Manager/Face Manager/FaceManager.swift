@@ -153,6 +153,12 @@ final class FaceManager: NSObject, ObservableObject {
         176, 149, 150, 136, 172, 58, 132, 93, 234, 127,
         162, 21, 54, 103, 67, 109
     ]
+    let facePoints = [
+        104, 69, 108, 151, 337, 299, 333, 301, 71, 345,
+        376, 367, 394, 369, 175, 140, 169, 138, 215, 116, 139
+    ]
+    
+    @Published var faceisInsideFaceOval:Bool = false
     
     let midLineMandatoryLandmarks = [2, 4, 9]
     let leftMandatoryLandmarks = [70, 107, 46, 55, 33, 133, 98]
