@@ -501,6 +501,7 @@ struct FaceDetectionView: View {
                 self.isProcessing = false
                 switch result {
                 case .success:
+                    onComplete()
                     print("✅ [Register] uploaded")
                 case .failure(let error):
                     self.alertTitle = "❌ Registration Failed"
