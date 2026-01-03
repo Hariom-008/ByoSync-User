@@ -188,15 +188,18 @@ struct FaceDetectionView: View {
         GeometryReader { geometry in
             ZStack {
                 // Camera preview
-                MediapipeCameraPreviewView(faceManager: faceManager)
-                    .ignoresSafeArea()
-
-                TargetFaceOvalOverlay(faceManager: faceManager)
-                DirectionalGuidanceOverlay(faceManager: faceManager)
-//                if faceAuthManager.currentMode == .verification {
-//                    NoseCenterCircleOverlay(isCentered: faceManager.isNoseTipCentered)
-//                }
+                if !faceManager.isBusy{
+                    MediapipeCameraPreviewView(faceManager: faceManager)
+                        .ignoresSafeArea()
+                    
+                    TargetFaceOvalOverlay(faceManager: faceManager)
+                    DirectionalGuidanceOverlay(faceManager: faceManager)
+                }
                 
+                if faceManager.isBusy{
+                    Color.black
+                        .ignoresSafeArea()
+                }
                 // ✅ Busy overlay now driven by FaceManager
                 if faceManager.isBusy {
                     ZStack {
@@ -221,9 +224,9 @@ struct FaceDetectionView: View {
                     HStack(spacing: 16) {
                         HStack(spacing: 8) {
                             Image(systemName: currentModeIcon).foregroundColor(currentModeColor)
-                                .font(.system(size: 8, weight: .thin))
+                                .font(.system(size: 10, weight: .thin))
                             Text(currentModeText)
-                                .font(.system(size: 10, weight: .semibold))
+                                .font(.system(size: 12, weight: .semibold))
                             
                         }
                         .padding(.horizontal, 10)
@@ -233,34 +236,34 @@ struct FaceDetectionView: View {
 
                         Spacer()
 
-                        VStack(spacing: 4) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "camera.fill")
-                                Text("\(faceManager.totalFramesCollected) / \(targetFrameCount)")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .monospacedDigit()
-                            }
-
-                            GeometryReader { geo in
-                                ZStack(alignment: .leading) {
-                                    RoundedRectangle(cornerRadius: 2)
-                                        .fill(Color.white.opacity(0.3))
-                                        .frame(height: 3)
-
-                                    RoundedRectangle(cornerRadius: 2)
-                                        .fill(frameProgress >= 1.0 ? Color.green : currentModeColor)
-                                        .frame(width: geo.size.width * min(frameProgress, 1.0), height: 3)
-                                }
-                            }
-                            .frame(height: 3)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(faceManager.totalFramesCollected >= targetFrameCount ? Color.green.opacity(0.8) : Color.black.opacity(0.7))
-                        )
-                        .foregroundColor(.white)
+//                        VStack(spacing: 4) {
+//                            HStack(spacing: 8) {
+//                                Image(systemName: "camera.fill")
+//                                Text("\(faceManager.totalFramesCollected) / \(targetFrameCount)")
+//                                    .font(.system(size: 14, weight: .bold))
+//                                    .monospacedDigit()
+//                            }
+//
+//                            GeometryReader { geo in
+//                                ZStack(alignment: .leading) {
+//                                    RoundedRectangle(cornerRadius: 2)
+//                                        .fill(Color.white.opacity(0.3))
+//                                        .frame(height: 3)
+//
+//                                    RoundedRectangle(cornerRadius: 2)
+//                                        .fill(frameProgress >= 1.0 ? Color.green : currentModeColor)
+//                                        .frame(width: geo.size.width * min(frameProgress, 1.0), height: 3)
+//                                }
+//                            }
+//                            .frame(height: 3)
+//                        }
+//                        .padding(.horizontal, 12)
+//                        .padding(.vertical, 8)
+//                        .background(
+//                            RoundedRectangle(cornerRadius: 8)
+//                                .fill(faceManager.totalFramesCollected >= targetFrameCount ? Color.green.opacity(0.8) : Color.black.opacity(0.7))
+//                        )
+//                        .foregroundColor(.white)
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 60)
@@ -404,27 +407,27 @@ struct FaceDetectionView: View {
                 hasAutoTriggered = false
             }
 
-            .alert(alertTitle, isPresented: $showAlert) {
-                Button("OK") {
-                    showAlert = false
-
-                    if alertTitle.contains("Successful") {
-                        print("✅ [Alert] Success confirmed, completing flow...")
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            self.onComplete()
-                        }
-                    }
-
-                    if alertTitle.contains("Failed") || alertTitle.contains("Error") {
-                        print("🔄 [Alert] Error acknowledged, resetting frames...")
-                        faceManager.capturedFrames = []
-                        faceManager.totalFramesCollected = 0
-                        hasAutoTriggered = false
-                    }
-                }
-            } message: {
-                Text(alertMessage)
-            }
+//            .alert(alertTitle, isPresented: $showAlert) {
+//                Button("OK") {
+//                    showAlert = false
+//
+//                    if alertTitle.contains("Successful") {
+//                        print("✅ [Alert] Success confirmed, completing flow...")
+//                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+//                            self.onComplete()
+//                        }
+//                    }
+//
+//                    if alertTitle.contains("Failed") || alertTitle.contains("Error") {
+//                        print("🔄 [Alert] Error acknowledged, resetting frames...")
+//                        faceManager.capturedFrames = []
+//                        faceManager.totalFramesCollected = 0
+//                        hasAutoTriggered = false
+//                    }
+//                }
+//            } message: {
+//                Text(alertMessage)
+//            }
         }
         .onAppear {
             ncnnViewModel.loadModels()
@@ -501,11 +504,17 @@ struct FaceDetectionView: View {
                 self.isProcessing = false
                 switch result {
                 case .success:
-                    print("✅ [Register] uploaded")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        self.onComplete()
+                    }
                 case .failure(let error):
                     self.alertTitle = "❌ Registration Failed"
                     self.alertMessage = "Error: \(error.localizedDescription)"
                     self.showAlert = true
+                    
+                    faceManager.capturedFrames = []
+                    faceManager.totalFramesCollected = 0
+                    hasAutoTriggered = false
                 }
             }
         }
@@ -563,11 +572,18 @@ struct FaceDetectionView: View {
                         self.alertTitle = "👋 Login Successful"
                         self.alertMessage = "Press this button to close the alert"
                         self.showAlert = true
-                        onComplete()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            self.onComplete()
+                        }
                     } else {
                         self.alertTitle = "Failed to Login"
                         self.alertMessage = "Face verification failed. Try again"
                         self.showAlert = true
+                        
+                        faceManager.capturedFrames = []
+                        faceManager.totalFramesCollected = 0
+                        hasAutoTriggered = false
+                        
                         #if DEBUG
                         print("Face verification failed.\n\nMatch: \(String(format: "%.1f", matchPercent))%\n\n\(String(describing: verification.notes))")
                         #endif
