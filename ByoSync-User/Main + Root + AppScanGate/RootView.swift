@@ -1,7 +1,6 @@
 import SwiftUI
 internal import AVFoundation
 
-
 private enum AppStep {
     case loading, auth, consent, cameraPrep, mlScan, mainTab
 }
@@ -20,6 +19,7 @@ struct RootView: View {
     @EnvironmentObject var enrollmentGate: EnrollmentGate
 
     @StateObject private var deviceRegistrationVM = DeviceRegistrationViewModel()
+    @StateObject private var fetchUserByIdVM = UserDataByIdViewModel()
 
     @State private var step: AppStep = .loading
     @State private var consentAccepted = false
@@ -29,8 +29,7 @@ struct RootView: View {
     @State private var launchDeviceState: LaunchDeviceState = .unknown
     @State private var launchHasFaceData: Bool? = nil
 
-
-    // ✅ NEW: device-check routing should only apply during initial launch gating
+    // ✅ Key: only use launch routing until user is logged in
     @State private var launchRoutingActive = true
 
     private var hasCameraPermission: Bool {
@@ -61,10 +60,18 @@ struct RootView: View {
             case .mlScan:
                 MLScanView(onDone: {
                     scanGate.markScanCompleted()
-                    userSession.loadUser()
+
+                    // OK: backend refresh, does NOT touch UserSession persistence
+                    fetchUserByIdVM.fetch(
+                        userId: userSession.currentUserID,
+                        deviceKeyHash: HMACGenerator.generateHMAC(jsonString: DeviceIdentity.resolve())
+                    )
+
+                    // ❌ REMOVE: userSession.loadUser()
+                    // This can cause re-evaluation / step flip during transitions.
                     enrollmentGate.reload()
 
-                    // ✅ stop launch routing
+                    // stop any launch gating once scan is done
                     launchRoutingActive = false
                     launchDeviceState = .unknown
                     launchHasFaceData = nil
@@ -77,12 +84,27 @@ struct RootView: View {
             }
         }
         .onAppear {
-            userSession.loadUser()
+            // ✅ Only load from disk if we don't already have a session in memory.
+            if userSession.currentUser == nil {
+                userSession.loadUser()
+            }
+
             enrollmentGate.reload()
             consentAccepted = UserDefaults.standard.bool(forKey: consentKey)
             scanGate.reloadFromStorage()
 
-            guard !didRunLaunchDeviceCheck else { return }
+            // If already logged in, never run launch routing
+            if userSession.currentUser != nil {
+                launchRoutingActive = false
+                step = nextStep()
+                return
+            }
+
+            // run launch device check once
+            guard !didRunLaunchDeviceCheck else {
+                step = nextStep()
+                return
+            }
             didRunLaunchDeviceCheck = true
 
             let deviceKey = DeviceIdentity.resolve()
@@ -93,16 +115,14 @@ struct RootView: View {
                 return
             }
 
-            // ask backend
             launchDeviceState = .unknown
             launchHasFaceData = nil
             deviceRegistrationVM.checkDeviceRegistration()
         }
-
         .onChange(of: deviceRegistrationVM.isLoading) { _, isLoading in
             guard didRunLaunchDeviceCheck else { return }
             guard !isLoading else { return }
-            guard launchRoutingActive else { return }
+            guard launchRoutingActive else { return } // ✅ ignore once logged in
 
             if deviceRegistrationVM.isDeviceRegistered {
                 launchDeviceState = .registered
@@ -114,12 +134,12 @@ struct RootView: View {
 
             step = nextStep()
         }
-
         .onChange(of: userSession.currentUser) { _, newUser in
-            // ✅ Once user becomes non-nil (login/register), stop forcing launch routing
+            // ✅ the moment login sets currentUser, disable launch routing forever
             if newUser != nil {
                 launchRoutingActive = false
                 launchDeviceState = .unknown
+                launchHasFaceData = nil
                 enrollmentGate.reload()
             }
             step = nextStep()
@@ -130,15 +150,13 @@ struct RootView: View {
     }
 
     private func nextStep() -> AppStep {
-
-        // ✅ Launch routing applies ONLY while launchRoutingActive is true
+        // ✅ Launch routing only when NOT logged in
         if launchRoutingActive {
             switch launchDeviceState {
             case .notRegistered:
                 return .auth
 
             case .registered:
-                // if API hasn't filled it yet, stay on splash
                 guard let hasFaceData = launchHasFaceData else { return .loading }
 
                 if hasFaceData {
@@ -154,9 +172,7 @@ struct RootView: View {
         }
 
         // ---- Normal logic ----
-       // guard UserDefaults.standard.string(forKey: "accountType") == "user" else { return .auth }
-       // guard userSession.currentUser != nil else { return .auth }
-       // guard consentAccepted else { return .consent }
+        guard userSession.currentUser != nil else { return .auth }
 
         if enrollmentGate.needsEnrollment {
             faceAuthManager.setRegistrationMode()
@@ -171,6 +187,7 @@ struct RootView: View {
         return .mainTab
     }
 }
+
 #Preview {
     RootView()
         .environmentObject(UserSession.shared)

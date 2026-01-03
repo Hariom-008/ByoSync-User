@@ -167,7 +167,6 @@ final class RegisterUserViewModel: ObservableObject {
             UserSession.shared.setCurrentDeviceID(device.id)
             UserSession.shared.setThisDevicePrimary(device.isPrimary)
             UserSession.shared.setUserWallet(userData.wallet)
-            UserSession.shared.setEmailVerified(userData.emailVerified)
             UserSession.shared.setProfilePicture(userData.profilePic ?? "")
 
             Logger.shared.i(

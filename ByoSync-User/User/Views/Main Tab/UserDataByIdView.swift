@@ -553,6 +553,7 @@ struct UserDataByIdView: View {
         print("🚪 Logout button tapped")
         userSession.clearUser()
         dismiss()
+        dismiss()
     }
 }
 

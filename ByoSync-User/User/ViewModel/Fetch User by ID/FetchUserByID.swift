@@ -67,6 +67,7 @@ final class UserDataByIdViewModel: ObservableObject {
         }   
         let userID = UserSession.shared.currentUserID
         let deviceKeyHASH = HMACGenerator.generateHMAC(jsonString: DeviceIdentity.resolve())
+        
         repo.fetchUserDataById(userId: userID, deviceKeyHash: deviceKeyHASH) { [weak self] result in
             guard let self else { return }
 
@@ -74,6 +75,7 @@ final class UserDataByIdViewModel: ObservableObject {
             DispatchQueue.main.async {
                 switch result {
                 case .success(let res):
+                    
                     guard res.success else {
                         self.errorText = res.message
                         self.isLoading = false
@@ -88,6 +90,12 @@ final class UserDataByIdViewModel: ObservableObject {
                     self.chai = res.data.user.chai
                     self.isPrimaryDevice = res.data.device.isPrimary
 
+                    
+                    let user = User(firstName: res.data.user.firstName, lastName: res.data.user.lastName, email: res.data.user.email,phoneNumber:res.data.user.phoneNumber,deviceKey: res.data.device.deviceKey,deviceName: res.data.device.deviceName,userId: res.data.user.id,userDeviceId: res.data.device.id)
+                    
+                    UserSession.shared.saveUser(user)
+                    UserDefaults.standard.set("user", forKey: "accountType")
+                    
                     self.isLoading = false
 
                 case .failure(let err):

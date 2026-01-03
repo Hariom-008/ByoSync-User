@@ -73,6 +73,7 @@ final class UserSession: ObservableObject {
             if let loadedUser = try? decoder.decode(User.self, from: savedUser) {
                 self.currentUser = loadedUser
                 loadWalletBalance()
+                loadCurrentUserID()
                 print("✅ User loaded from session: \(loadedUser.firstName) \(loadedUser.lastName)")
             }
         }
@@ -125,6 +126,7 @@ final class UserSession: ObservableObject {
         self.userProfilePicture = ""
         self.currentUserDeviceID = ""
         self.thisDeviceIsPrimary = false
+        self.currentUserID = ""
         
         UserDefaults.standard.removeObject(forKey: userDefaultsKey)
         UserDefaults.standard.removeObject(forKey: emailVerifiedKey)
@@ -133,6 +135,7 @@ final class UserSession: ObservableObject {
         UserDefaults.standard.removeObject(forKey: thisDevicePrimaryKey)
         UserDefaults.standard.removeObject(forKey: "token")
         UserDefaults.standard.removeObject(forKey: "accountType")
+        UserDefaults.standard.removeObject(forKey: currentUserUserIDKey)
         
         print("🚪 User session cleared")
     }

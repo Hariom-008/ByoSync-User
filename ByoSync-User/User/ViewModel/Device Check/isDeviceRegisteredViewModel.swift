@@ -31,7 +31,7 @@ final class DeviceRegistrationViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
 
-        let userId = UserSession.shared.currentUser?.userId // optional
+        let userId = UserSession.shared.currentUserID // optional
         let deviceKey = DeviceIdentity.resolve()
 
         guard !deviceKey.isEmpty else {
