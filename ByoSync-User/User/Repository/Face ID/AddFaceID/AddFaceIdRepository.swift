@@ -26,6 +26,7 @@ final class FaceIdRepository {
         completion: @escaping (Result<Void, APIError>) -> Void
     ) {
         let headers = getHeader.shared.getAuthHeaders()
+        let userID = UserSession.shared.currentUserID
 
         // Convert `[AddFaceIdRequestBody]` → `[[String: Any]]`
         let faceIdArray: [[String: Any]]
@@ -38,6 +39,7 @@ final class FaceIdRepository {
         }
 
         let body: [String: Any] = [
+            "userId": userID,
             "salt": salt,
             "faceId": faceIdArray
         ]
