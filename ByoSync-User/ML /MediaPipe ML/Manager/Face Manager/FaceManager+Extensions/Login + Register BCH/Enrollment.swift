@@ -152,6 +152,16 @@ private func sha256(_ data: Data) -> Data {
     Data(SHA256.hash(data: data))
 }
 
+private let IOD_EPSILON: Float = 0.5// ~0.5% tolerance, tune if needed
+@inline(__always)
+private func iodMatches(_ a: Float, _ b: Float) -> Bool {
+        #if DEBUG
+        print("IOD : \(a) - \(b)")
+        #endif
+    return abs(a - b) <= IOD_EPSILON
+}
+
+
 
 // MARK: - Enrollment
 extension FaceManager {
@@ -220,11 +230,23 @@ extension FaceManager {
     }
 }
 
+#if DEBUG
+@inline(__always)
+private func logFrameTime(
+    frameIndex: Int,
+    elapsedNs: UInt64
+) {
+    let ms = Double(elapsedNs) / 1_000_000.0
+    print("🕒 [FaceVerify] Frame \(frameIndex) took \(String(format: "%.2f", ms)) ms")
+}
+#endif
+
+
 // MARK: - Verification
 
 extension FaceManager {
     func verifyFaceIDAgainstBackend(
-        framesToUse: [[Float]],
+        framesToUse:[FrameDistance],
         completion: @escaping (Result<BCHBiometric.VerificationResult, Error>) -> Void
     ) {
         guard
@@ -242,29 +264,49 @@ extension FaceManager {
         let requiredRecordMatches = 1
         let expectedN = (1 << Int(BCHBiometric.BCH_M)) - 1
         
-        DispatchQueue.global(qos: .userInitiated).async {
+        DispatchQueue.global(qos: .userInitiated).async(execute: {
 
             var bestRecordMatchCount = 0
             var bestFrameIndex: Int? = nil
 
-            // Try each captured frame; accept if ANY frame matches >=5 stored records
             for (frameIndex, frame) in framesToUse.enumerated() {
-                let distances = frame.map(Double.init)
 
+                #if DEBUG
+                let frameStartNs = DispatchTime.now().uptimeNanoseconds
+                #endif
+
+                let distances = frame.distances.map(Double.init)
                 var recordMatchCount = 0
 
                 for record in faceIds {
+
+                    // IOD gate (frame vs record)
+                    guard iodMatches(frame.iod * 100, Float(record.iod) ?? 0) else {
+                        continue
+                    }
+
                     guard record.helper.count == expectedN else { continue }
                     guard isHex(record.k2), record.k2.count == 64,
                           let k2Bytes = dataFromHex(record.k2), k2Bytes.count == 32 else { continue }
                     guard isHex(record.token), record.token.count == 64 else { continue }
+
+                    // ✅ Record-aligned distance scaling
+                    guard let recordIOD = Float(record.iod) else { continue }
                     
+
+                    let scaledDistances: [Double] = frame.distances.map {
+                        let iodInDecimal = recordIOD/100
+                        return Double($0 * iodInDecimal)
+                    }
 
                     let v: BCHBiometric.FrameVerification
                     do {
                         v = try bchQueue.sync {
                             try BCHShared.initBCH()
-                            return try BCHShared.verifyFrame(distances: distances, helper: record.helper)
+                            return try BCHShared.verifyFrame(
+                                distances: scaledDistances,
+                                helper: record.helper
+                            )
                         }
                     } catch {
                         continue
@@ -272,13 +314,11 @@ extension FaceManager {
 
                     guard v.success else { continue }
 
-                    // Android:
-                    // k1' = r32 XOR salt
-                    // k'  = k2 XOR k1'
-                    // token' = SHA256(k' || rByte32)
                     let k1Prime = xorData(v.rBytes32, saltBytes)
                     let kRecovered = xorData(k2Bytes, k1Prime)
-                    let tokenCandidate = hexFromData(sha256(kRecovered + v.rBytes32))
+                    let tokenCandidate = hexFromData(
+                        sha256(kRecovered + v.rBytes32)
+                    )
 
                     if tokenCandidate.caseInsensitiveCompare(record.token) == .orderedSame {
                         recordMatchCount += 1
@@ -288,12 +328,22 @@ extension FaceManager {
                     }
                 }
 
+
+                #if DEBUG
+                let frameEndNs = DispatchTime.now().uptimeNanoseconds
+                logFrameTime(
+                    frameIndex: frameIndex,
+                    elapsedNs: frameEndNs - frameStartNs
+                )
+                #endif
+
                 bestRecordMatchCount = max(bestRecordMatchCount, recordMatchCount)
                 if recordMatchCount >= requiredRecordMatches {
                     bestFrameIndex = frameIndex
                     break
                 }
             }
+
 
             let passed = (bestFrameIndex != nil)
             let matchPct = (Double(bestRecordMatchCount) / Double(max(1, faceIds.count))) * 100.0
@@ -310,7 +360,7 @@ extension FaceManager {
                 notes: "BestRecordMatches=\(bestRecordMatchCount)/\(faceIds.count), required=\(requiredRecordMatches), bestFrame=\(bestFrameIndex.map(String.init) ?? "nil")"
             )
             DispatchQueue.main.async { completion(.success(aggregated)) }
-        }
+        })
     }
 }
 
@@ -329,3 +379,4 @@ extension FaceManager {
         )
     }
 }
+

@@ -60,9 +60,9 @@ struct OTPVerificationView: View {
                 
                 if viewModel.canResend {
                     Button("Resend") {
-#if DEBUG
+                        #if DEBUG
                         print("📱 Resending OTP to: \(phoneNumber)")
-#endif
+                        #endif
                         viewModel.resendOTP()
                         clearOTP()
                     }
@@ -128,17 +128,17 @@ struct OTPVerificationView: View {
         }
         .onChange(of: viewModel.isAuthenticated) { _, newValue in
             if newValue {
-#if DEBUG
+                #if DEBUG
                 print("✅ OTP verified successfully, navigating to registration")
-#endif
+                #endif
                 router.navigate(to: .registerUser(phoneNumber: phoneNumber), style: .push)
             }
         }
         .onAppear {
-#if DEBUG
+            #if DEBUG
             print("📱 OTP View appeared for number: \(phoneNumber)")
             print("🔐 Masked display: \(formatDisplayPhoneNumber(phoneNumber))")
-#endif
+            #endif
             
             viewModel.selectedCountryCode = "+91"
             viewModel.phoneNumber = phoneNumber.replacingOccurrences(of: "+91", with: "").filter { $0.isNumber }
@@ -161,9 +161,9 @@ struct OTPVerificationView: View {
         }
         
         if isOTPComplete {
-#if DEBUG
+            #if DEBUG
             print("🔢 OTP complete: \(otpString)")
-#endif
+            #endif
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                 verifyOTP()
             }
@@ -172,17 +172,17 @@ struct OTPVerificationView: View {
     
     private func verifyOTP() {
         guard isOTPComplete else { return }
-#if DEBUG
+        #if DEBUG
         print("✅ Verifying OTP: \(otpString)")
-#endif
+        #endif
         hasError = false
         viewModel.verifyOTP(code: otpString)
     }
     
     private func clearOTP() {
-#if DEBUG
+        #if DEBUG
         print("🗑️ Clearing OTP fields")
-#endif
+        #endif
         otpCode = ["", "", "", "", "", ""]
         focusedField = 0
     }
@@ -190,10 +190,10 @@ struct OTPVerificationView: View {
     private func formatDisplayPhoneNumber(_ number: String) -> String {
         let digitsOnly = number.replacingOccurrences(of: "+91", with: "").filter { $0.isNumber }
         
-#if DEBUG
+        #if DEBUG
         print("📱 Original number: \(number)")
         print("📱 Digits only: \(digitsOnly)")
-#endif
+        #endif
         
         guard digitsOnly.count >= 10 else {
             return "+91 " + digitsOnly
@@ -202,9 +202,9 @@ struct OTPVerificationView: View {
         let lastThree = String(digitsOnly.suffix(3))
         let masked = "+91 XXXX XXX \(lastThree)"
         
-#if DEBUG
+        #if DEBUG
         print("📱 Masked display: \(masked)")
-#endif
+        #endif
         
         return masked
     }

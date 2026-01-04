@@ -12,6 +12,7 @@ struct FaceId: Codable,Equatable {
     let helper: String
     let k2: String
     let token: String
+    let iod: String
 }
 
 struct GetFaceIdData: Codable,Equatable {

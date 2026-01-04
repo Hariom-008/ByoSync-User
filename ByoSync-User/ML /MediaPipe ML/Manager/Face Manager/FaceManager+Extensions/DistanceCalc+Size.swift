@@ -220,14 +220,32 @@ extension FaceManager {
         (centerFrames + movementFrames).filter { $0.distances.count == 316 }
     }
 
-    func verificationFrames10() -> [[Float]] {
+    func verificationFrames10() -> [FrameDistance] {
         let frames = verificationFrameCollectedDistances
+
         guard frames.count >= 10 else {
             #if DEBUG
             print("⚠️ Not enough valid frames. Have \(frames.count), need 10.")
             #endif
             return []
         }
-        return frames.suffix(10).map { $0.distances }
+
+        let selectedFrames = frames.suffix(10)
+
+        let iodScaledFrames: [FrameDistance] = selectedFrames.map { frame in
+            let scaledDistances = frame.distances.map { $0 / frame.iod }
+
+            return FrameDistance(
+                distances: scaledDistances,
+                iod: frame.iod
+            )
+        }
+
+        #if DEBUG
+        print("✅ Verification frames prepared: \(iodScaledFrames.count) frames, IOD-scaled")
+        #endif
+
+        return iodScaledFrames
     }
+
 }

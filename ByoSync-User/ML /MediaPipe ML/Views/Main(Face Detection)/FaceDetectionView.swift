@@ -407,27 +407,27 @@ struct FaceDetectionView: View {
                 hasAutoTriggered = false
             }
 
-//            .alert(alertTitle, isPresented: $showAlert) {
-//                Button("OK") {
-//                    showAlert = false
-//
-//                    if alertTitle.contains("Successful") {
-//                        print("✅ [Alert] Success confirmed, completing flow...")
-//                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-//                            self.onComplete()
-//                        }
-//                    }
-//
-//                    if alertTitle.contains("Failed") || alertTitle.contains("Error") {
-//                        print("🔄 [Alert] Error acknowledged, resetting frames...")
-//                        faceManager.capturedFrames = []
-//                        faceManager.totalFramesCollected = 0
-//                        hasAutoTriggered = false
-//                    }
-//                }
-//            } message: {
-//                Text(alertMessage)
-//            }
+            .alert(alertTitle, isPresented: $showAlert) {
+                Button("OK") {
+                    showAlert = false
+
+                    if alertTitle.contains("Successful") {
+                        print("✅ [Alert] Success confirmed, completing flow...")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            self.onComplete()
+                        }
+                    }
+
+                    if alertTitle.contains("Failed") || alertTitle.contains("Error") {
+                        print("🔄 [Alert] Error acknowledged, resetting frames...")
+                        faceManager.capturedFrames = []
+                        faceManager.totalFramesCollected = 0
+                        hasAutoTriggered = false
+                    }
+                }
+            } message: {
+                Text(alertMessage)
+            }
         }
         .onAppear {
             ncnnViewModel.loadModels()
@@ -536,7 +536,7 @@ struct FaceDetectionView: View {
         }
 
         let allFrames = faceManager.verificationFrames10()
-        let validFrames = allFrames.filter { $0.count == 316 }
+        let validFrames = allFrames.filter { $0.distances.count == 316 }
     
 
         guard validFrames.count >= 10 else {
@@ -551,7 +551,7 @@ struct FaceDetectionView: View {
         }
 
         faceManager.loadAndVerifyFaceID(
-            framesToVerify: validFrames,
+            framesToVerify: allFrames,
             requiredMatches: 4,
             fetchViewModel: faceIdFetchViewModel
         ) { result in
