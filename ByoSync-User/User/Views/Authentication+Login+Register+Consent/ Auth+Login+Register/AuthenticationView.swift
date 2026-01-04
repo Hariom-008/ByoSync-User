@@ -8,6 +8,9 @@ struct AuthenticationView: View {
     @StateObject private var deviceRegistrationVM = DeviceRegistrationViewModel()
     
     @State private var didTapRegister: Bool = false
+    @State private var didTapLogin: Bool = false
+
+    
     
     @State private var showDeviceAlert: Bool = false
     @State private var deviceAlertMessage: String = ""
@@ -18,6 +21,11 @@ struct AuthenticationView: View {
     // Animation states
     @State private var showContent = false
     @State private var currentFeature = 0
+    
+    @EnvironmentObject var router: Router
+    
+    
+    @State var openMLScanView:Bool = false
     
     // Colors from the logo gradient
     private let logoBlue = Color(red: 0.0, green: 0.0, blue: 1.0)
@@ -117,6 +125,11 @@ struct AuthenticationView: View {
             .navigationBarBackButtonHidden(true)
             .navigationDestination(isPresented: $openEnterNumber) {
                 EnterNumberView()
+            }
+            .fullScreenCover(isPresented: $openMLScanView){
+                MLScanView {
+                    router.navigate(to: .mainTab)
+                }
             }
             .navigationDestination(isPresented: $openTestingView) {
                 #if DEBUG
@@ -228,6 +241,18 @@ struct AuthenticationView: View {
     private var bottomSection: some View {
         VStack(spacing: 10) {
             Spacer().frame(height: 8)
+
+            GlassButton(
+                text: "Login",
+                icon: "",
+                isPrimary: true,
+                logoBlue: deviceRegistrationVM.isDeviceRegistered ? logoBlue : Color.gray,
+                logoPurple: deviceRegistrationVM.isDeviceRegistered ? logoPurple : Color.white
+            ) {
+                handleLoginTap()
+            }
+            .disabled(deviceRegistrationVM.isLoading)
+            .opacity(deviceRegistrationVM.isLoading ? 0.6 : 1.0)
             
             // Register button
             GlassButton(
@@ -237,7 +262,6 @@ struct AuthenticationView: View {
                 logoBlue: logoBlue,
                 logoPurple: logoPurple
             ) {
-                print("🎯 Create Account tapped")
                 handleRegisterTap()
             }
             .disabled(deviceRegistrationVM.isLoading)
@@ -291,7 +315,6 @@ struct AuthenticationView: View {
     
     private func handleRegisterTap() {
         guard !deviceRegistrationVM.isLoading else {
-            print("⏳ Already checking device registration")
             return
         }
         
@@ -299,11 +322,24 @@ struct AuthenticationView: View {
         
         let deviceKey = DeviceIdentity.resolve()
         if !deviceKey.isEmpty {
-            print("🔐 Using deviceKey from UserDefaults for registration check")
             deviceRegistrationVM.checkDeviceRegistration()
         } else {
+            #if DEBUG
             print("⚠️ No deviceKey in User Defaults, proceeding to EnterNumberView directly")
+            #endif
             openEnterNumber = true
+        }
+    }
+    private func handleLoginTap() {
+        guard !deviceRegistrationVM.isLoading else {
+            return
+        }
+        
+        didTapLogin = true
+        
+        let deviceKey = DeviceIdentity.resolve()
+        if !deviceKey.isEmpty && deviceRegistrationVM.isDeviceRegistered {
+            openMLScanView = true
         }
     }
 }

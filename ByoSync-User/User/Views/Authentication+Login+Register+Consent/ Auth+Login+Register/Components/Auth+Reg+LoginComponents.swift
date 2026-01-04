@@ -130,13 +130,15 @@ struct GlassButton: View {
             action()
         }) {
             HStack(spacing: 10) {
-                Image(systemName: icon)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 22, height: 22)
-                
+                if !icon.isEmpty{
+                    Image(systemName: icon)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 22, height: 22)
+                }
                 Text(text)
                     .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(logoBlue == .gray ? Color.gray.opacity(0.6) : Color.white)
             }
             .foregroundColor(isPrimary ? .white : logoBlue)
             .frame(maxWidth: .infinity)
