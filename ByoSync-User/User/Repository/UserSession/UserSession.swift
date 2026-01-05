@@ -99,7 +99,7 @@ final class UserSession: ObservableObject {
     private func loadCurrentDeviceID() {
         self.currentUserDeviceID = UserDefaults.standard.string(forKey: currentUserDeviceIDKey) ?? ""
         if !currentUserDeviceID.isEmpty {
-            print("✅ Loaded current device ID: \(currentUserDeviceID)")
+           // print("✅ Loaded current device ID: \(currentUserDeviceID)")
         } else {
             print("⚠️ No device ID found in UserDefaults yet.")
         }
@@ -109,12 +109,12 @@ final class UserSession: ObservableObject {
     func setThisDevicePrimary(_ isPrimary: Bool) {
         self.thisDeviceIsPrimary = isPrimary
         UserDefaults.standard.set(isPrimary, forKey: thisDevicePrimaryKey)
-        print("✅ This device primary status saved: \(isPrimary)")
+       // print("✅ This device primary status saved: \(isPrimary)")
     }
     
     private func loadThisDevicePrimary() {
         self.thisDeviceIsPrimary = UserDefaults.standard.bool(forKey: thisDevicePrimaryKey)
-        print("✅ Loaded this device primary status: \(thisDeviceIsPrimary)")
+       // print("✅ Loaded this device primary status: \(thisDeviceIsPrimary)")
     }
 
     // MARK: - Clear User Session
@@ -135,7 +135,9 @@ final class UserSession: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "accountType")
        // UserDefaults.standard.removeObject(forKey: currentUserUserIDKey)
         
+        #if DEBUG
         print("🚪 User session cleared")
+        #endif
     }
     
     // MARK: - Computed Properties

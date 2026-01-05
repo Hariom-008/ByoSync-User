@@ -59,7 +59,9 @@ private extension Encodable {
             let obj = try JSONSerialization.jsonObject(with: data, options: [])
             return obj as? Parameters
         } catch {
+            #if DEBUG
             print("❌ Failed to encode request body:", error)
+            #endif
             return nil
         }
     }

@@ -54,7 +54,9 @@ fileprivate func loadRemoteFaceIdsIfNeeded(
 ) {
     // If we already have salt + records, just reuse them
     if !RemoteFaceIdCache.isEmpty {
+        #if DEBUG
         print("💾 [RemoteFaceIdCache] Using cached FaceId data (salt + \(RemoteFaceIdCache.faceIds.count) records).")
+        #endif
         completion(.success(()))
         return
     }
@@ -65,26 +67,27 @@ fileprivate func loadRemoteFaceIdsIfNeeded(
     fetchViewModel.fetchFaceIds(deviceKeyHash:deviceKeyHash){ (result: Result<GetFaceIdData, Error>) in
         switch result {
         case .failure(let error):
-            print("❌ [RemoteFaceIdCache] Failed to fetch FaceIds: \(error)")
             completion(.failure(error))
             
         case .success(let data):
             let saltHex = data.salt
             let faceIds = data.faceData
             
+            #if DEBUG
             print("✅ [RemoteFaceIdCache] Fetched \(faceIds.count) FaceId items from backend")
             print("🔑 [RemoteFaceIdCache] SALT from backend: \(saltHex) (len=\(saltHex.count))")
-            
+            #endif
             guard !faceIds.isEmpty else {
-                print("❌ [RemoteFaceIdCache] faceData is empty")
                 completion(.failure(LocalEnrollmentError.noLocalEnrollment))
                 return
             }
             
             RemoteFaceIdCache.salt = saltHex
             RemoteFaceIdCache.faceIds = faceIds
-            
+            #if DEBUG
             print("💾 [RemoteFaceIdCache] Cache filled (records=\(faceIds.count))")
+            #endif
+            
             completion(.success(()))
         }
     }
@@ -216,13 +219,17 @@ extension FaceManager {
                 )
             } catch {
                 failureCount += 1
+                #if DEBUG
                 print("❌ Enrollment frame \(index + 1) failed: \(error)")
+                #endif
             }
         }
 
         // 3) Don’t require “all frames succeed” anymore — require enough records
         guard addFaceIdPayload.count >= minRequired else {
+            #if DEBUG
             print("❌ Enrollment failed — only \(addFaceIdPayload.count) generated (failures=\(failureCount))")
+            #endif
             DispatchQueue.main.async { completion?(.failure(LocalEnrollmentError.noLocalEnrollment)) }
             return
         }

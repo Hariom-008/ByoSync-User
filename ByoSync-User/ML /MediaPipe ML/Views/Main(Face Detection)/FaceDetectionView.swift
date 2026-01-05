@@ -246,35 +246,6 @@ struct FaceDetectionView: View {
                         .foregroundColor(.white)
 
                         Spacer()
-
-//                        VStack(spacing: 4) {
-//                            HStack(spacing: 8) {
-//                                Image(systemName: "camera.fill")
-//                                Text("\(faceManager.totalFramesCollected) / \(targetFrameCount)")
-//                                    .font(.system(size: 14, weight: .bold))
-//                                    .monospacedDigit()
-//                            }
-//
-//                            GeometryReader { geo in
-//                                ZStack(alignment: .leading) {
-//                                    RoundedRectangle(cornerRadius: 2)
-//                                        .fill(Color.white.opacity(0.3))
-//                                        .frame(height: 3)
-//
-//                                    RoundedRectangle(cornerRadius: 2)
-//                                        .fill(frameProgress >= 1.0 ? Color.green : currentModeColor)
-//                                        .frame(width: geo.size.width * min(frameProgress, 1.0), height: 3)
-//                                }
-//                            }
-//                            .frame(height: 3)
-//                        }
-//                        .padding(.horizontal, 12)
-//                        .padding(.vertical, 8)
-//                        .background(
-//                            RoundedRectangle(cornerRadius: 8)
-//                                .fill(faceManager.totalFramesCollected >= targetFrameCount ? Color.green.opacity(0.8) : Color.black.opacity(0.7))
-//                        )
-//                        .foregroundColor(.white)
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 60)
@@ -300,11 +271,8 @@ struct FaceDetectionView: View {
                 s.append(CGFloat(newEAR))
                 if s.count > earMaxSamples { s.removeFirst(s.count - earMaxSamples) }
                 earSeries = s
-                print("👁️ [EAR] Updated: \(String(format: "%.3f", newEAR)) | Series count: \(earSeries.count)")
-            }
-            .onReceive(faceManager.$NormalizedPoints) { points in
                 #if DEBUG
-                print("📍 [NormalizedPoints] Updated: \(points.count) points")
+                print("👁️ [EAR] Updated: \(String(format: "%.3f", newEAR)) | Series count: \(earSeries.count)")
                 #endif
             }
 
@@ -325,26 +293,32 @@ struct FaceDetectionView: View {
                     pitchSeries = p
                     yawSeries = y
                     rollSeries = r
-                    
-                    print("🎯 [HeadPose] Pitch: \(String(format: "%.1f°", pitch)) | Yaw: \(String(format: "%.1f°", yaw)) | Roll: \(String(format: "%.1f°", roll))")
                 }
             }
             // ✅ Keep FaceManager busy synced whenever drivers change
             .onAppear {
                 syncBusy()
+                #if DEBUG
                 print("🎬 [FaceDetectionView] View appeared")
+                #endif
             }
             .onChange(of: isProcessing) { _, newValue in
                 syncBusy()
+                #if DEBUG
                 print("⚙️ [Processing] Status changed: \(newValue)")
+                #endif
             }
             .onChange(of: faceIdFetchViewModel.isLoading) { _, newValue in
                 syncBusy()
+                #if DEBUG
                 print("🔄 [Fetch] Loading status: \(newValue)")
+                #endif
             }
             .onChange(of: faceIdUploadViewModel.isUploading) { _, newValue in
                 syncBusy()
+                #if DEBUG
                 print("⬆️ [Upload] Status: \(newValue)")
+                #endif
             }
 
             .onChange(of: faceManager.totalFramesCollected) { _, newValue in
@@ -358,7 +332,9 @@ struct FaceDetectionView: View {
 
             .onChange(of: faceManager.uploadSuccess) { success in
                 if success {
+                    #if DEBUG
                     print("🎉 [Upload] Success! Completing flow...")
+                    #endif
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         faceManager.resetForNewUser()
                         onComplete()
@@ -378,7 +354,9 @@ struct FaceDetectionView: View {
             .onChange(of: faceIdUploadViewModel.uploadSuccess) { ok in
                 guard ok else { return }
 
+                #if DEBUG
                 print("✅ [Upload] Registration successful!")
+                #endif
                 enrollmentGate.markEnrolled()
                 faceIdFetchViewModel.fetchFaceIds(deviceKeyHash: deviceKeyHash)
 
@@ -402,7 +380,9 @@ struct FaceDetectionView: View {
 
             .onChange(of: faceIdFetchViewModel.showError) { show in
                 guard show else { return }
+                #if DEBUG
                 print("❌ [Fetch] Error: \(faceIdFetchViewModel.errorMessage ?? "Unknown")")
+                #endif
                 alertTitle = "❌ Fetch Failed"
                 alertMessage = faceIdFetchViewModel.errorMessage ?? "Unknown fetch error"
                 showAlert = true
@@ -411,7 +391,9 @@ struct FaceDetectionView: View {
 
             .onChange(of: faceIdUploadViewModel.showError) { show in
                 guard show else { return }
+                #if DEBUG
                 print("❌ [Upload] Error: \(faceIdUploadViewModel.errorMessage ?? "Unknown")")
+                #endif
                 alertTitle = "❌ Upload Failed"
                 alertMessage = faceIdUploadViewModel.errorMessage ?? "Unknown upload error"
                 showAlert = true
@@ -423,14 +405,18 @@ struct FaceDetectionView: View {
                     showAlert = false
 
                     if alertTitle.contains("Successful") {
+                        #if DEBUG
                         print("✅ [Alert] Success confirmed, completing flow...")
+                        #endif
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             self.onComplete()
                         }
                     }
 
                     if alertTitle.contains("Failed") || alertTitle.contains("Error") {
+                        #if DEBUG
                         print("🔄 [Alert] Error acknowledged, resetting frames...")
+                        #endif
                         faceManager.capturedFrames = []
                         faceManager.totalFramesCollected = 0
                         hasAutoTriggered = false
@@ -446,8 +432,10 @@ struct FaceDetectionView: View {
                 faceManager?.updateFaceLivenessScore(score)
             }
 
+            #if DEBUG
             print("🌐 [FaceDetectionView] Fetching FaceIds on appear for deviceKey=\(DeviceIdentity.resolve())")
             print("🎯 [FaceDetectionView] Current mode: \(faceAuthManager.currentMode)")
+            #endif
 
             if faceAuthManager.currentMode == .registration {
                 enrollmentGate.markNotEnrolled()
@@ -483,9 +471,11 @@ struct FaceDetectionView: View {
 
         let count = faceIdFetchViewModel.faceIds.count
         let saltLen = faceIdFetchViewModel.faceIdData?.salt.count ?? 0
+        #if DEBUG
         print("📊 Enrollment status (backend): \(isEnrolled ? "✅ Enrolled" : "❌ Not Enrolled")")
         print("   Remote FaceId count: \(count)")
         print("   Remote salt len: \(saltLen)")
+        #endif
     }
 
     // MARK: - Register Handler

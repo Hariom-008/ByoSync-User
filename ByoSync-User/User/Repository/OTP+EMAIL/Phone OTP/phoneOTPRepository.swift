@@ -31,24 +31,24 @@ final class OTPRepository {
     
     private init() {}
     
-    // MARK: - Send Phone OTP (Backend)
+    // MARK: - Send Phone OTP
     func sendPhoneOTP(
         phoneNumber: String,
         completion: @escaping (Result<PhoneOTPResponse, APIError>) -> Void
     ) {
-        print("═══════════════════════════════════════")
+        #if DEBUG
         print("📤 SENDING OTP REQUEST (BACKEND)")
-        print("═══════════════════════════════════════")
         print("📱 Phone Number: '\(phoneNumber)'")
         print("📏 Length: \(phoneNumber.count)")
         print("🌐 Endpoint: \(UserAPIEndpoint.Auth.phoneOTP)")
+        #endif
         
         let payload: Parameters = [
             "number": phoneNumber
         ]
-        
+        #if DEBUG
         print("📦 Payload: \(payload)")
-        print("───────────────────────────────────────")
+        #endif
         
         APIClient.shared.request(
             UserAPIEndpoint.Auth.phoneOTP,
@@ -57,53 +57,57 @@ final class OTPRepository {
         ) { (result: Result<PhoneOTPResponse, APIError>) in
             switch result {
             case .success(let response):
-                print("═══════════════════════════════════════")
+                #if DEBUG
                 print("✅ OTP SENT SUCCESSFULLY (BACKEND)")
-                print("═══════════════════════════════════════")
                 print("📥 RESPONSE RECEIVED:")
-                print("───────────────────────────────────────")
+                
                 
                 // Print the complete response structure
                 print("📊 statusCode: \(response.statusCode ?? 0)")
                 print("✔️  success: \(response.success)")
                 print("💬 message: \"\(response.message)\"")
+                #endif
                 
                 if let data = response.data {
+                    #if DEBUG
                     print("📦 data: {")
+                    #endif
                     if let otp = data.otp {
+                        #if DEBUG
                         print("    🔐 otp: \"\(otp)\"")
+                        #endif
                     }
                     if let phoneNumber = data.phoneNumber {
                         print("    📱 phoneNumber: \"\(phoneNumber)\"")
                     }
                     if let otpSentAt = data.otpSentAt {
-                        print("    🕐 otpSentAt: \"\(otpSentAt)\"")
+                        print(" 🕐 otpSentAt: \"\(otpSentAt)\"")
                     }
                     if let expiresIn = data.expiresIn {
                         print("    ⏰ expiresIn: \(expiresIn) seconds")
                     }
+                    #if DEBUG
                     print("}")
+                    #endif
                 } else {
+                    #if DEBUG
                     print("📦 data: null")
+                    #endif
                 }
-                
-                print("───────────────────────────────────────")
+                #if DEBUG
                 print("🎯 FORMATTED RESPONSE:")
+                #endif
                 self.printFormattedJSON(response)
-                print("═══════════════════════════════════════")
-                
                 completion(.success(response))
                 
             case .failure(let error):
-                print("═══════════════════════════════════════")
+                #if DEBUG
                 print("❌ OTP SEND FAILED (BACKEND)")
-                print("═══════════════════════════════════════")
                 print("🔴 Error: \(error.localizedDescription)")
                 
             
                 print("💬 Error Message: \(error.localizedDescription)")
-                
-                print("═══════════════════════════════════════")
+                #endif
                 completion(.failure(error))
             }
         }
@@ -115,20 +119,21 @@ final class OTPRepository {
         otp: String,
         completion: @escaping (Result<VerifyOTPResponse, APIError>) -> Void
     ) {
-        print("═══════════════════════════════════════")
+        #if DEBUG
         print("📤 VERIFYING OTP REQUEST (BACKEND)")
-        print("═══════════════════════════════════════")
         print("📱 Phone Number: '\(phoneNumber)'")
         print("🔐 OTP: \(otp)")
         print("🌐 Endpoint: \(UserAPIEndpoint.Auth.verifyOTP)")
+        
+        #endif
         
         let payload: Parameters = [
             "number": phoneNumber,
             "otp": otp
         ]
-        
+        #if DEBUG
         print("📦 Payload: \(payload)")
-        print("───────────────────────────────────────")
+        #endif
         
         APIClient.shared.request(
             UserAPIEndpoint.Auth.verifyOTP,
@@ -137,16 +142,15 @@ final class OTPRepository {
         ) { (result: Result<VerifyOTPResponse, APIError>) in
             switch result {
             case .success(let response):
-                print("═══════════════════════════════════════")
+                #if DEBUG
                 print("✅ OTP VERIFIED SUCCESSFULLY (BACKEND)")
-                print("═══════════════════════════════════════")
                 print("📥 RESPONSE RECEIVED:")
-                print("───────────────────────────────────────")
                 
                 // Print the complete response structure
                 print("📊 statusCode: \(response.statusCode ?? 0)")
                 print("✔️  success: \(response.success)")
                 print("💬 message: \"\(response.message)\"")
+                #endif
                 
                 if let data = response.data {
                     print("📦 data: {")
@@ -163,23 +167,21 @@ final class OTPRepository {
                 } else {
                     print("📦 data: null")
                 }
-                
-                print("───────────────────────────────────────")
+                #if DEBUG
                 print("🎯 FORMATTED RESPONSE:")
                 self.printFormattedJSON(response)
-                print("═══════════════════════════════════════")
+                #endif
                 
                 completion(.success(response))
                 
             case .failure(let error):
-                print("═══════════════════════════════════════")
+                #if DEBUG
                 print("❌ OTP VERIFICATION FAILED (BACKEND)")
-                print("═══════════════════════════════════════")
                 print("🔴 Error: \(error.localizedDescription)")
                 
                 print("💬 Error Message: \(error.localizedDescription)")
                 
-                print("═══════════════════════════════════════")
+                #endif
                 completion(.failure(error))
             }
         }
@@ -190,7 +192,6 @@ final class OTPRepository {
         phoneNumber: String,
         completion: @escaping (Result<PhoneOTPResponse, APIError>) -> Void
     ) {
-        print("🔄 RESENDING OTP (BACKEND)")
         sendPhoneOTP(phoneNumber: phoneNumber, completion: completion)
     }
     
@@ -203,7 +204,9 @@ final class OTPRepository {
            let jsonString = String(data: jsonData, encoding: .utf8) {
             print(jsonString)
         } else {
+            #if DEBUG
             print("Unable to format JSON")
+            #endif
         }
     }
 }

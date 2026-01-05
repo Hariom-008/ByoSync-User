@@ -53,9 +53,11 @@ final class FaceIdFetchRepository {
             "deviceKeyHash": deviceKeyHash
         ]
         
+        #if DEBUG
         print("📤 [FaceIdFetchRepository] getFaceIds -> URL: \(UserAPIEndpoint.FaceId.getFaceId)")
         print("📤 [FaceIdFetchRepository] Headers: \(headers)")
         print("📤 [FaceIdFetchRepository] Body: \(body)")
+        #endif
         
         // 4. Fire request
         APIClient.shared.request(
