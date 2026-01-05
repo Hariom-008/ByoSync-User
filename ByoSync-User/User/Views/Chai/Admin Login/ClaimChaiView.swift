@@ -15,6 +15,8 @@ struct ClaimChaiView: View {
     @Binding var userId:String
     @Binding var deviceKeyHash:String
     
+    let onDone: () -> Void
+    
     
     // Colors from the logo gradient
     private let logoBlue = Color(red: 0.0, green: 0.0, blue: 1.0)

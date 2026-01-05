@@ -146,20 +146,22 @@ struct EnterNumberToSearchUserView: View {
                 }
             }, userId: viewModel.userId ?? "", deviceKeyHash: viewModel.deviceKeyHash ?? "")
         }
-        .fullScreenCover(isPresented: $openChaiClaimView){
-            ClaimChaiView(userId: Binding<String>(
-                get: { viewModel.userId ?? "" },
-                set: { newValue in
-                    viewModel.userId = newValue.isEmpty ? nil : newValue
+        .fullScreenCover(isPresented: $openChaiClaimView) {
+            ClaimChaiView(
+                userId: Binding<String>(
+                    get: { viewModel.userId ?? "" },
+                    set: { newValue in viewModel.userId = newValue.isEmpty ? nil : newValue }
+                ),
+                deviceKeyHash: Binding<String>(
+                    get: { viewModel.deviceKeyHash ?? "" },
+                    set: { newValue in viewModel.deviceKeyHash = newValue.isEmpty ? nil : newValue }
+                ),
+                onDone: {
+                    openChaiClaimView = false   // ✅ this returns to EnterNumberToSearchUserView
                 }
-            ),
-            deviceKeyHash: Binding<String>(
-                get: { viewModel.deviceKeyHash ?? "" },
-                set: { newValue in
-                    viewModel.deviceKeyHash = newValue.isEmpty ? nil : newValue
-                }
-            ))
+            )
         }
+
         .navigationDestination(isPresented: $openAdminLoginView) {
             AdminLoginView()
         }
