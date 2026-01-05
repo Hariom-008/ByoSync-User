@@ -136,7 +136,13 @@ struct EnterNumberToSearchUserView: View {
         }
         .navigationDestination(isPresented: $openMLScan) {
             MLScanView(onDone: {
-                openChaiClaimView.toggle()
+                // 1) pop MLScanView (because navigationDestination is controlled by openMLScan)
+                openMLScan = false
+
+                // 2) present ClaimChaiView after pop completes
+                DispatchQueue.main.async {
+                    openChaiClaimView = true
+                }
             }, userId: viewModel.userId ?? "", deviceKeyHash: viewModel.deviceKeyHash ?? "")
         }
         .fullScreenCover(isPresented: $openChaiClaimView){

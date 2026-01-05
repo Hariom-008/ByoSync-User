@@ -2,18 +2,23 @@ import SwiftUI
 
 struct MLScanView: View {
     var onDone: () -> Void
-    let userId:String
+    let userId: String
     let deviceKeyHash: String
-    
+
     @EnvironmentObject var faceAuthManager: FaceAuthManager
-    
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
-        FaceDetectionView(authToken: UserDefaults.standard.string(forKey: "token") ?? "",onComplete: {
-            DispatchQueue.main.async {
-                onDone()
-            }
-        },
-        userId: userId, deviceKeyHash: deviceKeyHash
+        FaceDetectionView(
+            authToken: UserDefaults.standard.string(forKey: "token") ?? "",
+            onComplete: {
+                DispatchQueue.main.async {
+                    dismiss()   // <-- pops MLScanView correctly
+                    onDone()    // parent can now present ClaimChaiView safely
+                }
+            },
+            userId: userId,
+            deviceKeyHash: deviceKeyHash
         )
         .navigationBarHidden(true)
     }

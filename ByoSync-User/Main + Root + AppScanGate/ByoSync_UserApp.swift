@@ -27,8 +27,8 @@ struct ByoSync_UserApp: App {
     // CHAI App
     
     var isDeviceAdded: Bool{
-        UserDefaults.standard.string(forKey: "chaiDeviceId") != nil
-       // KeychainHelper.shared.read(forKey: "chaiDeviceId") != nil
+       // UserDefaults.standard.string(forKey: "chaiDeviceId") != nil
+        KeychainHelper.shared.read(forKey: "chaiDeviceId") != nil
     }
 
     init() {
@@ -58,6 +58,7 @@ struct ByoSync_UserApp: App {
             }
             .onAppear {
                 socketManager.connect()
+                print("DeviceKeyHash:\(DeviceIdentity.resolve())")
                 
             }
             .onChange(of: scenePhase) { oldPhase, newPhase in

@@ -174,7 +174,9 @@ struct ChaiDashBoardView: View {
             
             // User name
             if let user = viewModel.user {
-                Text("Welcome, \(user.firstName) \(user.lastName)")
+                let firstName = CryptoManager.shared.decrypt(encryptedData: "\(user.firstName)")
+                let lastName =  CryptoManager.shared.decrypt(encryptedData: "\(user.lastName)")
+                Text("Welcome, \(firstName ?? "nil") \(lastName ?? "nil")")
                     .font(.system(size: 28, weight: .bold))
                     .foregroundStyle(
                         LinearGradient(
@@ -332,6 +334,7 @@ struct ChaiDashBoardView: View {
     private var closeButton: some View {
         Button {
             print("✅ [ChaiDashBoardView] Close tapped")
+            dismiss()
             dismiss()
         } label: {
             HStack(spacing: 12) {

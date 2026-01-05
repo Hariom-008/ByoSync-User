@@ -585,9 +585,6 @@ struct FaceDetectionView: View {
                         self.alertTitle = "👋 Login Successful"
                         self.alertMessage = "Press this button to close the alert"
                         self.showAlert = true
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            self.onComplete()
-                        }
                     } else {
                         self.alertTitle = "Failed to Login"
                         self.alertMessage = "Face verification failed. Try again"
