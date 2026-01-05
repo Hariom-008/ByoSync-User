@@ -21,7 +21,7 @@ final class ChaiRepository: ChaiRepositoryProtocol {
 
         // ✅ match Postman exactly
         let params: Parameters = [
-            "chaiDeviceId": DeviceIdentity.resolve(),
+            "chaiDeviceId": KeychainHelper.shared.read(forKey: "chaiDeviceId"),
             "userId": userId
         ]
 

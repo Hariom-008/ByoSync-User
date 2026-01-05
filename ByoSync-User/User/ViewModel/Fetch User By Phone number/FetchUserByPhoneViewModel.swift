@@ -8,9 +8,9 @@ final class FetchUserByPhoneNumberViewModel: ObservableObject {
     // MARK: - UI State
     @Published private(set) var isLoading: Bool = false
     @Published private(set) var faceIds: [FaceId] = []          // always replaced on fetch
-    @Published private(set) var userId: String? = nil
+    @Published var userId: String? = nil
     @Published private(set) var salt: String? = nil
-    @Published private(set) var deviceKeyHash: String? = nil
+    @Published var deviceKeyHash: String? = nil
     @Published private(set) var message: String? = nil
     @Published private(set) var errorText: String? = nil
 

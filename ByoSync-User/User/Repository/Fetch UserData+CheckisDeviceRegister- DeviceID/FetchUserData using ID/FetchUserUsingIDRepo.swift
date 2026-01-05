@@ -15,14 +15,17 @@ struct UserDataByIdPayload: Decodable {
     let device: DeviceByIdDTO
 }
 
-struct UserByIdDTO: Decodable, Identifiable,Equatable {
+struct UserByIdDTO: Decodable, Identifiable, Equatable {
     let id: String
     let email: String
     let firstName: String
     let lastName: String
     let phoneNumber: String
     let salt: String
-    let faceToken: String
+
+    // Not in the shared response; keep optional to avoid decode failures
+    let faceToken: String?
+
     let wallet: Double
     let chai: Int
     let referralCode: String
@@ -32,9 +35,15 @@ struct UserByIdDTO: Decodable, Identifiable,Equatable {
     let profilePic: String?
     let devices: [String]
     let emailVerified: Bool
+
     let createdAt: String
     let updatedAt: String
     let v: Int
+
+    // New fields from API response
+    let deletedAt: String?
+    let isDeleted: Bool
+    let todayChaiCount: Int
 
     enum CodingKeys: String, CodingKey {
         case id = "_id"
@@ -44,6 +53,8 @@ struct UserByIdDTO: Decodable, Identifiable,Equatable {
         case referralCode, transactionCoins, noOfTransactions, noOfTransactionsReceived
         case profilePic, devices, emailVerified, createdAt, updatedAt
         case v = "__v"
+
+        case deletedAt, isDeleted, todayChaiCount
     }
 
     init(from decoder: Decoder) throws {
@@ -55,8 +66,11 @@ struct UserByIdDTO: Decodable, Identifiable,Equatable {
         lastName = try c.decode(String.self, forKey: .lastName)
         phoneNumber = try c.decode(String.self, forKey: .phoneNumber)
         salt = try c.decode(String.self, forKey: .salt)
-        faceToken = try c.decode(String.self, forKey: .faceToken)
 
+        // Optional since it may not exist
+        faceToken = try c.decodeIfPresent(String.self, forKey: .faceToken)
+
+        // Wallet can arrive as Int or Double
         if let wDouble = try? c.decode(Double.self, forKey: .wallet) {
             wallet = wDouble
         } else {
@@ -76,6 +90,11 @@ struct UserByIdDTO: Decodable, Identifiable,Equatable {
         createdAt = try c.decode(String.self, forKey: .createdAt)
         updatedAt = try c.decode(String.self, forKey: .updatedAt)
         v = try c.decode(Int.self, forKey: .v)
+
+        // New fields (deletedAt can be null)
+        deletedAt = try c.decodeIfPresent(String.self, forKey: .deletedAt)
+        isDeleted = try c.decode(Bool.self, forKey: .isDeleted)
+        todayChaiCount = try c.decode(Int.self, forKey: .todayChaiCount)
     }
 }
 

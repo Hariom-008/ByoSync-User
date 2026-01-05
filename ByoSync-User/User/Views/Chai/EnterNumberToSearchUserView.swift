@@ -11,6 +11,9 @@ struct EnterNumberToSearchUserView: View {
     @State private var showContent = false
     @State private var currentFeature = 0
     
+    @State var openMLScan:Bool = false
+    @State var openChaiClaimView:Bool = false
+    
     // Colors from the logo gradient
     private let logoBlue = Color(red: 0.0, green: 0.0, blue: 1.0)
     private let logoPurple = Color(red: 0.478, green: 0.0, blue: 1.0)
@@ -129,6 +132,25 @@ struct EnterNumberToSearchUserView: View {
                 print("✅ [EnterPhoneNumberScreen] User fetched successfully")
                 handleSuccess()
             }
+        }
+        .navigationDestination(isPresented: $openMLScan) {
+            MLScanView{
+                openChaiClaimView.toggle()
+            }
+        }
+        .fullScreenCover(isPresented: $openChaiClaimView){
+            ClaimChaiView(userId: Binding<String>(
+                get: { viewModel.userId ?? "" },
+                set: { newValue in
+                    viewModel.userId = newValue.isEmpty ? nil : newValue
+                }
+            ),
+            deviceKeyHash: Binding<String>(
+                get: { viewModel.deviceKeyHash ?? "" },
+                set: { newValue in
+                    viewModel.deviceKeyHash = newValue.isEmpty ? nil : newValue
+                }
+            ))
         }
     }
     
@@ -319,7 +341,8 @@ struct EnterNumberToSearchUserView: View {
     // MARK: - Actions
     
     private func handleProceed() {
-        let trimmed = phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fullPhoneNumber = "+91\(phoneNumber)"
+        let trimmed = fullPhoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             print("⚠️ [EnterPhoneNumberScreen] Empty phone number")
             return
@@ -337,12 +360,11 @@ struct EnterNumberToSearchUserView: View {
         print("🎉 [EnterPhoneNumberScreen] Success - userId: \(viewModel.userId ?? "nil")")
         print("📊 [EnterPhoneNumberScreen] Face IDs count: \(viewModel.faceIds.count)")
         
-        // TODO: Navigate to next screen
-        // Example:
-        // router.navigate(to: .faceVerification(userId: viewModel.userId!, faceIds: viewModel.faceIds))
+        openMLScan.toggle()
     }
 }
 
 #Preview {
     EnterNumberToSearchUserView()
 }
+

@@ -13,6 +13,7 @@ struct ByoSync_UserApp: App {
     @StateObject private var scanGate = AppScanGate.shared
     @StateObject private var faceAuthManager = FaceAuthManager.shared
     @StateObject private var enrollmentGate = EnrollmentGate.shared
+    
 
 
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
@@ -20,6 +21,14 @@ struct ByoSync_UserApp: App {
     
     // ✅ guarantees we don't accidentally log twice
         private static var didLogAppStart = false
+    
+    
+    
+    // CHAI App
+    
+    var isDeviceAdded: Bool{
+        KeychainHelper.shared.read(forKey: "chaiDeviceId") != nil
+    }
 
     init() {
          if !Self.didLogAppStart {
@@ -33,22 +42,28 @@ struct ByoSync_UserApp: App {
             ZStack {
                 
                 //RouterView { RootView() }
-                AdminLoginView()
-                    .environmentObject(userSession)
-                    .environmentObject(languageManager)
-                    .environmentObject(faceAuthManager)
-                    .environmentObject(cryptoManager)
-                    .environmentObject(scanGate)
-                    .environmentObject(enrollmentGate)
+                if isDeviceAdded {
+                    EnterNumberToSearchUserView()
+                        .preferredColorScheme(.light)
+                }else{
+                    AddDeviceView()
+                        .preferredColorScheme(.light)
+                }
+//                    .environmentObject(userSession)
+//                    .environmentObject(languageManager)
+//                    .environmentObject(faceAuthManager)
+//                    .environmentObject(cryptoManager)
+//                    .environmentObject(scanGate)
+//                    .environmentObject(enrollmentGate)
 
-                    .environment(\.locale, .init(identifier: languageManager.currentLanguageCode))
-                    .preferredColorScheme(.light)
+                  //  .environment(\.locale, .init(identifier: languageManager.currentLanguageCode))
             }
             .onOpenURL { url in
                 Auth.auth().canHandle(url)
             }
             .onAppear {
                 socketManager.connect()
+                
             }
             .onChange(of: scenePhase) { oldPhase, newPhase in
                 print("🔄 [APP] Scene phase changed: \(oldPhase) -> \(newPhase)")

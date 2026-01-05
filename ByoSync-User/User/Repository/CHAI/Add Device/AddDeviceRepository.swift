@@ -5,8 +5,7 @@
 import Foundation
 import Alamofire
 
-// MARK: - DTOs (keep at top)
-
+// MARK: - DTOs
 struct AddDeviceRequestBody: Encodable {
     let deviceKey: String
     let deviceKeyHash: String
@@ -14,14 +13,17 @@ struct AddDeviceRequestBody: Encodable {
     let deviceData: [String: AnyEncodable]   // allows {} / arbitrary json
 }
 
+struct AddDeviceData: Decodable {
+    let _id: String
+}
 struct AddDeviceResponse: Decodable {
     let statusCode: Int?
     let message: String?
+    let data: AddDeviceData
     let success: Bool?
 }
 
 // MARK: - Repo
-
 protocol AddDeviceRepositoryProtocol {
     func addDevice(
         body: AddDeviceRequestBody,

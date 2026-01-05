@@ -6,7 +6,6 @@ struct MLScanView: View {
     
     var body: some View {
         FaceDetectionView(authToken: UserDefaults.standard.string(forKey: "token") ?? "",onComplete: {
-            print("🎯 [MLScanView] onComplete callback received")
            
             print("🎯[MLScanView] deviceKey:\( DeviceIdentity.resolve())")
             // Ensure we're on the main thread

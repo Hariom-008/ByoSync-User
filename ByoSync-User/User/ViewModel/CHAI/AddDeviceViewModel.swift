@@ -50,6 +50,9 @@ final class AddDeviceViewModel: ObservableObject {
                     // Treat as success if success==true or statusCode==200
                     let ok = (res.success == true) || (res.statusCode == 200)
                     self.state = ok ? .success(message: msg) : .failure(message: msg)
+                    
+                   // UserDefaults.standard.set(res.data._id, forKey: "chaiDeviceId")
+                    KeychainHelper.shared.save(res.data._id, forKey: "chaiDeviceId")
 
                 case .failure(let err):
                     // No altered error class: just show what we have
