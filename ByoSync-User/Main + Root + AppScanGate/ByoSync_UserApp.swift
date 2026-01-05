@@ -31,7 +31,9 @@ struct ByoSync_UserApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                RouterView { RootView() }
+                
+                //RouterView { RootView() }
+                AdminLoginView()
                     .environmentObject(userSession)
                     .environmentObject(languageManager)
                     .environmentObject(faceAuthManager)

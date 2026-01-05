@@ -13,14 +13,15 @@ final class APIClient {
     private let session: Session
     
     private init() {
-        // 1. URLSession configuration
         let configuration = URLSessionConfiguration.af.default
         configuration.timeoutIntervalForRequest = 30
         configuration.timeoutIntervalForResource = 60
-        
-        // 2. TLS / Server trust: certificate pinning
-        // PinnedCertificatesTrustEvaluator() by default loads all .cer in main bundle.
-        // We map it to the exact backend host.
+
+        // ✅ Ensure cookies are stored + automatically attached
+        configuration.httpCookieStorage = HTTPCookieStorage.shared
+        configuration.httpShouldSetCookies = true
+        configuration.httpCookieAcceptPolicy = .always
+
         let evaluators: [String: ServerTrustEvaluating] = [
             APIConfig.host: PinnedCertificatesTrustEvaluator(
                 acceptSelfSignedCertificates: false,
@@ -28,15 +29,18 @@ final class APIClient {
                 validateHost: true
             )
         ]
-        
+        // inside APIClient.init()
         let serverTrustManager = ServerTrustManager(evaluators: evaluators)
         
-        // 3. Create Alamofire Session with trust manager
+        let interceptor = AuthCookieInterceptor(cookieName: "token", baseURL: APIConfig.baseURL)
+
         self.session = Session(
             configuration: configuration,
+            interceptor: interceptor,
             serverTrustManager: serverTrustManager
         )
     }
+
     
     // MARK: - Generic Request Method (For responses that return data)
     func request<T: Decodable>(
@@ -330,6 +334,17 @@ final class APIClient {
                 }
             }
     }
+    
+    #if DEBUG
+    func debugPrintCookies() {
+        let url = APIConfig.baseURL
+        let cookies = HTTPCookieStorage.shared.cookies(for: url) ?? []
+        print("🍪 Cookies for \(url.host ?? "?") count=\(cookies.count)")
+        for c in cookies {
+            print("🍪 \(c.name)=\(c.value) domain=\(c.domain) path=\(c.path) secure=\(c.isSecure) expires=\(String(describing: c.expiresDate))")
+        }
+    }
+    #endif
 }
 
 private struct BackendError: Codable {

@@ -126,17 +126,9 @@ struct AuthenticationView: View {
             .navigationDestination(isPresented: $openEnterNumber) {
                 EnterNumberView()
             }
-            .fullScreenCover(isPresented: $openMLScanView){
-                MLScanView {
-                    router.navigate(to: .mainTab)
-                }
-            }
             .navigationDestination(isPresented: $openTestingView) {
                 #if DEBUG
-               // UserDataByIdView(mode: .mockContent)
-                CameraPreparationView(onReady: {
-                    
-                })
+                EnterNumberToSearchUserView()
                 #endif
             }
             .alert(deviceAlertMessage, isPresented: $showDeviceAlert) {
@@ -146,22 +138,22 @@ struct AuthenticationView: View {
             }
             .toolbar {
                 #if DEBUG
-//                ToolbarItem(placement: .navigationBarTrailing) {
-//                    Button {
-//                        print("🧪 Opening Testing View")
-//                        openTestingView.toggle()
-//                    } label: {
-//                        Text("Testing")
-//                            .font(.system(size: 12, weight: .medium))
-//                            .foregroundStyle(
-//                                LinearGradient(
-//                                    colors: [logoBlue, logoPurple],
-//                                    startPoint: .leading,
-//                                    endPoint: .trailing
-//                                )
-//                            )
-//                    }
-//                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        print("🧪 Opening Testing View")
+                        openTestingView.toggle()
+                    } label: {
+                        Text("Testing")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [logoBlue, logoPurple],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                    }
+                }
                 #endif
             }
             .onChange(of: deviceRegistrationVM.isLoading) { isLoading in
