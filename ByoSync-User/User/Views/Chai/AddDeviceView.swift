@@ -2,6 +2,8 @@ import SwiftUI
 
 struct AddDeviceView: View {
     @StateObject private var viewModel = AddDeviceViewModel()
+    
+    @EnvironmentObject var faceAuthManager: FaceAuthManager
     @Environment(\.dismiss) private var dismiss
     
     @State private var deviceName: String = ""

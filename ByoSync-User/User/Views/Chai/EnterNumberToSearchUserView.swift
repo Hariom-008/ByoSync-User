@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct EnterNumberToSearchUserView: View {
+    @EnvironmentObject var faceAuthManager: FaceAuthManager
     @StateObject private var viewModel = FetchUserByPhoneNumberViewModel()
     @Environment(\.dismiss) private var dismiss
     
@@ -134,9 +135,9 @@ struct EnterNumberToSearchUserView: View {
             }
         }
         .navigationDestination(isPresented: $openMLScan) {
-            MLScanView{
+            MLScanView(onDone: {
                 openChaiClaimView.toggle()
-            }
+            }, userId: viewModel.userId ?? "", deviceKeyHash: viewModel.deviceKeyHash ?? "")
         }
         .fullScreenCover(isPresented: $openChaiClaimView){
             ClaimChaiView(userId: Binding<String>(

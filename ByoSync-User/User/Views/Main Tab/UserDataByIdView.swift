@@ -482,7 +482,7 @@ struct UserDataByIdView: View {
         let deviceKeyHash = HMACGenerator.generateHMAC(jsonString: deviceKey)
         print("✅ Device Key Hash resolved: \(deviceKeyHash)")
 
-        let userId = userSession.currentUserID
+        let userId = ""
         guard !userId.isEmpty else {
             print("❌ No userId found in UserSession")
             viewModel.setError("No user session found. Please log in again.")
@@ -503,7 +503,7 @@ struct UserDataByIdView: View {
         let deviceKey = DeviceIdentity.resolve()
         let deviceKeyHash = HMACGenerator.generateHMAC(jsonString: deviceKey)
 
-        let userId = userSession.currentUserID
+        let userId = ""
         guard !userId.isEmpty else {
             print("❌ No userId found in UserSession")
             viewModel.setError("No user session found. Please log in again.")

@@ -9,7 +9,7 @@ final class UserSession: ObservableObject {
     @Published var userProfilePicture: String = ""
     @Published var currentUserDeviceID: String = ""
     @Published var thisDeviceIsPrimary: Bool = false
-    @Published var currentUserID:String = ""
+   // @Published var currentUserID:String = ""
     @Published var wallet: Double = 0
     
     private let userDefaultsKey = "currentUser"
@@ -18,7 +18,6 @@ final class UserSession: ObservableObject {
     private let currentUserDeviceIDKey = "currentUserDeviceID"
     private let thisDevicePrimaryKey = "thisDevicePrimaryKey"
     private let walletKey = "walletKey"
-    private let currentUserUserIDKey = "userIDKey"
     
     
     private init(){
@@ -28,7 +27,6 @@ final class UserSession: ObservableObject {
         loadCurrentDeviceID()
         loadThisDevicePrimary()
         loadWalletBalance()
-        loadCurrentUserID()
     }
     
     // MARK: - Profile Picture
@@ -37,10 +35,10 @@ final class UserSession: ObservableObject {
         UserDefaults.standard.set(urlString, forKey: profilePictureKey)
     }
     
-    func setCurrentUserId(_ id: String){
-        self.currentUserID = id
-        UserDefaults.standard.set(id, forKey: currentUserUserIDKey)
-    }
+//    func setCurrentUserId(_ id: String){
+//        self.currentUserID = id
+//        UserDefaults.standard.set(id, forKey: currentUserUserIDKey)
+//    }
     func setUserWallet(_ balance: Double){
         self.wallet = balance
         UserDefaults.standard.set(balance, forKey: walletKey)
@@ -53,9 +51,9 @@ final class UserSession: ObservableObject {
         self.userProfilePicture = UserDefaults.standard.string(forKey: profilePictureKey) ?? ""
     }
     
-    private func loadCurrentUserID(){
-    self.currentUserID = UserDefaults.standard.string(forKey: currentUserUserIDKey) ?? ""
-}
+//    private func loadCurrentUserID(){
+//    self.currentUserID = UserDefaults.standard.string(forKey: currentUserUserIDKey) ?? ""
+//}
     // MARK: - Save and Load User
     func saveUser(_ user: User) {
         self.currentUser = user
@@ -73,7 +71,7 @@ final class UserSession: ObservableObject {
             if let loadedUser = try? decoder.decode(User.self, from: savedUser) {
                 self.currentUser = loadedUser
                 loadWalletBalance()
-                loadCurrentUserID()
+               // loadCurrentUserID()
                 print("✅ User loaded from session: \(loadedUser.firstName) \(loadedUser.lastName)")
             }
         }
@@ -126,7 +124,7 @@ final class UserSession: ObservableObject {
         self.userProfilePicture = ""
         self.currentUserDeviceID = ""
         self.thisDeviceIsPrimary = false
-        self.currentUserID = ""
+        //self.currentUserID = ""
         
         UserDefaults.standard.removeObject(forKey: userDefaultsKey)
         UserDefaults.standard.removeObject(forKey: emailVerifiedKey)
@@ -135,7 +133,7 @@ final class UserSession: ObservableObject {
         UserDefaults.standard.removeObject(forKey: thisDevicePrimaryKey)
         UserDefaults.standard.removeObject(forKey: "token")
         UserDefaults.standard.removeObject(forKey: "accountType")
-        UserDefaults.standard.removeObject(forKey: currentUserUserIDKey)
+       // UserDefaults.standard.removeObject(forKey: currentUserUserIDKey)
         
         print("🚪 User session cleared")
     }

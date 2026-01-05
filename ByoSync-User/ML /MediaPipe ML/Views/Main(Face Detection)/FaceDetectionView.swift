@@ -60,10 +60,19 @@ struct FaceDetectionView: View {
     // ✅ Auto-trigger tracking (prevent multiple triggers)
     @State private var hasAutoTriggered: Bool = false
 
+    
+    
+    // CHAI
+    
+    let userId: String
+    let deviceKeyHash:String
+    
     // MARK: - Init
     init(
         authToken: String,
-        onComplete: @escaping () -> Void
+        onComplete: @escaping () -> Void,
+        userId:String,
+        deviceKeyHash:String
     ) {
         self.authToken = authToken
 
@@ -71,6 +80,8 @@ struct FaceDetectionView: View {
         _cameraSpecManager = StateObject(wrappedValue: camSpecManager)
         _faceManager = StateObject(wrappedValue: FaceManager(cameraSpecManager: camSpecManager))
         self.onComplete = onComplete
+        self.userId = userId
+        self.deviceKeyHash = deviceKeyHash
     }
 
     // MARK: - Derived UI state
@@ -369,7 +380,7 @@ struct FaceDetectionView: View {
 
                 print("✅ [Upload] Registration successful!")
                 enrollmentGate.markEnrolled()
-                faceIdFetchViewModel.fetchFaceIds()
+                faceIdFetchViewModel.fetchFaceIds(deviceKeyHash: deviceKeyHash)
 
                 faceManager.capturedFrames = []
                 faceManager.totalFramesCollected = 0
@@ -442,7 +453,7 @@ struct FaceDetectionView: View {
                 enrollmentGate.markNotEnrolled()
             }
 
-            faceIdFetchViewModel.fetchFaceIds()
+            faceIdFetchViewModel.fetchFaceIds(deviceKeyHash:deviceKeyHash)
             hasAutoTriggered = false
 
             // keep busy correct after starting fetch
@@ -495,6 +506,7 @@ struct FaceDetectionView: View {
         }
 
         faceManager.generateAndUploadFaceID(
+            userId: userId,
             authToken: authToken,
             viewModel: faceIdUploadViewModel,
             frames: valid,
@@ -551,6 +563,7 @@ struct FaceDetectionView: View {
         }
 
         faceManager.loadAndVerifyFaceID(
+            deviceKeyHash: deviceKeyHash,
             framesToVerify: allFrames,
             requiredMatches: 4,
             fetchViewModel: faceIdFetchViewModel
@@ -597,87 +610,3 @@ struct FaceDetectionView: View {
         }
     }
 }
-
-
-
-
-
-
-// ✅ Normalized Points Card at Bottom - Now with dismiss button and better visibility
-//                    if showNormalizedPoints {
-//                        VStack(spacing: 0) {
-//                            // Header with dismiss button
-//                            HStack {
-//                                Image(systemName: "point.3.connected.trianglepath.dotted")
-//                                    .font(.system(size: 12))
-//                                    .foregroundColor(.white)
-//
-//                                Text("Face Landmarks")
-//                                    .font(.system(size: 12, weight: .semibold))
-//                                    .foregroundColor(.white)
-//
-//                                Spacer()
-//
-//                                Text("\(faceManager.NormalizedPoints.count) points")
-//                                    .font(.system(size: 10, weight: .medium))
-//                                    .foregroundColor(.white.opacity(0.7))
-//
-//                                // Dismiss button
-//                                Button(action: {
-//                                    print("🗑️ [NormalizedPoints] Dismissing overlay")
-//                                    withAnimation(.spring(duration: 0.3)) {
-//                                        showNormalizedPoints = false
-//                                    }
-//                                }) {
-//                                    Image(systemName: "xmark.circle.fill")
-//                                        .font(.system(size: 18))
-//                                        .foregroundColor(.white.opacity(0.8))
-//                                }
-//                                .padding(.leading, 8)
-//                            }
-//                            .padding(.horizontal, 16)
-//                            .padding(.vertical, 10)
-//                            .background(Color.blue.opacity(0.8))
-//
-//                            // Overlay visualization
-//                            NormalizedPointsOverlay(points: faceManager.NormalizedPoints)
-//                                .frame(width: 280, height: 280)
-//                                .background(Color.black)
-//                                .overlay(
-//                                    RoundedRectangle(cornerRadius: 0)
-//                                        .stroke(Color.blue.opacity(0.5), lineWidth: 2)
-//                                )
-//                        }
-//                        .background(Color.black)
-//                        .cornerRadius(16)
-//                        .shadow(color: .black.opacity(0.5), radius: 15, x: 0, y: -5)
-//                        .padding(.horizontal, 24)
-//                        .padding(.bottom, 40)
-//                        .transition(.move(edge: .bottom).combined(with: .opacity))
-//                    }
-//
-// Show button to reveal overlay if dismissed
-//                    if !showNormalizedPoints {
-//                        Button(action: {
-//                            print("👁️ [NormalizedPoints] Showing overlay")
-//                            withAnimation(.spring(duration: 0.3)) {
-//                                showNormalizedPoints = true
-//                            }
-//                        }) {
-//                            HStack(spacing: 8) {
-//                                Image(systemName: "point.3.connected.trianglepath.dotted")
-//                                    .font(.system(size: 12))
-//                                Text("Show Landmarks")
-//                                    .font(.system(size: 12, weight: .semibold))
-//                            }
-//                            .foregroundColor(.white)
-//                            .padding(.horizontal, 16)
-//                            .padding(.vertical, 10)
-//                            .background(
-//                                RoundedRectangle(cornerRadius: 8)
-//                                    .fill(Color.blue.opacity(0.8))
-//                            )
-//                        }
-//                        .padding(.bottom, 40)
-//                        .transition(.move(edge: .bottom).combined(with: .opacity))
-//                    }

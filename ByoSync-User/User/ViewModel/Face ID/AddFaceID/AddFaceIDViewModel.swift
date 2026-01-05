@@ -20,6 +20,7 @@ final class FaceIdViewModel: ObservableObject {
     @Published var lastSalt: String? = nil
     @Published var lastToken: String? = nil
     @Published var lastUploadedCount: Int = 0
+    @Published var userId:String = ""
     
     // MARK: - Dependencies
     private let repository: FaceIdRepository
@@ -42,7 +43,7 @@ extension FaceIdViewModel {
         salt: String
     ) {
         let item = AddFaceIdRequestBody(helper: helper, k2: k2, token: token,iod: iod)
-        uploadFaceIdList(salt: salt, list: [item])
+        uploadFaceIdList(userId: userId, salt: salt, list: [item])
         
         // Debug
         lastToken = token
@@ -52,6 +53,7 @@ extension FaceIdViewModel {
     
     /// Upload **multiple** FaceId records
     func uploadFaceIdList(
+        userId:String,
         salt: String,
         list: [AddFaceIdRequestBody]
     ) {
@@ -72,6 +74,7 @@ extension FaceIdViewModel {
         #endif
         
         repository.addFaceIds(
+            userId: userId,
             salt: salt,
             records: list
         ) { [weak self] result in

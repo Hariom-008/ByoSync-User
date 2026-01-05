@@ -64,11 +64,8 @@ final class UserDataByIdViewModel: ObservableObject {
             beginLoading(clearOldData: true)
         } else {
             hasAttemptedLoad = true
-        }   
-        let userID = UserSession.shared.currentUserID
-        let deviceKeyHASH = HMACGenerator.generateHMAC(jsonString: DeviceIdentity.resolve())
-        
-        repo.fetchUserDataById(userId: userID, deviceKeyHash: deviceKeyHASH) { [weak self] result in
+        }
+        repo.fetchUserDataById(userId: userId, deviceKeyHash: deviceKeyHash) { [weak self] result in
             guard let self else { return }
 
             // Ensure UI updates on main actor

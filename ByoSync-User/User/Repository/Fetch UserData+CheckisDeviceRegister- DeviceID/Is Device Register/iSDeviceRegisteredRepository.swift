@@ -66,7 +66,7 @@ final class DeviceRegistrationRepository {
                 print("✅ [DeviceRegistrationRepository] userId=\(response.data.userId), " +
                       "hasFaceData=\(response.data.hasFaceData)")
                 
-                UserSession.shared.setCurrentUserId(response.data.userId)
+              //  UserSession.shared.setCurrentUserId(response.data.userId)
                 print("UserID :\(response.data.userId)")
                 
                 completion(.success(response))

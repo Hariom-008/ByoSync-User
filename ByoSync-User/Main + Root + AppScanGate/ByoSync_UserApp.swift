@@ -27,7 +27,8 @@ struct ByoSync_UserApp: App {
     // CHAI App
     
     var isDeviceAdded: Bool{
-        KeychainHelper.shared.read(forKey: "chaiDeviceId") != nil
+        UserDefaults.standard.string(forKey: "chaiDeviceId") != nil
+       // KeychainHelper.shared.read(forKey: "chaiDeviceId") != nil
     }
 
     init() {
@@ -39,25 +40,19 @@ struct ByoSync_UserApp: App {
     
     var body: some Scene {
         WindowGroup {
+            NavigationStack{
             ZStack {
-                
-                //RouterView { RootView() }
-                if isDeviceAdded {
-                    EnterNumberToSearchUserView()
-                        .preferredColorScheme(.light)
-                }else{
-                    AddDeviceView()
-                        .preferredColorScheme(.light)
+                    if isDeviceAdded {
+                        EnterNumberToSearchUserView()
+                    }else{
+                        AddDeviceView()
+                    }
                 }
-//                    .environmentObject(userSession)
-//                    .environmentObject(languageManager)
-//                    .environmentObject(faceAuthManager)
-//                    .environmentObject(cryptoManager)
-//                    .environmentObject(scanGate)
-//                    .environmentObject(enrollmentGate)
-
-                  //  .environment(\.locale, .init(identifier: languageManager.currentLanguageCode))
             }
+            .environmentObject(faceAuthManager)
+            .environmentObject(enrollmentGate)
+            .environmentObject(scanGate)
+            .preferredColorScheme(.light)
             .onOpenURL { url in
                 Auth.auth().canHandle(url)
             }

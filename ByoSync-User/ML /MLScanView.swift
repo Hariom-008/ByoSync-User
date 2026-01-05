@@ -2,24 +2,19 @@ import SwiftUI
 
 struct MLScanView: View {
     var onDone: () -> Void
+    let userId:String
+    let deviceKeyHash: String
+    
     @EnvironmentObject var faceAuthManager: FaceAuthManager
     
     var body: some View {
         FaceDetectionView(authToken: UserDefaults.standard.string(forKey: "token") ?? "",onComplete: {
-           
-            print("🎯[MLScanView] deviceKey:\( DeviceIdentity.resolve())")
-            // Ensure we're on the main thread
             DispatchQueue.main.async {
-                print("🎯 [MLScanView] Calling onDone on main thread")
                 onDone()
             }
-        })
+        },
+        userId: userId, deviceKeyHash: deviceKeyHash
+        )
         .navigationBarHidden(true)
-        .onAppear {
-            print("👁️ [MLScanView] View appeared")
-        }
-        .onDisappear {
-            print("👋 [MLScanView] View disappeared")
-        }
     }
 }

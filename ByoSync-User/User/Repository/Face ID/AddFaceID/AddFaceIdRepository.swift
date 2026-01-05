@@ -21,13 +21,13 @@ final class FaceIdRepository {
     
     /// Upload multiple FaceId items (backend expects array)
     func addFaceIds(
+        userId:String,
         salt: String,
         records: [AddFaceIdRequestBody],
         completion: @escaping (Result<Void, APIError>) -> Void
     ) {
         let headers = getHeader.shared.getAuthHeaders()
-        let userID = UserSession.shared.currentUserID
-
+        
         // Convert `[AddFaceIdRequestBody]` → `[[String: Any]]`
         let faceIdArray: [[String: Any]]
         do {
@@ -39,7 +39,7 @@ final class FaceIdRepository {
         }
 
         let body: [String: Any] = [
-            "userId": userID,
+            "userId": userId,
             "salt": salt,
             "faceId": faceIdArray
         ]
@@ -89,6 +89,7 @@ final class FaceIdRepository {
     
     /// Upload **one** record
     func addFaceId(
+        userId:String,
         salt: String,
         helper: String,
         k2: String,
@@ -97,6 +98,6 @@ final class FaceIdRepository {
         completion: @escaping (Result<Void, APIError>) -> Void
     ) {
         let item = AddFaceIdRequestBody(helper: helper, k2: k2, token: token,iod: iod)
-        addFaceIds(salt: salt, records: [item], completion: completion)
+        addFaceIds(userId: userId,salt: salt, records: [item], completion: completion)
     }
 }
