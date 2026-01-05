@@ -14,6 +14,7 @@ struct EnterNumberToSearchUserView: View {
     
     @State var openMLScan:Bool = false
     @State var openChaiClaimView:Bool = false
+    @State var openAdminLoginView:Bool = false
     
     // Colors from the logo gradient
     private let logoBlue = Color(red: 0.0, green: 0.0, blue: 1.0)
@@ -135,7 +136,7 @@ struct EnterNumberToSearchUserView: View {
             }
         }
         .navigationDestination(isPresented: $openMLScan) {
-            MLScanView(onDone: {
+            MLScanView(onDone:{
                 // 1) pop MLScanView (because navigationDestination is controlled by openMLScan)
                 openMLScan = false
 
@@ -158,6 +159,16 @@ struct EnterNumberToSearchUserView: View {
                     viewModel.deviceKeyHash = newValue.isEmpty ? nil : newValue
                 }
             ))
+        }
+        .navigationDestination(isPresented: $openAdminLoginView) {
+            AdminLoginView()
+        }
+        .toolbar{
+            Button{
+                openAdminLoginView.toggle()
+            }label: {
+                Text("Admin")
+            }
         }
     }
     
@@ -290,15 +301,6 @@ struct EnterNumberToSearchUserView: View {
                         )
                 )
             }
-            
-            // Helper text
-            HStack(spacing: 4) {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 9))
-                Text("Your number is encrypted and secure")
-                    .font(.system(size: 10, weight: .regular, design: .rounded))
-            }
-            .foregroundColor(Color(red: 0.580, green: 0.639, blue: 0.722))
         }
     }
     

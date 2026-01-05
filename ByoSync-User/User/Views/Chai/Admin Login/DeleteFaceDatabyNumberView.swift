@@ -93,8 +93,10 @@ struct DeleteFaceDatabyNumberView: View {
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarHidden(false) // iOS 15-
+        .toolbar(.visible, for: .navigationBar) // iOS 16+
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
+            ToolbarItem(placement: .topBarLeading) {
                 Button {
                     print("⬅️ [AdminDeleteFaceDataView] Back tapped")
                     dismiss()

@@ -136,7 +136,9 @@ struct AdminLoginView: View {
             }
         }
         .fullScreenCover(isPresented: $openDeleteFaceData){
-            DeleteFaceDatabyNumberView()
+            NavigationStack{
+                DeleteFaceDatabyNumberView()
+            }
         }
     }
     
@@ -296,15 +298,6 @@ struct AdminLoginView: View {
                         )
                 )
             }
-            
-            // Helper text
-            HStack(spacing: 4) {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 9))
-                Text("Your credentials are encrypted and secure")
-                    .font(.system(size: 10, weight: .regular, design: .rounded))
-            }
-            .foregroundColor(Color(red: 0.580, green: 0.639, blue: 0.722))
         }
     }
     

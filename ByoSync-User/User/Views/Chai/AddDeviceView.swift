@@ -93,6 +93,7 @@ struct AddDeviceView: View {
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
@@ -287,15 +288,6 @@ struct AddDeviceView: View {
                         lineWidth: 2
                     )
             )
-            
-            // Helper text
-            HStack(spacing: 4) {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 9))
-                Text("Device information is encrypted and secure")
-                    .font(.system(size: 10, weight: .regular, design: .rounded))
-            }
-            .foregroundColor(Color(red: 0.580, green: 0.639, blue: 0.722))
         }
     }
     
