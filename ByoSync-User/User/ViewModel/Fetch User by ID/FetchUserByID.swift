@@ -4,7 +4,6 @@ import SwiftUI
 
 @MainActor
 final class UserDataByIdViewModel: ObservableObject {
-
     // MARK: - UI State
     @Published private(set) var isLoading: Bool = false
     @Published private(set) var user: UserByIdDTO? = nil
@@ -27,7 +26,6 @@ final class UserDataByIdViewModel: ObservableObject {
     }
 
     // MARK: - State helpers
-
     /// Call this right before starting the network call.
     func beginLoading(clearOldData: Bool = true) {
         guard !isLoading else { return }
@@ -68,7 +66,6 @@ final class UserDataByIdViewModel: ObservableObject {
         repo.fetchUserDataById(userId: userId, deviceKeyHash: deviceKeyHash) { [weak self] result in
             guard let self else { return }
 
-            // Ensure UI updates on main actor
             DispatchQueue.main.async {
                 switch result {
                 case .success(let res):

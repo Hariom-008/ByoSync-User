@@ -1,18 +1,3 @@
-//
-//  ChaiEndpoints.swift
-//  ByoSync-User
-//
-//  Created by Hari's Mac on 04.01.2026.
-//
-
-import Foundation
-//
-//  AdminEndpoints.swift
-//  ByoSync-User
-//
-//  Created by Hari's Mac on 02.01.2026.
-//
-
 import Foundation
 
 struct ChaiEndpoints{
