@@ -36,9 +36,9 @@ final class OTPRepository {
         phoneNumber: String,
         completion: @escaping (Result<PhoneOTPResponse, APIError>) -> Void
     ) {
-        print("═══════════════════════════════════════")
+        //  print("═══════════════════════════════════════")
         print("📤 SENDING OTP REQUEST (BACKEND)")
-        print("═══════════════════════════════════════")
+       // print("═══════════════════════════════════════")
         print("📱 Phone Number: '\(phoneNumber)'")
         print("📏 Length: \(phoneNumber.count)")
         print("🌐 Endpoint: \(UserAPIEndpoint.Auth.phoneOTP)")
@@ -57,11 +57,11 @@ final class OTPRepository {
         ) { (result: Result<PhoneOTPResponse, APIError>) in
             switch result {
             case .success(let response):
-                print("═══════════════════════════════════════")
+                //print("═══════════════════════════════════════")
                 print("✅ OTP SENT SUCCESSFULLY (BACKEND)")
-                print("═══════════════════════════════════════")
+                //print("═══════════════════════════════════════")
                 print("📥 RESPONSE RECEIVED:")
-                print("───────────────────────────────────────")
+               // print("───────────────────────────────────────")
                 
                 // Print the complete response structure
                 print("📊 statusCode: \(response.statusCode ?? 0)")
@@ -95,15 +95,15 @@ final class OTPRepository {
                 completion(.success(response))
                 
             case .failure(let error):
-                print("═══════════════════════════════════════")
+               // print("═══════════════════════════════════════")
                 print("❌ OTP SEND FAILED (BACKEND)")
-                print("═══════════════════════════════════════")
+               // print("═══════════════════════════════════════")
                 print("🔴 Error: \(error.localizedDescription)")
                 
             
                 print("💬 Error Message: \(error.localizedDescription)")
                 
-                print("═══════════════════════════════════════")
+               // print("═══════════════════════════════════════")
                 completion(.failure(error))
             }
         }
@@ -115,9 +115,9 @@ final class OTPRepository {
         otp: String,
         completion: @escaping (Result<VerifyOTPResponse, APIError>) -> Void
     ) {
-        print("═══════════════════════════════════════")
+        //print("═══════════════════════════════════════")
         print("📤 VERIFYING OTP REQUEST (BACKEND)")
-        print("═══════════════════════════════════════")
+       // print("═══════════════════════════════════════")
         print("📱 Phone Number: '\(phoneNumber)'")
         print("🔐 OTP: \(otp)")
         print("🌐 Endpoint: \(UserAPIEndpoint.Auth.verifyOTP)")
@@ -128,7 +128,7 @@ final class OTPRepository {
         ]
         
         print("📦 Payload: \(payload)")
-        print("───────────────────────────────────────")
+      //  print("───────────────────────────────────────")
         
         APIClient.shared.request(
             UserAPIEndpoint.Auth.verifyOTP,
@@ -137,7 +137,7 @@ final class OTPRepository {
         ) { (result: Result<VerifyOTPResponse, APIError>) in
             switch result {
             case .success(let response):
-                print("═══════════════════════════════════════")
+                //print("═══════════════════════════════════════")
                 print("✅ OTP VERIFIED SUCCESSFULLY (BACKEND)")
                 print("═══════════════════════════════════════")
                 print("📥 RESPONSE RECEIVED:")

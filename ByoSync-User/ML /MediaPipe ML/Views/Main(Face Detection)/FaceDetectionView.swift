@@ -59,6 +59,11 @@ struct FaceDetectionView: View {
 
     // ✅ Auto-trigger tracking (prevent multiple triggers)
     @State private var hasAutoTriggered: Bool = false
+    
+    // Export state
+    @State private var showExportSuccess: Bool = false
+    @State private var exportedFileURL: URL?
+    @State private var isExporting: Bool = false
 
     // MARK: - Init
     init(
@@ -137,7 +142,7 @@ struct FaceDetectionView: View {
         }
     }
     private var registrationTopText: String {
-        // You’ll expose these from FaceManager (see overlay section)
+        // You'll expose these from FaceManager (see overlay section)
         switch faceManager.registrationPhase {
         case .centerCollecting:
             return "Center \(faceManager.centerFrames) / 60"
@@ -239,6 +244,7 @@ struct FaceDetectionView: View {
                         VStack(spacing: 4) {
                             HStack(spacing: 8) {
                                 Button{
+                                    print("⏭️ [Skip] User tapped skip button")
                                     DispatchQueue.main.async{
                                       onComplete()
                                     }
@@ -274,6 +280,39 @@ struct FaceDetectionView: View {
                     }
 
                     Spacer()
+                    
+                    // Export button at bottom
+                    if faceManager.totalFramesCollected > 0 {
+                        Button(action: exportFramesToCSV) {
+                            HStack(spacing: 8) {
+                                if isExporting {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                } else {
+                                    Image(systemName: "arrow.down.doc.fill")
+                                        .font(.system(size: 14))
+                                }
+                                
+                                Text(isExporting ? "Exporting..." : "Export Frames to CSV")
+                                    .font(.system(size: 14, weight: .semibold))
+                                
+                                Text("(\(faceManager.totalFramesCollected))")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .opacity(0.7)
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.blue.opacity(0.8))
+                            )
+                        }
+                        .disabled(isExporting)
+                        .padding(.bottom, 40)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
             }
             .onChange(of: faceManager.EAR) { newEAR in
@@ -325,6 +364,7 @@ struct FaceDetectionView: View {
                 guard !hasAutoTriggered && !faceManager.isBusy else { return }
 
                 if faceAuthManager.currentMode == .verification, newValue >= 10 {
+                    print("✅ [Verification] Target reached: \(newValue) frames")
                     hasAutoTriggered = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { handleLogin() }
                 }
@@ -354,7 +394,7 @@ struct FaceDetectionView: View {
 
                 print("✅ [Upload] Registration successful!")
                 enrollmentGate.markEnrolled()
-                faceIdFetchViewModel.fetchFaceIds()
+               // faceIdFetchViewModel.fetchFaceIds()
 
                 faceManager.capturedFrames = []
                 faceManager.totalFramesCollected = 0
@@ -369,6 +409,7 @@ struct FaceDetectionView: View {
             
             .onChange(of: faceManager.registrationComplete) { _, done in
                 guard done, !hasAutoTriggered, !faceManager.isBusy else { return }
+                print("🎯 [Registration] Phase complete, triggering upload")
                 hasAutoTriggered = true
                 handleRegister()
             }
@@ -412,6 +453,25 @@ struct FaceDetectionView: View {
                 }
             } message: {
                 Text(alertMessage)
+            }
+            
+            // Export success alert
+            .alert("📥 Export Successful", isPresented: $showExportSuccess) {
+                Button("OK") {
+                    showExportSuccess = false
+                }
+                if let url = exportedFileURL {
+                    Button("Open in Files") {
+                        openFileInFilesApp(url: url)
+                    }
+                    Button("Share") {
+                        shareCSVFile(url: url)
+                    }
+                }
+            } message: {
+                if let url = exportedFileURL {
+                    Text("CSV file saved to Documents:\n\n\(url.lastPathComponent)\n\nYou can find it in the Files app under 'On My iPhone' > [Your App Name] > Documents")
+                }
             }
         }
         .onAppear {
@@ -471,6 +531,8 @@ struct FaceDetectionView: View {
         let frames = faceManager.registrationFramesForUpload()
         let valid = frames.filter { $0.distances.count == 316 }
 
+        print("📝 [Registration] Total frames: \(frames.count), Valid: \(valid.count)")
+
         guard valid.count >= 60 else {
             isProcessing = false
             alertTitle = "❌ Registration Failed"
@@ -489,10 +551,12 @@ struct FaceDetectionView: View {
                 self.isProcessing = false
                 switch result {
                 case .success:
+                    print("✅ [Registration] Upload successful")
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         self.onComplete()
                     }
                 case .failure(let error):
+                    print("❌ [Registration] Upload failed: \(error.localizedDescription)")
                     self.alertTitle = "❌ Registration Failed"
                     self.alertMessage = "Error: \(error.localizedDescription)"
                     self.showAlert = true
@@ -523,11 +587,10 @@ struct FaceDetectionView: View {
         let allFrames = faceManager.verificationFrames10()
         let validFrames = allFrames.filter { $0.distances.count == 316 }
     
+        print("🔐 [Verification] Total frames: \(allFrames.count), Valid: \(validFrames.count)")
 
         guard validFrames.count >= 10 else {
-            #if DEBUG
             print("❌ [Login] Insufficient valid frames")
-            #endif
             isProcessing = false
             alertTitle = "Failed to Login"
             alertMessage = "Need at least 10 valid frames.\n\nFound: \(validFrames.count) valid"
@@ -550,9 +613,8 @@ struct FaceDetectionView: View {
                 switch result {
                 case .success(let verification):
                     let matchPercent = verification.matchPercentage
-                    #if DEBUG
                     print("📊 [Login] Verification result - Success: \(verification.success) | Match: \(String(format: "%.1f", matchPercent))%")
-                    #endif
+                    
                     if verification.success {
                         self.alertTitle = "👋 Login Successful"
                         self.alertMessage = "Press this button to close the alert"
@@ -569,11 +631,10 @@ struct FaceDetectionView: View {
                         faceManager.totalFramesCollected = 0
                         hasAutoTriggered = false
                         
-                        #if DEBUG
                         print("Face verification failed.\n\nMatch: \(String(format: "%.1f", matchPercent))%\n\n\(String(describing: verification.notes))")
-                        #endif
                     }
                 case .failure(let error):
+                    print("⚠️ [Verification] Error: \(error.localizedDescription)")
                     self.alertTitle = "⚠️Verification Error"
                     self.alertMessage = "Error: \(error.localizedDescription)"
                     self.showAlert = true
@@ -581,88 +642,77 @@ struct FaceDetectionView: View {
             }
         }
     }
+    
+    // MARK: - Export to CSV
+    
+    private func exportFramesToCSV() {
+        print("📥 [Export] Starting CSV export for mode: \(faceAuthManager.currentMode)")
+        isExporting = true
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                let mode: FrameCollectionMode = (faceAuthManager.currentMode == .registration) ? .registration : .verification
+                let url = try faceManager.exportCollectedFramesCSV(mode: mode)
+                
+                DispatchQueue.main.async {
+                    self.isExporting = false
+                    self.exportedFileURL = url
+                    self.showExportSuccess = true
+                    print("✅ [Export] CSV exported successfully to: \(url.path)")
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.isExporting = false
+                    self.alertTitle = "❌ Export Failed"
+                    self.alertMessage = "Failed to export frames: \(error.localizedDescription)"
+                    self.showAlert = true
+                    print("❌ [Export] Error: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    
+    private func openFileInFilesApp(url: URL) {
+        print("📂 [Files] Attempting to open file: \(url.lastPathComponent)")
+        
+        // Try to open with the system's default handler
+        if UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url, options: [:]) { success in
+                if success {
+                    print("✅ [Files] File opened successfully")
+                } else {
+                    print("⚠️ [Files] Failed to open file, falling back to share")
+                    self.shareCSVFile(url: url)
+                }
+            }
+        } else {
+            print("⚠️ [Files] Cannot open URL, using share instead")
+            shareCSVFile(url: url)
+        }
+    }
+    
+    private func shareCSVFile(url: URL) {
+        print("📤 [Share] Presenting share sheet for: \(url.lastPathComponent)")
+        let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first,
+              let rootVC = window.rootViewController else {
+            print("❌ [Share] Failed to find window scene or root view controller")
+            return
+        }
+        
+        // iPad requires popover configuration
+        if let popover = activityVC.popoverPresentationController {
+            popover.sourceView = window
+            popover.sourceRect = CGRect(x: window.bounds.midX, y: window.bounds.midY, width: 0, height: 0)
+            popover.permittedArrowDirections = []
+            print("📱 [Share] Configured for iPad popover presentation")
+        }
+        
+        rootVC.present(activityVC, animated: true) {
+            print("✅ [Share] Activity controller presented successfully")
+        }
+    }
 }
-
-
-
-
-
-
-// ✅ Normalized Points Card at Bottom - Now with dismiss button and better visibility
-//                    if showNormalizedPoints {
-//                        VStack(spacing: 0) {
-//                            // Header with dismiss button
-//                            HStack {
-//                                Image(systemName: "point.3.connected.trianglepath.dotted")
-//                                    .font(.system(size: 12))
-//                                    .foregroundColor(.white)
-//
-//                                Text("Face Landmarks")
-//                                    .font(.system(size: 12, weight: .semibold))
-//                                    .foregroundColor(.white)
-//
-//                                Spacer()
-//
-//                                Text("\(faceManager.NormalizedPoints.count) points")
-//                                    .font(.system(size: 10, weight: .medium))
-//                                    .foregroundColor(.white.opacity(0.7))
-//
-//                                // Dismiss button
-//                                Button(action: {
-//                                    print("🗑️ [NormalizedPoints] Dismissing overlay")
-//                                    withAnimation(.spring(duration: 0.3)) {
-//                                        showNormalizedPoints = false
-//                                    }
-//                                }) {
-//                                    Image(systemName: "xmark.circle.fill")
-//                                        .font(.system(size: 18))
-//                                        .foregroundColor(.white.opacity(0.8))
-//                                }
-//                                .padding(.leading, 8)
-//                            }
-//                            .padding(.horizontal, 16)
-//                            .padding(.vertical, 10)
-//                            .background(Color.blue.opacity(0.8))
-//
-//                            // Overlay visualization
-//                            NormalizedPointsOverlay(points: faceManager.NormalizedPoints)
-//                                .frame(width: 280, height: 280)
-//                                .background(Color.black)
-//                                .overlay(
-//                                    RoundedRectangle(cornerRadius: 0)
-//                                        .stroke(Color.blue.opacity(0.5), lineWidth: 2)
-//                                )
-//                        }
-//                        .background(Color.black)
-//                        .cornerRadius(16)
-//                        .shadow(color: .black.opacity(0.5), radius: 15, x: 0, y: -5)
-//                        .padding(.horizontal, 24)
-//                        .padding(.bottom, 40)
-//                        .transition(.move(edge: .bottom).combined(with: .opacity))
-//                    }
-//
-// Show button to reveal overlay if dismissed
-//                    if !showNormalizedPoints {
-//                        Button(action: {
-//                            print("👁️ [NormalizedPoints] Showing overlay")
-//                            withAnimation(.spring(duration: 0.3)) {
-//                                showNormalizedPoints = true
-//                            }
-//                        }) {
-//                            HStack(spacing: 8) {
-//                                Image(systemName: "point.3.connected.trianglepath.dotted")
-//                                    .font(.system(size: 12))
-//                                Text("Show Landmarks")
-//                                    .font(.system(size: 12, weight: .semibold))
-//                            }
-//                            .foregroundColor(.white)
-//                            .padding(.horizontal, 16)
-//                            .padding(.vertical, 10)
-//                            .background(
-//                                RoundedRectangle(cornerRadius: 8)
-//                                    .fill(Color.blue.opacity(0.8))
-//                            )
-//                        }
-//                        .padding(.bottom, 40)
-//                        .transition(.move(edge: .bottom).combined(with: .opacity))
-//                    }

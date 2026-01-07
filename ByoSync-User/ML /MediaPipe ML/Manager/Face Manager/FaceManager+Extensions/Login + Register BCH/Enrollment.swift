@@ -152,7 +152,7 @@ private func sha256(_ data: Data) -> Data {
     Data(SHA256.hash(data: data))
 }
 
-private let IOD_EPSILON: Float = 0.5// ~0.5% tolerance, tune if needed
+private let IOD_EPSILON: Float = 0.05// ~0.5% tolerance, tune if needed
 @inline(__always)
 private func iodMatches(_ a: Float, _ b: Float) -> Bool {
         #if DEBUG

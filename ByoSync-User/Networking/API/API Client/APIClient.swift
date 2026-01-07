@@ -70,13 +70,13 @@ final class APIClient {
             switch response.result {
             case .success(let data):
                 // ADD THIS BLOCK to see raw JSON
-                   print("═══════════════════════════════════════")
+                  // print("═══════════════════════════════════════")
                    print("📥 RAW API RESPONSE:\(urlString)")
-                   print("═══════════════════════════════════════")
+                  // print("═══════════════════════════════════════")
                    if let jsonString = String(data: data, encoding: .utf8) {
                        print(jsonString)
                    }
-                   print("═══════════════════════════════════════")
+                 //  print("═══════════════════════════════════════")
                 
                 do {
                     let decoder = JSONDecoder()
