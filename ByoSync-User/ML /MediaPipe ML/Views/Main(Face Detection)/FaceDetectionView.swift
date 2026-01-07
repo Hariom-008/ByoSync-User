@@ -236,34 +236,26 @@ struct FaceDetectionView: View {
 
                         Spacer()
 
-//                        VStack(spacing: 4) {
-//                            HStack(spacing: 8) {
-//                                Image(systemName: "camera.fill")
-//                                Text("\(faceManager.totalFramesCollected) / \(targetFrameCount)")
-//                                    .font(.system(size: 14, weight: .bold))
-//                                    .monospacedDigit()
-//                            }
-//
-//                            GeometryReader { geo in
-//                                ZStack(alignment: .leading) {
-//                                    RoundedRectangle(cornerRadius: 2)
-//                                        .fill(Color.white.opacity(0.3))
-//                                        .frame(height: 3)
-//
-//                                    RoundedRectangle(cornerRadius: 2)
-//                                        .fill(frameProgress >= 1.0 ? Color.green : currentModeColor)
-//                                        .frame(width: geo.size.width * min(frameProgress, 1.0), height: 3)
-//                                }
-//                            }
-//                            .frame(height: 3)
-//                        }
-//                        .padding(.horizontal, 12)
-//                        .padding(.vertical, 8)
-//                        .background(
-//                            RoundedRectangle(cornerRadius: 8)
-//                                .fill(faceManager.totalFramesCollected >= targetFrameCount ? Color.green.opacity(0.8) : Color.black.opacity(0.7))
-//                        )
-//                        .foregroundColor(.white)
+                        VStack(spacing: 4) {
+                            HStack(spacing: 8) {
+                                Button{
+                                    DispatchQueue.main.async{
+                                      onComplete()
+                                    }
+                                }label:{
+                                    Text("Skip")
+                                        .foregroundStyle(.white)
+                                        .font(.system(size: 16,weight:.semibold,design:.rounded))
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(faceManager.totalFramesCollected >= targetFrameCount ? Color.green.opacity(0.8) : Color.black.opacity(0.7))
+                        )
+                        .foregroundColor(.white)
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 60)
@@ -291,11 +283,6 @@ struct FaceDetectionView: View {
                 earSeries = s
                 print("👁️ [EAR] Updated: \(String(format: "%.3f", newEAR)) | Series count: \(earSeries.count)")
             }
-            .onReceive(faceManager.$NormalizedPoints) { points in
-                #if DEBUG
-                print("📍 [NormalizedPoints] Updated: \(points.count) points")
-                #endif
-            }
 
             .onReceive(
                 faceManager.$NormalizedPoints
@@ -314,8 +301,6 @@ struct FaceDetectionView: View {
                     pitchSeries = p
                     yawSeries = y
                     rollSeries = r
-                    
-                    print("🎯 [HeadPose] Pitch: \(String(format: "%.1f°", pitch)) | Yaw: \(String(format: "%.1f°", yaw)) | Roll: \(String(format: "%.1f°", roll))")
                 }
             }
             // ✅ Keep FaceManager busy synced whenever drivers change

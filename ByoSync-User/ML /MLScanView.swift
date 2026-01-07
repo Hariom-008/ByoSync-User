@@ -3,6 +3,7 @@ import SwiftUI
 struct MLScanView: View {
     var onDone: () -> Void
     @EnvironmentObject var faceAuthManager: FaceAuthManager
+    @EnvironmentObject var router:Router
     
     var body: some View {
         FaceDetectionView(authToken: UserDefaults.standard.string(forKey: "token") ?? "",onComplete: {

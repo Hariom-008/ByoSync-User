@@ -71,7 +71,7 @@ final class APIClient {
             case .success(let data):
                 // ADD THIS BLOCK to see raw JSON
                    print("═══════════════════════════════════════")
-                   print("📥 RAW API RESPONSE:")
+                   print("📥 RAW API RESPONSE:\(urlString)")
                    print("═══════════════════════════════════════")
                    if let jsonString = String(data: data, encoding: .utf8) {
                        print(jsonString)

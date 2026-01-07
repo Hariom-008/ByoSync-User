@@ -58,14 +58,21 @@ final class UserSession: ObservableObject {
 }
     // MARK: - Save and Load User
     func saveUser(_ user: User) {
-        self.currentUser = user
-        
-        let encoder = JSONEncoder()
-        if let encoded = try? encoder.encode(user) {
-            UserDefaults.standard.set(encoded, forKey: userDefaultsKey)
-            print("✅ User saved to session: \(user.firstName) \(user.lastName)")
+        DispatchQueue.main.async {
+            self.currentUser = user
+            if let userId = user.userId{
+                self.currentUserID = userId
+            }
+
+            let encoder = JSONEncoder()
+            if let encoded = try? encoder.encode(user) {
+                UserDefaults.standard.set(encoded, forKey: self.userDefaultsKey)
+                UserDefaults.standard.set(self.currentUserID, forKey: self.currentUserUserIDKey)
+                print("✅ User saved to session: \(user.firstName) \(user.lastName)")
+            }
         }
     }
+
     
     func loadUser() {
         if let savedUser = UserDefaults.standard.data(forKey: userDefaultsKey) {

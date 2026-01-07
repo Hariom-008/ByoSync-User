@@ -9,6 +9,12 @@ import SwiftUI
 struct RouterView<Content: View>: View {
     @State var RegistrationMode:Bool = false
     @StateObject private var router = Router()
+    @EnvironmentObject var userSession: UserSession
+    @EnvironmentObject var enrollmentGate: EnrollmentGate
+    
+    @StateObject private var deviceRegistrationVM = DeviceRegistrationViewModel()
+    @StateObject private var fetchUserByIdVM = UserDataByIdViewModel()
+    
     let rootView: Content
     
     init(@ViewBuilder rootView: () -> Content) {
@@ -72,10 +78,16 @@ struct RouterView<Content: View>: View {
             
         case .mlScan:
             MLScanView(onDone: {
-                //router.dismissFullScreen()
-                router.navigate(to: .mainTab, style: .push)
-            })
-            
+                router.dismissFullScreen()
+                DispatchQueue.main.async {
+                    fetchUserByIdVM.fetch(
+                        userId: userSession.currentUserID,
+                        deviceKeyHash: HMACGenerator.generateHMAC(jsonString: DeviceIdentity.resolve())
+                    )
+                }
+                    enrollmentGate.reload()
+                    router.navigate(to: .mainTab, style: .push)
+                })
         case .mainTab:
             MainTabView()
             
