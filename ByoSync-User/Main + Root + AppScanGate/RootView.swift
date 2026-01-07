@@ -62,10 +62,12 @@ struct RootView: View {
                     scanGate.markScanCompleted()
                     
                     // OK: backend refresh, does NOT touch UserSession persistence
-                    fetchUserByIdVM.fetch(
-                        userId: userSession.currentUserID,
-                        deviceKeyHash: HMACGenerator.generateHMAC(jsonString: DeviceIdentity.resolve())
-                    )
+                    if userSession.currentUser == nil{
+                        fetchUserByIdVM.fetch(
+                            userId: userSession.currentUserID,
+                            deviceKeyHash: HMACGenerator.generateHMAC(jsonString: DeviceIdentity.resolve())
+                        )
+                    }
                     
                     // ❌ REMOVE: userSession.loadUser()
                     // This can cause re-evaluation / step flip during transitions.

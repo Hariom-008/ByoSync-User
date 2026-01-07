@@ -433,27 +433,27 @@ struct FaceDetectionView: View {
                 hasAutoTriggered = false
             }
 
-            .alert(alertTitle, isPresented: $showAlert) {
-                Button("OK") {
-                    showAlert = false
-
-                    if alertTitle.contains("Successful") {
-                        print("✅ [Alert] Success confirmed, completing flow...")
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            self.onComplete()
-                        }
-                    }
-
-                    if alertTitle.contains("Failed") || alertTitle.contains("Error") {
-                        print("🔄 [Alert] Error acknowledged, resetting frames...")
-                        faceManager.capturedFrames = []
-                        faceManager.totalFramesCollected = 0
-                        hasAutoTriggered = false
-                    }
-                }
-            } message: {
-                Text(alertMessage)
-            }
+//            .alert(alertTitle, isPresented: $showAlert) {
+//                Button("OK") {
+//                    showAlert = false
+//
+//                    if alertTitle.contains("Successful") {
+//                        print("✅ [Alert] Success confirmed, completing flow...")
+//                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+//                            self.onComplete()
+//                        }
+//                    }
+//
+//                    if alertTitle.contains("Failed") || alertTitle.contains("Error") {
+//                        print("🔄 [Alert] Error acknowledged, resetting frames...")
+//                        faceManager.capturedFrames = []
+//                        faceManager.totalFramesCollected = 0
+//                        hasAutoTriggered = false
+//                    }
+//                }
+//            } message: {
+//                Text(alertMessage)
+//            }
             
             // Export success alert
             .alert("📥 Export Successful", isPresented: $showExportSuccess) {
