@@ -105,6 +105,16 @@ final class UserDataByIdViewModel: ObservableObject {
             }
         }
     }
+    
+    func fetchUserFromCache(){
+        guard let user = UserSession.shared.currentUser else {
+            return
+        }
+        DispatchQueue.main.async {
+            let user = UserByIdDTO(fromCached: user)
+            self.user = user
+        }
+    }
 
     func reset() {
         isLoading = false

@@ -67,6 +67,8 @@ final class DeviceRegistrationRepository {
                       "hasFaceData=\(response.data.hasFaceData)")
                 
                 UserSession.shared.setCurrentUserId(response.data.userId)
+                UserDefaults.standard.set(response.data.hasFaceData, forKey: "hasFaceData")
+                print("hasFaceData :\(UserDefaults.standard.bool(forKey: "hasFaceData"))")
                 print("UserID :\(response.data.userId)")
                 
                 completion(.success(response))

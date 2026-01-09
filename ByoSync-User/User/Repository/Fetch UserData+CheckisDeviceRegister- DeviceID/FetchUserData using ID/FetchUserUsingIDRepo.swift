@@ -97,6 +97,41 @@ struct UserByIdDTO: Decodable, Identifiable, Equatable {
         todayChaiCount = try c.decode(Int.self, forKey: .todayChaiCount)
     }
 }
+extension UserByIdDTO {
+
+    /// Build a UserByIdDTO from locally cached User.
+    /// Fields not available in cache are filled with safe defaults.
+    init(fromCached user: User) {
+        self.id = user.userId ?? ""
+        self.email = user.email
+        self.firstName = user.firstName
+        self.lastName = user.lastName
+        self.phoneNumber = user.phoneNumber ?? ""
+        self.salt = ""                 // you don't have it locally
+        self.faceToken = nil
+
+        self.wallet = 0
+        self.chai = 0
+        self.referralCode = user.refferalCode ?? ""
+        self.transactionCoins = 0
+        self.noOfTransactions = 0
+        self.noOfTransactionsReceived = 0
+
+        self.profilePic = nil
+        self.devices = user.userDeviceId.map { [$0] } ?? []
+        self.emailVerified = false
+
+        self.createdAt = ""
+        self.updatedAt = ""
+        self.v = 0
+
+        self.deletedAt = nil
+        self.isDeleted = false
+        self.todayChaiCount = 0
+    }
+}
+
+
 
 struct DeviceByIdDTO: Decodable, Identifiable {
     let id: String

@@ -85,7 +85,9 @@ extension FaceIdViewModel {
                     #if DEBUG
                     print("✅ [FaceIdViewModel] FaceId list upload success")
                     #endif
-                    self.uploadSuccess = true
+                    DispatchQueue.main.async {
+                        self.uploadSuccess = true
+                    }
                     
                 case .failure(let error):
                     #if DEBUG

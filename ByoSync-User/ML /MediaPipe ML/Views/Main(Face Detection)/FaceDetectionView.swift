@@ -334,14 +334,12 @@ struct FaceDetectionView: View {
                     }
                 }
             }
-            .onChange(of: faceManager.EAR) { newEAR in
-                var s = earSeries
-                s.append(CGFloat(newEAR))
-                if s.count > earMaxSamples { s.removeFirst(s.count - earMaxSamples) }
-                earSeries = s
-                print("👁️ [EAR] Updated: \(String(format: "%.3f", newEAR)) | Series count: \(earSeries.count)")
-            }
-
+//            .onChange(of: faceManager.EAR) { newEAR in
+//                var s = earSeries
+//                s.append(CGFloat(newEAR))
+//                if s.count > earMaxSamples { s.removeFirst(s.count - earMaxSamples) }
+//                earSeries = s
+//            }
             .onReceive(
                 faceManager.$NormalizedPoints
                     .throttle(for: .milliseconds(100), scheduler: RunLoop.main, latest: true)
@@ -385,7 +383,7 @@ struct FaceDetectionView: View {
                 if faceAuthManager.currentMode == .verification, newValue >= 10 {
                     print("✅ [Verification] Target reached: \(newValue) frames")
                     hasAutoTriggered = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { handleLogin() }
+                    DispatchQueue.main.async { handleLogin() }
                 }
             }
 
@@ -413,7 +411,6 @@ struct FaceDetectionView: View {
 
                 print("✅ [Upload] Registration successful!")
                 enrollmentGate.markEnrolled()
-               // faceIdFetchViewModel.fetchFaceIds()
 
                 faceManager.capturedFrames = []
                 faceManager.totalFramesCollected = 0
@@ -423,6 +420,9 @@ struct FaceDetectionView: View {
                 alertMessage = "Your face has been enrolled successfully!"
                 showAlert = true
 
+                DispatchQueue.main.async{
+                    onComplete()
+                }
                 faceIdUploadViewModel.resetState()
             }
             
@@ -500,10 +500,10 @@ struct FaceDetectionView: View {
             }
         }
         .onAppear {
-            ncnnViewModel.loadModels()
-            ncnnViewModel.onLivenessUpdated = { [weak faceManager] score in
-                faceManager?.updateFaceLivenessScore(score)
-            }
+//            ncnnViewModel.loadModels()
+//            ncnnViewModel.onLivenessUpdated = { [weak faceManager] score in
+//                faceManager?.updateFaceLivenessScore(score)
+//            }
 
             // ✅ ensure session is running when view appears
             faceManager.startSessionIfNeeded()
@@ -583,8 +583,7 @@ struct FaceDetectionView: View {
                 self.isProcessing = false
                 switch result {
                 case .success:
-                    print("✅ [Registration] Upload successful")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    DispatchQueue.main.async{
                         self.onComplete()
                     }
                 case .failure(let error):
@@ -651,7 +650,7 @@ struct FaceDetectionView: View {
                         self.alertTitle = "👋 Login Successful"
                         self.alertMessage = "Press this button to close the alert"
                         self.showAlert = true
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        DispatchQueue.main.async{
                             self.onComplete()
                         }
                     } else {

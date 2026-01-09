@@ -67,7 +67,7 @@ static NSString* bundleFile(NSString *relativePath) {
     NSString *full = [base stringByAppendingPathComponent:relativePath];
 
     if (![[NSFileManager defaultManager] fileExistsAtPath:full]) {
-        NSLog(@"[NCNN] bundleFile: missing %@", full);
+        //NSLog(@"[NCNN] bundleFile: missing %@", full);
         return nil;
     }
     return full;
@@ -312,7 +312,7 @@ static float run_live_single(
     const ncnn::Mat& in
 ) {
     if (!net || in.empty()) {
-        NSLog(@"[NCNN] ❌ Liveness: net or input is null/empty");
+      //  NSLog(@"[NCNN] ❌ Liveness: net or input is null/empty");
         return 0.0f;
     }
 
@@ -321,7 +321,7 @@ static float run_live_single(
 
     int ret = ex.input("data", in);
     if (ret != 0) {
-        NSLog(@"[NCNN] ❌ Liveness: failed to set input 'data' (ret=%d)", ret);
+       // NSLog(@"[NCNN] ❌ Liveness: failed to set input 'data' (ret=%d)", ret);
         return 0.0f;
     }
 
@@ -332,8 +332,8 @@ static float run_live_single(
 
     // If that fails, auto-discover a small output blob
     if (ret != 0 || out.empty()) {
-        NSLog(@"[NCNN] 🔍 Liveness: 'softmax' failed, auto-discovering output blob for model %s",
-              cfg.name.c_str());
+        //NSLog(@"[NCNN] 🔍 Liveness: 'softmax' failed, auto-discovering output blob for model %s",
+//              cfg.name.c_str());
 
         const std::vector<ncnn::Blob>& blobs = net->blobs();
         for (size_t i = 0; i < blobs.size(); ++i) {
@@ -346,31 +346,31 @@ static float run_live_single(
             if (len >= 2 && len <= 4) {
                 out = tmp;
                 ret = 0;
-                NSLog(@"[NCNN] ✅ Liveness: auto-picked output blob '%s' (len=%d)", name, len);
+                //NSLog(@"[NCNN] ✅ Liveness: auto-picked output blob '%s' (len=%d)", name, len);
                 break;
             }
         }
     }
 
     if (ret != 0 || out.empty()) {
-        NSLog(@"[NCNN] ❌ Liveness: failed to extract any suitable output blob (ret=%d)", ret);
+       // NSLog(@"[NCNN] ❌ Liveness: failed to extract any suitable output blob (ret=%d)", ret);
         return 0.0f;
     }
 
     int len = out.w * out.h * out.c;
     if (len < 2) {
-        NSLog(@"[NCNN] ⚠️ Liveness: output len=%d < 2, cannot read index 1", len);
+       // NSLog(@"[NCNN] ⚠️ Liveness: output len=%d < 2, cannot read index 1", len);
         return 0.0f;
     }
 
     const float* row0 = out.row(0);
     float real_score = row0[1];
 
-    NSLog(@"[NCNN] 🔴 %s softmax row0: [0]=%.3f, [1]=%.3f%s",
-          cfg.name.c_str(),
-          row0[0],
-          row0[1],
-          (len > 2 ? " (more classes hidden)" : ""));
+//    NSLog(@"[NCNN] 🔴 %s softmax row0: [0]=%.3f, [1]=%.3f%s",
+//          cfg.name.c_str(),
+//          row0[0],
+//          row0[1],
+//          (len > 2 ? " (more classes hidden)" : ""));
 
     return real_score;
 }
@@ -614,15 +614,15 @@ float engine_live_detect_yuv(
             if (rect.x < 0 || rect.y < 0 ||
                 rect.x + rect.width  > frameBGR.cols ||
                 rect.y + rect.height > frameBGR.rows) {
-                NSLog(@"[NCNN] ⚠️ Model %s: ROI out of bounds [%d,%d,%d,%d]",
-                      cfg.name.c_str(), rect.x, rect.y,
-                      rect.x + rect.width, rect.y + rect.height);
+//                NSLog(@"[NCNN] ⚠️ Model %s: ROI out of bounds [%d,%d,%d,%d]",
+//                      cfg.name.c_str(), rect.x, rect.y,
+//                      rect.x + rect.width, rect.y + rect.height);
                 continue;
             }
 
             cv::Mat face = frameBGR(rect).clone();
             if (face.empty()) {
-                NSLog(@"[NCNN] ⚠️ Model %s: empty face ROI", cfg.name.c_str());
+               // NSLog(@"[NCNN] ⚠️ Model %s: empty face ROI", cfg.name.c_str());
                 continue;
             }
 
@@ -630,7 +630,7 @@ float engine_live_detect_yuv(
         }
 
         if (roi.empty()) {
-            NSLog(@"[NCNN] ⚠️ Model %s: empty roi after resize", cfg.name.c_str());
+          //  NSLog(@"[NCNN] ⚠️ Model %s: empty roi after resize", cfg.name.c_str());
             continue;
         }
 
@@ -642,15 +642,15 @@ float engine_live_detect_yuv(
         );
 
         float score = run_live_single(live->nets[i], cfg, in);
-        NSLog(@"[NCNN] ✅ Model %s liveness score: %.3f",
-              cfg.name.c_str(), score);
+//        NSLog(@"[NCNN] ✅ Model %s liveness score: %.3f",
+//              cfg.name.c_str(), score);
 
         sum += score;
         valid_models++;
     }
 
     if (valid_models == 0) {
-        NSLog(@"[NCNN] ❌ No valid liveness models processed");
+       // NSLog(@"[NCNN] ❌ No valid liveness models processed");
         return 0.0f;
     }
 

@@ -61,10 +61,12 @@ final class DeviceRegistrationViewModel: ObservableObject {
 
                     // Backend can return success=false even on HTTP 200
                     if resp.success {
-                        self.response = resp
-                        self.isDeviceRegistered = true
-                        self.hasFaceData = resp.data.hasFaceData
-                        self.errorMessage = nil
+                        DispatchQueue.main.async {
+                            self.response = resp
+                            self.isDeviceRegistered = true
+                            self.hasFaceData = resp.data.hasFaceData
+                            self.errorMessage = nil
+                        }
 
                         Logger.shared.i(
                             "DEVICE_REG",
@@ -112,6 +114,10 @@ final class DeviceRegistrationViewModel: ObservableObject {
                 }
             }
         }
+    }
+    func checkFaceData()->Bool{
+        checkDeviceRegistration()
+        return hasFaceData
     }
 
     // MARK: - Error Mapping

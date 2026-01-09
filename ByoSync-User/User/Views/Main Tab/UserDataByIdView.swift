@@ -94,19 +94,19 @@ struct UserDataByIdView: View {
         .onAppear {
             print("👁️ UserDataByIdView appeared")
 
-            switch mode {
-            case .live:
-                fetchUserData()
-
+                switch mode {
+                case .live:
+                    fetchUserData()
+                    
 #if DEBUG
-            case .mockContent:
-                viewModel.loadMock()
-            case .mockLoading:
-                viewModel.loadMockLoading()
-            case .mockError:
-                viewModel.loadMockError()
+                case .mockContent:
+                    viewModel.loadMock()
+                case .mockLoading:
+                    viewModel.loadMockLoading()
+                case .mockError:
+                    viewModel.loadMockError()
 #endif
-            }
+                }
         }
         // ✅ When data arrives, update session (no async needed)
         .onChange(of: viewModel.user) { newUser in
