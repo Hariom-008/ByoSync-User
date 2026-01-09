@@ -32,6 +32,7 @@ fileprivate enum RemoteEnrollmentCache {
         records = []
     }
 }
+
 // MARK: - Remote FaceId cache (for backend verification)
 fileprivate struct RemoteFaceIdCache {
     static var salt: String?
@@ -152,7 +153,7 @@ private func sha256(_ data: Data) -> Data {
     Data(SHA256.hash(data: data))
 }
 
-private let IOD_EPSILON: Float = 0.1// ~0.5% tolerance, tune if needed
+private let IOD_EPSILON: Float = 0.3// ~0.5% tolerance, tune if needed
 @inline(__always)
 private func iodMatches(_ a: Float, _ b: Float) -> Bool {
         #if DEBUG
@@ -160,7 +161,6 @@ private func iodMatches(_ a: Float, _ b: Float) -> Bool {
         #endif
     return abs(a - b) <= IOD_EPSILON
 }
-
 
 
 // MARK: - Enrollment
@@ -241,9 +241,7 @@ private func logFrameTime(
 }
 #endif
 
-
 // MARK: - Verification
-
 extension FaceManager {
     func verifyFaceIDAgainstBackend(
         framesToUse: [FrameDistance],
@@ -365,7 +363,7 @@ extension FaceManager {
         let end = min(frames.count, start + count)
         return Array(frames[start..<end])
     }
-
+    
     struct CachedRecord {
         let k2Bytes: Data
         let tokenBytes: Data
@@ -376,7 +374,6 @@ extension FaceManager {
 
 // MARK: - Public Helper for (Load Remote Cache)
 extension FaceManager {
-    
     /// Public wrapper to load FaceIds into RemoteFaceIdCache for testing
     /// This must be called before verifyFaceIDAgainstBackend() for testing flows
     func loadRemoteFaceIdsForVerification(

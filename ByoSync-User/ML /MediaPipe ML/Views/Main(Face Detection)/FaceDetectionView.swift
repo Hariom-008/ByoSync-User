@@ -192,18 +192,37 @@ struct FaceDetectionView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Camera preview
-                if !faceManager.isBusy{
-                    MediapipeCameraPreviewView(faceManager: faceManager)
-                        .ignoresSafeArea()
-                    
-                    TargetFaceOvalOverlay(faceManager: faceManager)
-                    DirectionalGuidanceOverlay(faceManager: faceManager)
-                }
-                
-                if faceManager.isBusy{
-                    Color.black
-                        .ignoresSafeArea()
+                // ✅ Camera preview must ALWAYS stay mounted
+                MediapipeCameraPreviewView(faceManager: faceManager)
+                    .ignoresSafeArea()
+
+                TargetFaceOvalOverlay(faceManager: faceManager)
+                DirectionalGuidanceOverlay(faceManager: faceManager)
+
+                // ✅ Busy overlay (don’t replace preview with black)
+                if faceManager.isBusy {
+                    ZStack {
+                        Color.black.ignoresSafeArea()
+
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+
+                            Text(
+                                faceIdUploadViewModel.isUploading
+                                ? "Uploading enrollment..."
+                                : (faceIdFetchViewModel.isLoading ? "Fetching enrollment..." : "Processing...")
+                            )
+                            .font(.headline)
+                            .foregroundColor(.white)
+                        }
+                        .padding(24)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.black.opacity(0.75))
+                        )
+                    }
                 }
                 // ✅ Busy overlay now driven by FaceManager
                 if faceManager.isBusy {
@@ -432,6 +451,12 @@ struct FaceDetectionView: View {
                 showAlert = true
                 hasAutoTriggered = false
             }
+            .onChange(of: faceManager.isBusy) { _, b in
+                #if DEBUG
+                print("🖼️ isBusy=\(b) fetch=\(faceIdFetchViewModel.isLoading) upload=\(faceIdUploadViewModel.isUploading) processing=\(isProcessing)")
+                #endif
+            }
+
 
 //            .alert(alertTitle, isPresented: $showAlert) {
 //                Button("OK") {
@@ -480,6 +505,9 @@ struct FaceDetectionView: View {
                 faceManager?.updateFaceLivenessScore(score)
             }
 
+            // ✅ ensure session is running when view appears
+            faceManager.startSessionIfNeeded()
+
             print("🌐 [FaceDetectionView] Fetching FaceIds on appear for deviceKey=\(DeviceIdentity.resolve())")
             print("🎯 [FaceDetectionView] Current mode: \(faceAuthManager.currentMode)")
 
@@ -490,8 +518,11 @@ struct FaceDetectionView: View {
             faceIdFetchViewModel.fetchFaceIds()
             hasAutoTriggered = false
 
-            // keep busy correct after starting fetch
             syncBusy()
+        }
+        .onDisappear {
+            // ✅ stop session when leaving (prevents odd stuck states)
+            faceManager.stopSessionIfNeeded()
         }
         .onReceive(
             faceManager.$latestPixelBuffer
@@ -500,6 +531,7 @@ struct FaceDetectionView: View {
         ) { buffer in
             ncnnViewModel.processFrame(buffer)
         }
+        
     }
 
     // MARK: - Helper Functions

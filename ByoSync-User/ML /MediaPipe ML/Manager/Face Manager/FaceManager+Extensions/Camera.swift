@@ -116,3 +116,29 @@ extension FaceManager: AVCaptureVideoDataOutputSampleBufferDelegate {
         }
     }
 }
+
+
+// MARK: - Session lifecycle helpers
+extension FaceManager {
+
+    func startSessionIfNeeded() {
+        sessionQueue.async { [weak self] in
+            guard let self else { return }
+            if !self.captureSession.isRunning {
+                self.captureSession.startRunning()
+                debugLog("📸 startRunning() (explicit)")
+            }
+        }
+    }
+
+    func stopSessionIfNeeded() {
+        sessionQueue.async { [weak self] in
+            guard let self else { return }
+            if self.captureSession.isRunning {
+                self.captureSession.stopRunning()
+                debugLog("🛑 stopRunning() (explicit)")
+            }
+        }
+    }
+}
+

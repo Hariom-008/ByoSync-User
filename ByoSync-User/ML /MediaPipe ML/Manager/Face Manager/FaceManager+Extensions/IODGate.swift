@@ -24,7 +24,6 @@ extension FaceManager{
 
         let pts = rawMediaPipePoints
         guard pts.count > max(leftIdx, rightIdx) else{
-           // resetIODGate()
             return
         }
 
