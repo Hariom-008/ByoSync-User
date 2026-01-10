@@ -55,11 +55,11 @@ final class FaceIdRepository {
             print("📦 Body bytes: \(data.count) (~\(String(format: "%.2f", Double(data.count)/1024.0)) KB)")
 
             // Print JSON as String
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("📤 Body JSON:\n\(jsonString)\n")
-            } else {
-                print("⚠️ Could not convert JSON data to UTF-8 string\n")
-            }
+//            if let jsonString = String(data: data, encoding: .utf8) {
+//               // print("📤 Body JSON:\n\(jsonString)\n")
+//            } else {
+//                print("⚠️ Could not convert JSON data to UTF-8 string\n")
+//            }
         } catch {
             print("❌ [FaceIdRepository] JSON print failed: \(error)\n")
         }

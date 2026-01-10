@@ -9,7 +9,6 @@ import Alamofire
 import CryptoKit
 import Security
 
-
 // MARK: - Remote FaceId cache (for backend verification)
 fileprivate struct RemoteEnrollmentRecord {
     let helper: String
@@ -98,7 +97,6 @@ private let BCHShared = BCHBiometric()
 private let bchQueue = DispatchQueue(label: "bch.shared.serial")
 
 // MARK: - Hex/Data helpers
-
 private func isHex(_ s: String) -> Bool {
     !s.isEmpty && s.allSatisfy { $0.isHexDigit }
 }
@@ -153,11 +151,13 @@ private func sha256(_ data: Data) -> Data {
     Data(SHA256.hash(data: data))
 }
 
-private let IOD_EPSILON: Float = 0.3// ~0.5% tolerance, tune if needed
+private let IOD_EPSILON: Float = 0.2// ~0.2% tolerance, tune if needed
 @inline(__always)
 private func iodMatches(_ a: Float, _ b: Float) -> Bool {
         #if DEBUG
+    if abs(a - b) <= IOD_EPSILON{
         print("IOD : \(a) - \(b)")
+    }
         #endif
     return abs(a - b) <= IOD_EPSILON
 }
@@ -165,13 +165,12 @@ private func iodMatches(_ a: Float, _ b: Float) -> Bool {
 
 // MARK: - Enrollment
 extension FaceManager {
-
     /// Upload enrollment records for ALL collected registration frames.
     func generateAndUploadFaceID(
         authToken: String,
         viewModel: FaceIdViewModel,
-        frames: [FrameDistance],                          // ✅ NEW
-        minRequired: Int = 60,                            // ✅ at least center frames
+        frames: [FrameDistance],
+        minRequired: Int = 60,
         completion: ((Result<Void, Error>) -> Void)? = nil
     ) {
         // 1) Validate frames
@@ -241,6 +240,21 @@ private func logFrameTime(
 }
 #endif
 
+
+private let TARGET_IOD_100: Float = 28.5
+private let TARGET_IOD_TOL_100: Float = 0.2
+
+fileprivate enum FrameSelectionError: LocalizedError {
+    case insufficientTargetIODFrames(found: Int, needed: Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .insufficientTargetIODFrames(let found, let needed):
+            return "Need \(needed) frames near IOD \(TARGET_IOD_100)±\(TARGET_IOD_TOL_100), but found \(found)."
+        }
+    }
+}
+
 // MARK: - Verification
 extension FaceManager {
     func verifyFaceIDAgainstBackend(
@@ -260,8 +274,23 @@ extension FaceManager {
         // ✅ 1. Pre-process records (parse hex once)
         let cachedRecords = preprocessRecords(RemoteFaceIdCache.faceIds)
         
-        // ✅ 2. Select best 3-5 frames instead of all
+        // ✅ 2. Select best 3 frames based on IOD closeness to 28.5 (0–100 scale)
         let framesToVerify = selectBestFrames(from: framesToUse, count: 3)
+
+        // ✅ Hard gate: do NOT proceed unless we have 3 good frames
+        guard framesToVerify.count == 3 else {
+            completion(.failure(
+                FrameSelectionError.insufficientTargetIODFrames(
+                    found: framesToVerify.count,
+                    needed: 3
+                )
+            ))
+            return
+        }
+#if DEBUG
+let iodList = framesToVerify.map { String(format: "%.4f", Double($0.iod * 100)) }.joined(separator: ", ")
+print("✅ Selected 3 frames for verification by IOD target: [\(iodList)]")
+#endif
         
         DispatchQueue.global(qos: .userInitiated).async {
             
@@ -363,7 +392,6 @@ extension FaceManager {
         let end = min(frames.count, start + count)
         return Array(frames[start..<end])
     }
-    
     struct CachedRecord {
         let k2Bytes: Data
         let tokenBytes: Data

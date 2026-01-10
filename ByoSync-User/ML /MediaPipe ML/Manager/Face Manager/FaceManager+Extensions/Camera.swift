@@ -45,7 +45,11 @@ extension FaceManager {
             if let conn = videoOutput.connection(with: .video) {
                 // Decide orientation based on device type
                 let isPad = UIDevice.current.userInterfaceIdiom == .pad
-                conn.videoOrientation = .portrait
+                if isPad{
+                    conn.videoOrientation = .portrait
+                }else{
+                    conn.videoOrientation = .portrait
+                }
                 
                 // Mirror front camera preview
                 if conn.isVideoMirroringSupported {
