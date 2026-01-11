@@ -12,6 +12,8 @@ final class UserSession: ObservableObject {
     @Published var currentUserID:String = ""
     @Published var wallet: Double = 0
     
+    @Published var hasFaceData:Bool = false
+    
     private let userDefaultsKey = "currentUser"
     private let emailVerifiedKey = "isEmailVerified"
     private let profilePictureKey = "userProfilePicture"
@@ -19,6 +21,8 @@ final class UserSession: ObservableObject {
     private let thisDevicePrimaryKey = "thisDevicePrimaryKey"
     private let walletKey = "walletKey"
     private let currentUserUserIDKey = "userIDKey"
+    
+    private let hasFaceDataKey = "hasFaceDataKey"
     
     
     private init(){
@@ -36,7 +40,10 @@ final class UserSession: ObservableObject {
         self.userProfilePicture = urlString
         UserDefaults.standard.set(urlString, forKey: profilePictureKey)
     }
-    
+    func setHasFaceData(_ hasFaceData:Bool){
+        self.hasFaceData = hasFaceData
+        UserDefaults.standard.set(hasFaceData, forKey: hasFaceDataKey)
+    }
     func setCurrentUserId(_ id: String){
         self.currentUserID = id
         UserDefaults.standard.set(id, forKey: currentUserUserIDKey)
@@ -51,6 +58,9 @@ final class UserSession: ObservableObject {
     }
     private func loadProfilePicture() {
         self.userProfilePicture = UserDefaults.standard.string(forKey: profilePictureKey) ?? ""
+    }
+    private func loadHasFaceData(){
+        self.hasFaceData = (UserDefaults.standard.string(forKey: hasFaceDataKey) != nil)
     }
     
     private func loadCurrentUserID(){
@@ -81,7 +91,11 @@ final class UserSession: ObservableObject {
                 self.currentUser = loadedUser
                 loadWalletBalance()
                 loadCurrentUserID()
-                print("✅ User loaded from session: \(loadedUser.firstName) \(loadedUser.lastName)")
+                loadHasFaceData()
+                #if DEBUG
+                print("[UserSession] ✅ User loaded from session: \(loadedUser.firstName) \(loadedUser.lastName)")
+                print("[UserSession] 👨🏻HasFaceData: \(hasFaceData)")
+                #endif
             }
         }
     }
@@ -90,19 +104,16 @@ final class UserSession: ObservableObject {
     func setEmailVerified(_ verified: Bool) {
         self.isEmailVerified = verified
         UserDefaults.standard.set(verified, forKey: emailVerifiedKey)
-        print("✅ Email verification status updated: \(verified)")
     }
     
     private func loadEmailVerificationStatus() {
         self.isEmailVerified = UserDefaults.standard.bool(forKey: emailVerifiedKey)
-        print("✅ Email verification status loaded: \(isEmailVerified)")
     }
     
     // MARK: - Current Device ID
     func setCurrentDeviceID(_ deviceID: String) {
         self.currentUserDeviceID = deviceID
         UserDefaults.standard.set(deviceID, forKey: currentUserDeviceIDKey)
-        print("✅ Current device ID saved: \(deviceID)")
     }
     
     private func loadCurrentDeviceID() {
@@ -118,12 +129,10 @@ final class UserSession: ObservableObject {
     func setThisDevicePrimary(_ isPrimary: Bool) {
         self.thisDeviceIsPrimary = isPrimary
         UserDefaults.standard.set(isPrimary, forKey: thisDevicePrimaryKey)
-        print("✅ This device primary status saved: \(isPrimary)")
     }
     
     private func loadThisDevicePrimary() {
         self.thisDeviceIsPrimary = UserDefaults.standard.bool(forKey: thisDevicePrimaryKey)
-        print("✅ Loaded this device primary status: \(thisDeviceIsPrimary)")
     }
 
     // MARK: - Clear User Session
@@ -144,7 +153,7 @@ final class UserSession: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "accountType")
         UserDefaults.standard.removeObject(forKey: currentUserUserIDKey)
         
-        print("🚪 User session cleared")
+        print("[UserSession]🚪 User session cleared")
     }
     
     // MARK: - Computed Properties

@@ -121,6 +121,9 @@ struct AuthenticationView: View {
             CameraPreparationView(onReady: { })
             #endif
         }
+        .onAppear{
+            deviceRegistrationVM.checkDeviceRegistration()
+        }
         .alert(deviceAlertMessage, isPresented: $showDeviceAlert) {
             Button("OK", role: .cancel) {
                 #if DEBUG

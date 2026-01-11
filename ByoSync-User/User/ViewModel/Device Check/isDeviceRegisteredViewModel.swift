@@ -66,8 +66,6 @@ final class DeviceRegistrationViewModel: ObservableObject {
                             self.isDeviceRegistered = true
                             self.hasFaceData = resp.data.hasFaceData
                             self.errorMessage = nil
-                            UserDefaults.standard.set(resp.data.hasFaceData, forKey: "hasFaceData")
-                            print("hasFaceData :\(UserDefaults.standard.bool(forKey: "hasFaceData"))")
                         }
 
                         Logger.shared.i(

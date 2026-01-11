@@ -180,7 +180,7 @@ extension FileManager {
 }
 
 final class RegisterUserRepository {
-
+    
     private let cryptoService: any CryptoService
     private let hmacGenerator = HMACGenerator.self
     

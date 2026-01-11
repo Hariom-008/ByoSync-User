@@ -42,10 +42,13 @@ final class DeviceRegistrationRepository {
        // let deviceKeyHash = deviceKey
         // 2. Headers (auth, token, etc.)
         let headers: HTTPHeaders = getHeader.shared.getAuthHeaders()
+        var fcmToken = ""
+        FCMTokenManager.shared.getFCMToken { token in fcmToken = token ?? "" }
         
         // 3. Body
         let body: [String: Any] = [
-            "deviceKeyHash": deviceKeyHash
+            "deviceKeyHash": deviceKeyHash,
+            "fcmToken": fcmToken
         ]
         #if DEBUG
         print("📤 [DeviceRegistrationRepository] isDeviceRegistered -> URL: \(UserAPIEndpoint.UserDeviceManagement.isDeviceRegistered)")
