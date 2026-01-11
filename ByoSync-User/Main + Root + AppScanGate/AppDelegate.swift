@@ -301,28 +301,27 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         // Persist + publish
         UserSession.shared.setHasFaceData(v)
         
-        // ✅ Clean up local storage when hasFaceData becomes false
+        // ✅ Immediate cleanup
         if !v {
-            print("🗑️ [AppDelegate] hasFaceData=false -> Cleaning up local data")
+            print("🗑️ [AppDelegate] hasFaceData=false -> Cleaning up local data IMMEDIATELY")
             
-            DispatchQueue.main.async {
-                // Delete local FaceId storage
-                FaceIdStorageManager.shared.deleteAllFaceData()
-                
-                // Reset enrollment gate
-                EnrollmentGate.shared.markNotEnrolled()
-                
-                // Reset scan gate if needed
-             AppScanGate.shared.resetScanRequirement()
-                
-                // Post notification for UI to refresh
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("FaceDataDeleted"),
-                    object: nil
-                )
-                
-                print("✅ [AppDelegate] Local data cleanup complete")
-            }
+            // Delete local FaceId storage
+            FaceIdStorageManager.shared.deleteAllFaceData()
+            
+            // Reset enrollment gate
+            EnrollmentGate.shared.markNotEnrolled()
+            
+            // Reset scan gate
+            AppScanGate.shared.resetScanRequirement()
+            
+            // ✅ NEW: Broadcast change so UI updates immediately
+            NotificationCenter.default.post(
+                name: NSNotification.Name("EnrollmentStatusChanged"),
+                object: nil,
+                userInfo: ["hasFaceData": false]
+            )
+            
+            print("✅ [AppDelegate] Local data cleanup complete + UI notified")
         }
     }
 }

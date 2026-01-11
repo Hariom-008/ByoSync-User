@@ -208,18 +208,19 @@ struct AuthenticationView: View {
     private var bottomSection: some View {
         VStack(spacing: 10) {
             Spacer().frame(height: 8)
-
+            
             GlassButton(
                 text: "Login",
                 icon: "",
                 isPrimary: true,
-                logoBlue: deviceRegistrationVM.isDeviceRegistered ? logoBlue : Color.gray,
-                logoPurple: deviceRegistrationVM.isDeviceRegistered ? logoPurple : Color.white
+                logoBlue: logoBlue,
+                logoPurple: logoPurple
             ) {
                 handleLoginTap()
             }
-            .disabled(deviceRegistrationVM.isLoading)
+            .disabled(deviceRegistrationVM.isLoading || !UserSession.shared.hasFaceData || !deviceRegistrationVM.isDeviceRegistered)
             .opacity(deviceRegistrationVM.isLoading ? 0.6 : 1.0)
+            
 
             GlassButton(
                 text: "Create Account",

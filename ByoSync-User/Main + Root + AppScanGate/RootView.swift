@@ -18,6 +18,8 @@ struct RootView: View {
     @EnvironmentObject var faceAuthManager: FaceAuthManager
     @EnvironmentObject var enrollmentGate: EnrollmentGate
     
+    @Environment(\.hasProcessedPendingNotifications) private var hasProcessedPendingNotifications
+    
     @StateObject private var deviceRegistrationVM = DeviceRegistrationViewModel()
     @StateObject private var fetchUserByIdVM = UserDataByIdViewModel()
     
@@ -28,8 +30,6 @@ struct RootView: View {
     @State private var didRunLaunchDeviceCheck = false
     @State private var launchDeviceState: LaunchDeviceState = .unknown
     @State private var launchHasFaceData: Bool? = nil
-    
-    // ✅ Key: only use launch routing until user is logged in
     @State private var launchRoutingActive = true
     
     private var hasCameraPermission: Bool {
@@ -61,30 +61,17 @@ struct RootView: View {
                 MLScanView(onDone: {
                     scanGate.markScanCompleted()
                     
-                    // OK: backend refresh, does NOT touch UserSession persistence
-                    if userSession.currentUser == nil{
+                    if userSession.currentUser == nil {
                         fetchUserByIdVM.fetch(
                             userId: userSession.currentUserID,
                             deviceKeyHash: HMACGenerator.generateHMAC(jsonString: DeviceIdentity.resolve())
                         )
                     }
                     
-                    // ❌ REMOVE: userSession.loadUser()
-                    // This can cause re-evaluation / step flip during transitions.
                     enrollmentGate.reload()
-                    
-                    // stop any launch gating once scan is done
                     launchRoutingActive = false
                     launchDeviceState = .unknown
                     launchHasFaceData = nil
-                    
-                    #if DEBUG
-                    print("🧭 nextStep debug:",
-                          "user=\(userSession.currentUser != nil)",
-                          "needsEnrollment=\(enrollmentGate.needsEnrollment)",
-                          "requireScan=\(scanGate.requireScan)",
-                          "launchRoutingActive=\(launchRoutingActive)")
-                    #endif
                     
                     withAnimation(.easeInOut) { step = nextStep() }
                 })
@@ -94,23 +81,25 @@ struct RootView: View {
             }
         }
         .onAppear {
-            // ✅ Only load from disk if we don't already have a session in memory.
             if userSession.currentUser == nil {
                 userSession.loadUser()
             }
             
-            // enrollmentGate.reload()
             consentAccepted = UserDefaults.standard.bool(forKey: consentKey)
             scanGate.reloadFromStorage()
             
-            // If already logged in, never run launch routing
+            // ✅ For logged-in users, wait for notification processing
             if userSession.currentUser != nil {
                 launchRoutingActive = false
-                step = nextStep()
+                
+                // Only navigate if notifications are processed
+                if hasProcessedPendingNotifications {
+                    step = nextStep()
+                }
                 return
             }
             
-            // run launch device check once
+            // ✅ For new users, proceed normally without waiting
             guard !didRunLaunchDeviceCheck else {
                 step = nextStep()
                 return
@@ -129,10 +118,18 @@ struct RootView: View {
             launchHasFaceData = nil
             deviceRegistrationVM.checkDeviceRegistration()
         }
+        .onChange(of: hasProcessedPendingNotifications) { _, processed in
+            // ✅ Only react if user is logged in
+            if processed && userSession.currentUser != nil && !launchRoutingActive {
+                print("✅ [RootView] Pending notifications processed, navigating...")
+                enrollmentGate.reload()
+                step = nextStep()
+            }
+        }
         .onChange(of: deviceRegistrationVM.isLoading) { _, isLoading in
             guard didRunLaunchDeviceCheck else { return }
             guard !isLoading else { return }
-            guard launchRoutingActive else { return } // ✅ ignore once logged in
+            guard launchRoutingActive else { return }
             
             if deviceRegistrationVM.isDeviceRegistered {
                 launchDeviceState = .registered
@@ -145,33 +142,60 @@ struct RootView: View {
             step = nextStep()
         }
         .onChange(of: userSession.currentUser) { _, newUser in
-            // ✅ the moment login sets currentUser, disable launch routing forever
             if newUser != nil {
                 launchRoutingActive = false
                 launchDeviceState = .unknown
                 launchHasFaceData = nil
                 enrollmentGate.reload()
             }
-            step = nextStep()
+            
+            // ✅ NEW: For new users logging in, always navigate immediately
+            // For returning users, wait for notification processing
+            if newUser != nil && hasProcessedPendingNotifications {
+                step = nextStep()
+            }
         }
         .onChange(of: scanGate.requireScan) { _, _ in
             step = nextStep()
         }
+        .onChange(of: enrollmentGate.state) { oldState, newState in
+            print("📍 [RootView] EnrollmentGate state changed: \(oldState) -> \(newState)")
+            
+            if userSession.currentUser != nil, !launchRoutingActive, hasProcessedPendingNotifications {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    step = nextStep()
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("EnrollmentStatusChanged"))) { notification in
+            print("📡 [RootView] Received EnrollmentStatusChanged notification")
+            
+            if userSession.currentUser != nil, !launchRoutingActive {
+                enrollmentGate.reload()
+                
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    step = nextStep()
+                }
+            }
+        }
     }
     
     private func nextStep() -> AppStep {
-        // ✅ Launch routing only when NOT logged in
         if launchRoutingActive {
             switch launchDeviceState {
             case .notRegistered:
-                return .auth
+                print("🆕 [RootView] First-time user -> Registration mode")
+                faceAuthManager.setRegistrationMode()
+                return hasCameraPermission ? .mlScan : .cameraPrep
                 
             case .registered:
                 guard let hasFaceData = launchHasFaceData else { return .loading }
                 
                 if hasFaceData {
+                    print("✅ [RootView] Device registered with face data -> Verification mode")
                     faceAuthManager.setVerificationMode()
                 } else {
+                    print("📸 [RootView] Device registered without face data -> Registration mode")
                     faceAuthManager.setRegistrationMode()
                 }
                 return hasCameraPermission ? .mlScan : .cameraPrep
@@ -181,15 +205,16 @@ struct RootView: View {
             }
         }
         
-        // ---- Normal logic ----
         guard userSession.currentUser != nil else { return .auth }
         
         if enrollmentGate.needsEnrollment {
+            print("🎯 [RootView] Enrollment needed -> Registration mode")
             faceAuthManager.setRegistrationMode()
             return hasCameraPermission ? .mlScan : .cameraPrep
         }
         
         if scanGate.requireScan {
+            print("🔐 [RootView] Scan required -> Verification mode")
             faceAuthManager.setVerificationMode()
             return hasCameraPermission ? .mlScan : .cameraPrep
         }
@@ -198,7 +223,14 @@ struct RootView: View {
     }
 }
 
-#Preview {
-    RootView()
-        .environmentObject(UserSession.shared)
+
+private struct HasProcessedPendingNotificationsKey: EnvironmentKey {
+    static let defaultValue: Bool = false
+}
+
+extension EnvironmentValues {
+    var hasProcessedPendingNotifications: Bool {
+        get { self[HasProcessedPendingNotificationsKey.self] }
+        set { self[HasProcessedPendingNotificationsKey.self] = newValue }
+    }
 }

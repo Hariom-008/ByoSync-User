@@ -9,6 +9,7 @@ final class AppScanGate: ObservableObject {
 
     // Persisted key – if true, we require a scan on next launch
     private let scanKey = "scanRequiredOnNextLaunch"
+   // private let requireScanKey = "requireScan"
 
     init() {
         // Default to true on first ever launch to force a scan once
@@ -45,4 +46,10 @@ final class AppScanGate: ObservableObject {
         UserDefaults.standard.set(false, forKey: scanKey)
         print("🔓 [AppScanGate] Scan requirement reset")
     }
+    
+//    func resetScanRequirement() {
+//            requireScan = false
+//            UserDefaults.standard.set(false, forKey: requireScanKey)
+//            print("🔓 [AppScanGate] Scan requirement reset")
+//    }
 }
