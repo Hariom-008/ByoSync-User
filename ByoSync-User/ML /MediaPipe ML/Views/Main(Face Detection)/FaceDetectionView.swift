@@ -546,7 +546,6 @@ struct FaceDetectionView: View {
                 self.isProcessing = false
                 switch result {
                 case .success:
-                    print("🎉 [Registration] Upload successful!")
                     DispatchQueue.main.async { self.onComplete() }
                     
                 case .failure(let error):
@@ -639,9 +638,6 @@ struct FaceDetectionView: View {
                     print("   • Match: \(String(format: "%.1f", matchPercent))%")
 
                     if verification.success {
-//                        self.alertTitle = "✅ Login Successful"
-//                        self.alertMessage = "Face verified successfully!\n\nMatch: \(String(format: "%.1f", matchPercent))%"
-//                        self.showAlert = true
                         DispatchQueue.main.async { self.onComplete() }
                     } else {
                         // ✅ FIXED: Reset state for retry
@@ -649,7 +645,7 @@ struct FaceDetectionView: View {
                         self.hasAutoTriggered = false
                         
                         self.alertTitle = "❌ Verification Failed"
-                        self.alertMessage = "Face verification failed.\n\nMatch: \(String(format: "%.1f", matchPercent))%\n\nPlease try again."
+                        self.alertMessage = "Face verification failed."
                         self.showAlert = true
                         
                     }
