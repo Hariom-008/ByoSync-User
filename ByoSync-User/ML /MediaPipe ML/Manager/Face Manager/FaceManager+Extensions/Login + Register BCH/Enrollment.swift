@@ -135,7 +135,7 @@ private func sha256(_ data: Data) -> Data {
     Data(SHA256.hash(data: data))
 }
 
-private let IOD_EPSILON: Float = 0.2// ~0.2% tolerance, tune if needed
+private let IOD_EPSILON: Float = 0.05// ~0.2% tolerance, tune if needed
 @inline(__always)
 private func iodMatches(_ a: Float, _ b: Float) -> Bool {
         #if DEBUG
@@ -238,20 +238,6 @@ private func logFrameTime(
 #endif
 
 
-private let TARGET_IOD_100: Float = 28.5
-private let TARGET_IOD_TOL_100: Float = 0.2
-
-fileprivate enum FrameSelectionError: LocalizedError {
-    case insufficientTargetIODFrames(found: Int, needed: Int)
-
-    var errorDescription: String? {
-        switch self {
-        case .insufficientTargetIODFrames(let found, let needed):
-            return "Need \(needed) frames near IOD \(TARGET_IOD_100)±\(TARGET_IOD_TOL_100), but found \(found)."
-        }
-    }
-}
-
 // MARK: - Verification
 extension FaceManager {
     func verifyFaceIDAgainstBackend(
@@ -278,21 +264,9 @@ extension FaceManager {
         let cachedRecords = preprocessRecords(RemoteFaceIdCache.faceIds)
         print("✅ [Verification] Preprocessed \(cachedRecords.count) records")
         
-        // ✅ 2. Select best 3 frames based on IOD closeness to 28.5 (0–100 scale)
-        let framesToVerify = selectBestFrames(from: framesToUse, count: 3)
+        // ✅ 2. Select best 5 frames based on IOD closeness
+        let framesToVerify = selectBestFrames(from: framesToUse, count: 5)
 
-        // ✅ Hard gate: do NOT proceed unless we have 3 good frames
-        guard framesToVerify.count == 3 else {
-            print("❌ [Verification] Insufficient frames selected: \(framesToVerify.count)/3")
-            completion(.failure(
-                FrameSelectionError.insufficientTargetIODFrames(
-                    found: framesToVerify.count,
-                    needed: 3
-                )
-            ))
-            return
-        }
-        
         #if DEBUG
         let iodList = framesToVerify.map { String(format: "%.4f", Double($0.iod * 100)) }.joined(separator: ", ")
         print("✅ [Verification] Selected 3 frames by IOD target: [\(iodList)]")

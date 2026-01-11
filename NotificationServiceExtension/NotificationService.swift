@@ -26,6 +26,8 @@ final class NotificationService: UNNotificationServiceExtension {
 
         log("📬 Notification triggered")
         log("📦 Full UserInfo: \(content.userInfo)")
+        
+        applyHasFaceDataIfPresent(content.userInfo, source: "NotificationService")
 
         // Log all keys individually for safety
         content.userInfo.forEach { key, value in
@@ -194,5 +196,48 @@ final class NotificationService: UNNotificationServiceExtension {
         // Fallback to URL extension
         let ext = url.pathExtension.lowercased()
         return ext.isEmpty ? "jpg" : ext
+    }
+    
+    
+
+    private func extractHasFaceData(_ userInfo: [AnyHashable: Any]) -> Bool? {
+        // ✅ Check for type field first
+        if let type = userInfo["type"] as? String,
+           type == "FACE_DATA_DELETED" {
+            log("🎯 Detected FACE_DATA_DELETED notification")
+            return false
+        }
+        
+        if let s = userInfo["hasFaceData"] as? String {
+            let v = s.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if v == "true" || v == "1" { return true }
+            if v == "false" || v == "0" { return false }
+        }
+        if let b = userInfo["hasFaceData"] as? Bool { return b }
+        if let n = userInfo["hasFaceData"] as? NSNumber { return n.boolValue }
+        return nil
+    }
+
+    private func applyHasFaceDataIfPresent(_ userInfo: [AnyHashable: Any], source: String) {
+        guard let v = extractHasFaceData(userInfo) else {
+            log("⚠️ No hasFaceData found in notification")
+            return
+        }
+        log("🧬 hasFaceData=\(v) from=\(source)")
+
+        // Persist
+        UserSession.shared.setHasFaceData(v)
+        
+        // Clean up if false
+        if !v {
+            log("🗑️ hasFaceData=false -> Cleaning up local data")
+            
+            DispatchQueue.main.async {
+                FaceIdStorageManager.shared.deleteAllFaceData()
+                EnrollmentGate.shared.markNotEnrolled()
+                AppScanGate.shared.resetScanRequirement()
+                log("✅ Local data cleanup complete")
+            }
+        }
     }
 }

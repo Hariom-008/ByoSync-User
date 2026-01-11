@@ -3,6 +3,8 @@ import Combine
 
 final class FaceIdFetchViewModel: ObservableObject {
     
+        static let shared = FaceIdFetchViewModel()
+    
     // MARK: - Published State (for UI)
     
     /// Full payload from backend (salt + faceData)

@@ -1,3 +1,11 @@
+//
+//  AppScanGate.swift
+//  NotificationServiceExtension
+//
+//  Created by Hari's Mac on 12.01.2026.
+//
+
+import Foundation
 import SwiftUI
 import Combine
 

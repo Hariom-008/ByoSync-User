@@ -270,8 +270,15 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     
     
 //MARK: Helper for FaceData Delete Alert via notification
-    
+
     private func extractHasFaceData(_ userInfo: [AnyHashable: Any]) -> Bool? {
+        // ✅ NEW: Check for type field first
+        if let type = userInfo["type"] as? String,
+           type == "FACE_DATA_DELETED" {
+            print("🎯 [AppDelegate] Detected FACE_DATA_DELETED notification")
+            return false
+        }
+        
         // Most common on iOS with FCM data payload: String
         if let s = userInfo["hasFaceData"] as? String {
             let v = s.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -285,11 +292,37 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
 
     private func applyHasFaceDataIfPresent(_ userInfo: [AnyHashable: Any], source: String) {
-        guard let v = extractHasFaceData(userInfo) else { return }
+        guard let v = extractHasFaceData(userInfo) else {
+            print("⚠️ [AppDelegate] No hasFaceData found in notification from \(source)")
+            return
+        }
         print("🧬 hasFaceData=\(v) from=\(source)")
 
-        // persist + publish
+        // Persist + publish
         UserSession.shared.setHasFaceData(v)
+        
+        // ✅ Clean up local storage when hasFaceData becomes false
+        if !v {
+            print("🗑️ [AppDelegate] hasFaceData=false -> Cleaning up local data")
+            
+            DispatchQueue.main.async {
+                // Delete local FaceId storage
+                FaceIdStorageManager.shared.deleteAllFaceData()
+                
+                // Reset enrollment gate
+                EnrollmentGate.shared.markNotEnrolled()
+                
+                // Reset scan gate if needed
+             AppScanGate.shared.resetScanRequirement()
+                
+                // Post notification for UI to refresh
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("FaceDataDeleted"),
+                    object: nil
+                )
+                
+                print("✅ [AppDelegate] Local data cleanup complete")
+            }
+        }
     }
-
 }

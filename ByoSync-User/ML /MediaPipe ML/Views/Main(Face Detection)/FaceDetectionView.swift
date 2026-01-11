@@ -198,7 +198,7 @@ struct FaceDetectionView: View {
                 // ✅ Single busy overlay (removed duplicate)
                 if faceManager.isBusy {
                     ZStack {
-                        Color.black.opacity(0.5).ignoresSafeArea()
+                        Color.black.ignoresSafeArea()
                         VStack(spacing: 16) {
                             ProgressView()
                                 .scaleEffect(1.5)
