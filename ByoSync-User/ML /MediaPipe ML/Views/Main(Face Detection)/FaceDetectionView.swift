@@ -48,18 +48,18 @@ struct FaceDetectionView: View {
     @State private var alertMessage: String = ""
     @State private var isProcessing: Bool = false
 
-    // ✅ NEW: Show/hide normalized points overlay
+    // ✅ Show/hide normalized points overlay
     @State private var showNormalizedPoints: Bool = true
 
     // ✅ Face auth mode manager
     @EnvironmentObject var faceAuthManager: FaceAuthManager
 
-    // ✅ NEW: enrollment persistence gate
+    // ✅ enrollment persistence gate
     @EnvironmentObject var enrollmentGate: EnrollmentGate
 
     // ✅ Auto-trigger tracking (prevent multiple triggers)
     @State private var hasAutoTriggered: Bool = false
-    
+
     // Export state
     @State private var showExportSuccess: Bool = false
     @State private var exportedFileURL: URL?
@@ -80,12 +80,10 @@ struct FaceDetectionView: View {
 
     // MARK: - Derived UI state
 
-    /// Local busy computation (depends on view models + local state)
     private var busyLocal: Bool {
         isProcessing || faceIdFetchViewModel.isLoading || faceIdUploadViewModel.isUploading
     }
 
-    /// Keep FaceManager's published busy in sync (so any child overlays can also observe it)
     private func syncBusy() {
         faceManager.setBusy(busyLocal)
     }
@@ -112,7 +110,6 @@ struct FaceDetectionView: View {
         return backendEnrollmentValid ? .green : .red
     }
 
-    // ✅ Current mode display
     private var currentModeText: String {
         switch faceAuthManager.currentMode {
         case .registration: return "Registration Mode"
@@ -134,26 +131,24 @@ struct FaceDetectionView: View {
         }
     }
 
-    // ✅ Target frame count based on mode
     private var targetFrameCount: Int {
         switch faceAuthManager.currentMode {
         case .registration: return 60
         case .verification: return 10
         }
     }
-    private var registrationTopText: String {
-        // You'll expose these from FaceManager (see overlay section)
-        switch faceManager.registrationPhase {
-        case .centerCollecting:
-            return "Center \(faceManager.centerFrames) / 60"
-        case .movementCollecting:
-            return "Move \(faceManager.movementFrames) • \(faceManager.movementSecondsRemaining)s"
-        case .done:
-            return "Processing…"
-        }
-    }
 
     private var verificationTarget: Int { 10 }
+
+    // ✅ NEW: Show VALID frame count for verification
+    private var displayFrameCount: Int {
+        switch faceAuthManager.currentMode {
+        case .registration:
+            return faceManager.totalFramesCollected
+        case .verification:
+            return faceManager.validVerificationFrameCount()
+        }
+    }
 
     private var topCounterText: String {
         switch faceAuthManager.currentMode {
@@ -167,7 +162,8 @@ struct FaceDetectionView: View {
                 return "Processing…"
             }
         case .verification:
-            return "\(faceManager.totalFramesCollected)/\(verificationTarget)"
+            // ✅ Show VALID frames, not total
+            return "\(faceManager.validVerificationFrameCount())/\(verificationTarget)"
         }
     }
 
@@ -178,19 +174,19 @@ struct FaceDetectionView: View {
             case .centerCollecting:
                 return Double(faceManager.centerFramesCount) / 60.0
             case .movementCollecting:
-                // progress by time remaining
                 let done = max(0, 15 - faceManager.movementSecondsRemaining)
                 return Double(done) / 15.0
             case .done:
                 return 1.0
             }
         case .verification:
-            return Double(faceManager.totalFramesCollected) / Double(verificationTarget)
+            // ✅ Progress based on VALID frames
+            return Double(faceManager.validVerificationFrameCount()) / Double(verificationTarget)
         }
     }
 
     var body: some View {
-        GeometryReader { geometry in
+        GeometryReader { _ in
             ZStack {
                 // ✅ Camera preview must ALWAYS stay mounted
                 MediapipeCameraPreviewView(faceManager: faceManager)
@@ -199,32 +195,7 @@ struct FaceDetectionView: View {
                 TargetFaceOvalOverlay(faceManager: faceManager)
                 DirectionalGuidanceOverlay(faceManager: faceManager)
 
-                // ✅ Busy overlay (don’t replace preview with black)
-                if faceManager.isBusy {
-                    ZStack {
-                        Color.black.ignoresSafeArea()
-
-                        VStack(spacing: 16) {
-                            ProgressView()
-                                .scaleEffect(1.5)
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-
-                            Text(
-                                faceIdUploadViewModel.isUploading
-                                ? "Uploading enrollment..."
-                                : (faceIdFetchViewModel.isLoading ? "Fetching enrollment..." : "Processing...")
-                            )
-                            .font(.headline)
-                            .foregroundColor(.white)
-                        }
-                        .padding(24)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.black.opacity(0.75))
-                        )
-                    }
-                }
-                // ✅ Busy overlay now driven by FaceManager
+                // ✅ Single busy overlay (removed duplicate)
                 if faceManager.isBusy {
                     ZStack {
                         Color.black.opacity(0.5).ignoresSafeArea()
@@ -247,11 +218,11 @@ struct FaceDetectionView: View {
                     // Top status bar
                     HStack(spacing: 16) {
                         HStack(spacing: 8) {
-                            Image(systemName: currentModeIcon).foregroundColor(currentModeColor)
+                            Image(systemName: currentModeIcon)
+                                .foregroundColor(currentModeColor)
                                 .font(.system(size: 10, weight: .thin))
                             Text(currentModeText)
                                 .font(.system(size: 12, weight: .semibold))
-                            
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
@@ -260,35 +231,32 @@ struct FaceDetectionView: View {
 
                         Spacer()
 
-                        VStack(spacing: 4) {
-                            HStack(spacing: 8) {
-                                Button{
-                                    print("⏭️ [Skip] User tapped skip button")
-                                    DispatchQueue.main.async{
-                                      onComplete()
-                                    }
-                                }label:{
-                                    Text("Skip")
-                                        .foregroundStyle(.white)
-                                        .font(.system(size: 16,weight:.semibold,design:.rounded))
-                                }
-                            }
+                        Button {
+                            print("⏭️ [Skip] User tapped skip button")
+                            DispatchQueue.main.async { onComplete() }
+                        } label: {
+                            Text("Skip")
+                                .foregroundStyle(.white)
+                                .font(.system(size: 16, weight: .semibold, design: .rounded))
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
-                                .fill(faceManager.totalFramesCollected >= targetFrameCount ? Color.green.opacity(0.8) : Color.black.opacity(0.7))
+                                .fill(displayFrameCount >= targetFrameCount
+                                      ? Color.green.opacity(0.8)
+                                      : Color.black.opacity(0.7))
                         )
-                        .foregroundColor(.white)
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 60)
 
-                    if faceManager.totalFramesCollected >= targetFrameCount && !hasAutoTriggered {
+                    if displayFrameCount >= targetFrameCount && !hasAutoTriggered {
                         HStack(spacing: 8) {
                             ProgressView().scaleEffect(0.8)
-                            Text(faceAuthManager.currentMode == .registration ? "Processing registration..." : "Processing verification...")
+                            Text(faceAuthManager.currentMode == .registration
+                                 ? "Processing registration..."
+                                 : "Processing verification...")
                                 .font(.system(size: 14, weight: .medium))
                         }
                         .padding(.horizontal, 16)
@@ -299,7 +267,7 @@ struct FaceDetectionView: View {
                     }
 
                     Spacer()
-                    
+
                     // Export button at bottom
                     if faceManager.totalFramesCollected > 0 {
                         Button(action: exportFramesToCSV) {
@@ -312,10 +280,10 @@ struct FaceDetectionView: View {
                                     Image(systemName: "arrow.down.doc.fill")
                                         .font(.system(size: 14))
                                 }
-                                
+
                                 Text(isExporting ? "Exporting..." : "Export Frames to CSV")
                                     .font(.system(size: 14, weight: .semibold))
-                                
+
                                 Text("(\(faceManager.totalFramesCollected))")
                                     .font(.system(size: 12, weight: .medium))
                                     .opacity(0.7)
@@ -323,10 +291,7 @@ struct FaceDetectionView: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.blue.opacity(0.8))
-                            )
+                            .background(RoundedRectangle(cornerRadius: 12).fill(Color.blue.opacity(0.8)))
                         }
                         .disabled(isExporting)
                         .padding(.bottom, 40)
@@ -334,12 +299,6 @@ struct FaceDetectionView: View {
                     }
                 }
             }
-//            .onChange(of: faceManager.EAR) { newEAR in
-//                var s = earSeries
-//                s.append(CGFloat(newEAR))
-//                if s.count > earMaxSamples { s.removeFirst(s.count - earMaxSamples) }
-//                earSeries = s
-//            }
             .onReceive(
                 faceManager.$NormalizedPoints
                     .throttle(for: .milliseconds(100), scheduler: RunLoop.main, latest: true)
@@ -359,31 +318,32 @@ struct FaceDetectionView: View {
                     rollSeries = r
                 }
             }
+
             // ✅ Keep FaceManager busy synced whenever drivers change
             .onAppear {
                 syncBusy()
                 print("🎬 [FaceDetectionView] View appeared")
             }
-            .onChange(of: isProcessing) { _, newValue in
-                syncBusy()
-                print("⚙️ [Processing] Status changed: \(newValue)")
-            }
-            .onChange(of: faceIdFetchViewModel.isLoading) { _, newValue in
-                syncBusy()
-                print("🔄 [Fetch] Loading status: \(newValue)")
-            }
-            .onChange(of: faceIdUploadViewModel.isUploading) { _, newValue in
-                syncBusy()
-                print("⬆️ [Upload] Status: \(newValue)")
-            }
+            .onChange(of: isProcessing) { _, _ in syncBusy() }
+            .onChange(of: faceIdFetchViewModel.isLoading) { _, _ in syncBusy() }
+            .onChange(of: faceIdUploadViewModel.isUploading) { _, _ in syncBusy() }
 
+            // ✅ FIXED: Auto-trigger based on VALID frames for verification
             .onChange(of: faceManager.totalFramesCollected) { _, newValue in
                 guard !hasAutoTriggered && !faceManager.isBusy else { return }
 
-                if faceAuthManager.currentMode == .verification, newValue >= 10 {
-                    print("✅ [Verification] Target reached: \(newValue) frames")
-                    hasAutoTriggered = true
-                    DispatchQueue.main.async { handleLogin() }
+                if faceAuthManager.currentMode == .verification {
+                    let validCount = faceManager.validVerificationFrameCount()
+                    
+                    print("📊 [Verification] Frame collected")
+                    print("   • Total frames: \(newValue)")
+                    print("   • Valid frames: \(validCount)")
+                    
+                    if validCount >= 10 {
+                        print("✅ [Verification] Target reached: \(validCount) valid frames")
+                        hasAutoTriggered = true
+                        DispatchQueue.main.async { handleLogin() }
+                    }
                 }
             }
 
@@ -405,11 +365,14 @@ struct FaceDetectionView: View {
                 checkEnrollmentStatus()
             }
 
-            // ✅ Upload success
+            // ✅ Upload success (registration)
             .onChange(of: faceIdUploadViewModel.uploadSuccess) { ok in
                 guard ok else { return }
 
                 print("✅ [Upload] Registration successful!")
+
+                // ✅ NEW: Persist "hasFaceData" so we don't need status-fetch next time
+                UserSession.shared.setHasFaceData(true)
                 enrollmentGate.markEnrolled()
 
                 faceManager.capturedFrames = []
@@ -420,12 +383,10 @@ struct FaceDetectionView: View {
                 alertMessage = "Your face has been enrolled successfully!"
                 showAlert = true
 
-                DispatchQueue.main.async{
-                    onComplete()
-                }
+                DispatchQueue.main.async { onComplete() }
                 faceIdUploadViewModel.resetState()
             }
-            
+
             .onChange(of: faceManager.registrationComplete) { _, done in
                 guard done, !hasAutoTriggered, !faceManager.isBusy else { return }
                 print("🎯 [Registration] Phase complete, triggering upload")
@@ -433,10 +394,8 @@ struct FaceDetectionView: View {
                 handleRegister()
             }
 
-
             .onChange(of: faceIdFetchViewModel.showError) { show in
                 guard show else { return }
-                print("❌ [Fetch] Error: \(faceIdFetchViewModel.errorMessage ?? "Unknown")")
                 alertTitle = "❌ Fetch Failed"
                 alertMessage = faceIdFetchViewModel.errorMessage ?? "Unknown fetch error"
                 showAlert = true
@@ -445,83 +404,81 @@ struct FaceDetectionView: View {
 
             .onChange(of: faceIdUploadViewModel.showError) { show in
                 guard show else { return }
-                print("❌ [Upload] Error: \(faceIdUploadViewModel.errorMessage ?? "Unknown")")
                 alertTitle = "❌ Upload Failed"
                 alertMessage = faceIdUploadViewModel.errorMessage ?? "Unknown upload error"
                 showAlert = true
                 hasAutoTriggered = false
             }
-            .onChange(of: faceManager.isBusy) { _, b in
-                #if DEBUG
-                print("🖼️ isBusy=\(b) fetch=\(faceIdFetchViewModel.isLoading) upload=\(faceIdUploadViewModel.isUploading) processing=\(isProcessing)")
-                #endif
+
+            // ✅ FIXED: Alert with proper reset action
+            .alert(alertTitle, isPresented: $showAlert) {
+                Button("OK") {
+                    print("🔄 [Alert] User tapped OK, resetting state...")
+                    
+                    // ✅ Reset verification state if in verification mode
+                    if faceAuthManager.currentMode == .verification {
+                        faceManager.resetVerificationState()
+                    }
+                    
+                    // ✅ Reset auto-trigger flag
+                    hasAutoTriggered = false
+                    
+                    // ✅ Dismiss alert
+                    showAlert = false
+                    
+                    print("   • Verification state reset")
+                    print("   • Auto-trigger flag reset")
+                    print("   • Ready for new attempt")
+                }
+            } message: {
+                Text(alertMessage)
             }
 
-
-//            .alert(alertTitle, isPresented: $showAlert) {
-//                Button("OK") {
-//                    showAlert = false
-//
-//                    if alertTitle.contains("Successful") {
-//                        print("✅ [Alert] Success confirmed, completing flow...")
-//                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-//                            self.onComplete()
-//                        }
-//                    }
-//
-//                    if alertTitle.contains("Failed") || alertTitle.contains("Error") {
-//                        print("🔄 [Alert] Error acknowledged, resetting frames...")
-//                        faceManager.capturedFrames = []
-//                        faceManager.totalFramesCollected = 0
-//                        hasAutoTriggered = false
-//                    }
-//                }
-//            } message: {
-//                Text(alertMessage)
-//            }
-            
-            // Export success alert
             .alert("📥 Export Successful", isPresented: $showExportSuccess) {
-                Button("OK") {
-                    showExportSuccess = false
-                }
+                Button("OK") { showExportSuccess = false }
                 if let url = exportedFileURL {
-                    Button("Open in Files") {
-                        openFileInFilesApp(url: url)
-                    }
-                    Button("Share") {
-                        shareCSVFile(url: url)
-                    }
+                    Button("Open in Files") { openFileInFilesApp(url: url) }
+                    Button("Share") { shareCSVFile(url: url) }
                 }
             } message: {
                 if let url = exportedFileURL {
-                    Text("CSV file saved to Documents:\n\n\(url.lastPathComponent)\n\nYou can find it in the Files app under 'On My iPhone' > [Your App Name] > Documents")
+                    Text("CSV file saved to Documents:\n\n\(url.lastPathComponent)\n\nYou can find it in Files app under 'On My iPhone' > [Your App Name] > Documents")
                 }
             }
         }
         .onAppear {
-//            ncnnViewModel.loadModels()
-//            ncnnViewModel.onLivenessUpdated = { [weak faceManager] score in
-//                faceManager?.updateFaceLivenessScore(score)
-//            }
-
             // ✅ ensure session is running when view appears
             faceManager.startSessionIfNeeded()
-
-            print("🌐 [FaceDetectionView] Fetching FaceIds on appear for deviceKey=\(DeviceIdentity.resolve())")
-            print("🎯 [FaceDetectionView] Current mode: \(faceAuthManager.currentMode)")
-
-            if faceAuthManager.currentMode == .registration {
-                enrollmentGate.markNotEnrolled()
-            }
-
-            faceIdFetchViewModel.fetchFaceIds()
             hasAutoTriggered = false
-
             syncBusy()
+
+            print("🎯 [FaceDetectionView] Current mode: \(faceAuthManager.currentMode)")
+            print("🌐 [FaceDetectionView] deviceKey=\(DeviceIdentity.resolve())")
+            print("✅ [FaceDetectionView] UserSession.hasFaceData=\(UserSession.shared.hasFaceData)")
+
+            // ✅ NEW: no "status fetch" on appear
+            switch faceAuthManager.currentMode {
+            case .registration:
+                // You want the user to enroll now; don't waste network.
+                enrollmentGate.markNotEnrolled()
+                // no fetchFaceIds()
+                break
+
+            case .verification:
+                if UserSession.shared.hasFaceData {
+                    // Still need payload for verification, so fetch only in verification mode when boolean says it's present.
+                    enrollmentGate.markEnrolled()
+                    faceIdFetchViewModel.fetchFaceIds(hasFaceData: true)
+                } else {
+                    // no backend call; we already know there's no face data
+                    enrollmentGate.markNotEnrolled()
+                    alertTitle = "No usable face data"
+                    alertMessage = "Please register first."
+                    showAlert = true
+                }
+            }
         }
         .onDisappear {
-            // ✅ stop session when leaving (prevents odd stuck states)
             faceManager.stopSessionIfNeeded()
         }
         .onReceive(
@@ -531,7 +488,6 @@ struct FaceDetectionView: View {
         ) { buffer in
             ncnnViewModel.processFrame(buffer)
         }
-        
     }
 
     // MARK: - Helper Functions
@@ -540,11 +496,9 @@ struct FaceDetectionView: View {
         isEnrolled = backendEnrollmentValid
 
         if faceIdFetchViewModel.hasLoadedOnce {
-            if backendEnrollmentValid {
-                enrollmentGate.markEnrolled()
-            } else {
-                enrollmentGate.markNotEnrolled()
-            }
+            // ✅ NEW: heal the cached boolean based on actual backend payload (only when we fetched)
+            UserSession.shared.setHasFaceData(backendEnrollmentValid)
+            backendEnrollmentValid ? enrollmentGate.markEnrolled() : enrollmentGate.markNotEnrolled()
         }
 
         let count = faceIdFetchViewModel.faceIds.count
@@ -557,21 +511,30 @@ struct FaceDetectionView: View {
     // MARK: - Register Handler
 
     private func handleRegister() {
+        print("📝 [Registration] Starting registration process...")
         isProcessing = true
 
-        // ✅ you define this helper in FaceManager (see next section)
         let frames = faceManager.registrationFramesForUpload()
         let valid = frames.filter { $0.distances.count == 316 }
 
-        print("📝 [Registration] Total frames: \(frames.count), Valid: \(valid.count)")
+        print("📝 [Registration] Frame validation:")
+        print("   • Total frames: \(frames.count)")
+        print("   • Valid frames: \(valid.count)")
+        print("   • Invalid frames: \(frames.count - valid.count)")
 
         guard valid.count >= 60 else {
             isProcessing = false
+            hasAutoTriggered = false
+            
             alertTitle = "❌ Registration Failed"
-            alertMessage = "Need at least 60 valid frames.\n\nFound: \(valid.count) valid"
+            alertMessage = "Need at least 60 valid frames.\n\nFound: \(valid.count) valid\nTotal: \(frames.count) frames"
             showAlert = true
+            
+            print("❌ [Registration] Insufficient valid frames")
             return
         }
+
+        print("✅ [Registration] Validation passed, starting upload...")
 
         faceManager.generateAndUploadFaceID(
             authToken: authToken,
@@ -583,18 +546,20 @@ struct FaceDetectionView: View {
                 self.isProcessing = false
                 switch result {
                 case .success:
-                    DispatchQueue.main.async{
-                        self.onComplete()
-                    }
+                    print("🎉 [Registration] Upload successful!")
+                    DispatchQueue.main.async { self.onComplete() }
+                    
                 case .failure(let error):
                     print("❌ [Registration] Upload failed: \(error.localizedDescription)")
+                    
                     self.alertTitle = "❌ Registration Failed"
                     self.alertMessage = "Error: \(error.localizedDescription)"
                     self.showAlert = true
-                    
-                    faceManager.capturedFrames = []
-                    faceManager.totalFramesCollected = 0
-                    hasAutoTriggered = false
+
+                    // Reset state for retry
+                    self.faceManager.capturedFrames = []
+                    self.faceManager.totalFramesCollected = 0
+                    self.hasAutoTriggered = false
                 }
             }
         }
@@ -603,88 +568,119 @@ struct FaceDetectionView: View {
     // MARK: - Login Handler
 
     private func handleLogin() {
+        print("🔐 [Verification] Starting verification process...")
         isProcessing = true
 
+        // If we did not fetch (hasFaceData false), block immediately.
+        guard UserSession.shared.hasFaceData else {
+            enrollmentGate.markNotEnrolled()
+            isProcessing = false
+            hasAutoTriggered = false
+            
+            alertTitle = "❌ No Face Data"
+            alertMessage = "You have no face data for this device. Please register first."
+            showAlert = true
+            
+            print("❌ [Verification] No face data available")
+            return
+        }
+
+        // If we fetched but payload invalid, also block.
         guard backendEnrollmentValid else {
             enrollmentGate.markNotEnrolled()
-
             isProcessing = false
-            alertTitle = "No usable face data"
-            alertMessage = "You have no usable face data for this device please register first."
+            hasAutoTriggered = false
+            
+            alertTitle = "❌ Invalid Face Data"
+            alertMessage = "Face data is not usable. Please register again."
+            showAlert = true
+
+            // heal cache
+            UserSession.shared.setHasFaceData(false)
+            
+            print("❌ [Verification] Backend enrollment invalid")
+            return
+        }
+
+        // ✅ FIXED: Let verificationFrames10() do ALL the validation
+        let verificationFrames = faceManager.verificationFrames10()
+
+        // If empty array returned, not enough valid frames
+        guard !verificationFrames.isEmpty else {
+            isProcessing = false
+            hasAutoTriggered = false
+            
+            let validCount = faceManager.validVerificationFrameCount()
+            let totalCount = faceManager.verificationFrameCollectedDistances.count
+            
+            alertTitle = "❌ Not Enough Valid Frames"
+            alertMessage = "Need 10 valid frames for verification.\n\nValid: \(validCount)/10\nTotal collected: \(totalCount)"
             showAlert = true
             return
         }
 
-        let allFrames = faceManager.verificationFrames10()
-        let validFrames = allFrames.filter { $0.distances.count == 316 }
-    
-        print("🔐 [Verification] Total frames: \(allFrames.count), Valid: \(validFrames.count)")
-
-        guard validFrames.count >= 10 else {
-            print("❌ [Login] Insufficient valid frames")
-            isProcessing = false
-            alertTitle = "Failed to Login"
-            alertMessage = "Need at least 10 valid frames.\n\nFound: \(validFrames.count) valid"
-            showAlert = true
-            return
-        }
+        print("✅ [Verification] Frame validation passed")
+        print("   • Valid frames ready: \(verificationFrames.count)")
 
         faceManager.loadAndVerifyFaceID(
-            framesToVerify: allFrames,
+            framesToVerify: verificationFrames,
             requiredMatches: 4,
-            fetchViewModel: faceIdFetchViewModel
+            fetchViewModel: faceIdFetchViewModel, hasFaceData: UserSession.shared.hasFaceData
         ) { result in
             DispatchQueue.main.async {
                 self.isProcessing = false
 
-                self.faceManager.capturedFrames = []
-                self.faceManager.totalFramesCollected = 0
-                self.hasAutoTriggered = false
-
                 switch result {
                 case .success(let verification):
                     let matchPercent = verification.matchPercentage
-                    print("📊 [Login] Verification result - Success: \(verification.success) | Match: \(String(format: "%.1f", matchPercent))%")
-                    
+
+                    print("📊 [Verification] Result received")
+                    print("   • Success: \(verification.success)")
+                    print("   • Match: \(String(format: "%.1f", matchPercent))%")
+
                     if verification.success {
-                        self.alertTitle = "👋 Login Successful"
-                        self.alertMessage = "Press this button to close the alert"
-                        self.showAlert = true
-                        DispatchQueue.main.async{
-                            self.onComplete()
-                        }
+//                        self.alertTitle = "✅ Login Successful"
+//                        self.alertMessage = "Face verified successfully!\n\nMatch: \(String(format: "%.1f", matchPercent))%"
+//                        self.showAlert = true
+                        DispatchQueue.main.async { self.onComplete() }
                     } else {
-                        self.alertTitle = "Failed to Login"
-                        self.alertMessage = "Face verification failed. Try again"
+                        // ✅ FIXED: Reset state for retry
+                        self.faceManager.resetVerificationState()
+                        self.hasAutoTriggered = false
+                        
+                        self.alertTitle = "❌ Verification Failed"
+                        self.alertMessage = "Face verification failed.\n\nMatch: \(String(format: "%.1f", matchPercent))%\n\nPlease try again."
                         self.showAlert = true
                         
-                        faceManager.capturedFrames = []
-                        faceManager.totalFramesCollected = 0
-                        hasAutoTriggered = false
-                        
-                        print("Face verification failed.\n\nMatch: \(String(format: "%.1f", matchPercent))%\n\n\(String(describing: verification.notes))")
                     }
+
                 case .failure(let error):
-                    print("⚠️ [Verification] Error: \(error.localizedDescription)")
-                    self.alertTitle = "⚠️Verification Error"
-                    self.alertMessage = "Error: \(error.localizedDescription)"
+                    // ✅ FIXED: Reset state for retry
+                    self.faceManager.resetVerificationState()
+                    self.hasAutoTriggered = false
+                    
+                    self.alertTitle = "⚠️ Verification Error"
+                    self.alertMessage = "Error: \(error.localizedDescription)\n\nPlease try again."
                     self.showAlert = true
+                    
+                    print("❌ [Verification] Error occurred - state reset for retry")
+                    print("   • Error: \(error.localizedDescription)")
                 }
             }
         }
     }
-    
+
     // MARK: - Export to CSV
-    
+
     private func exportFramesToCSV() {
         print("📥 [Export] Starting CSV export for mode: \(faceAuthManager.currentMode)")
         isExporting = true
-        
+
         DispatchQueue.global(qos: .userInitiated).async {
             do {
                 let mode: FrameCollectionMode = (faceAuthManager.currentMode == .registration) ? .registration : .verification
                 let url = try faceManager.exportCollectedFramesCSV(mode: mode)
-                
+
                 DispatchQueue.main.async {
                     self.isExporting = false
                     self.exportedFileURL = url
@@ -697,53 +693,36 @@ struct FaceDetectionView: View {
                     self.alertTitle = "❌ Export Failed"
                     self.alertMessage = "Failed to export frames: \(error.localizedDescription)"
                     self.showAlert = true
-                    print("❌ [Export] Error: \(error.localizedDescription)")
                 }
             }
         }
     }
-    
-    
+
     private func openFileInFilesApp(url: URL) {
-        print("📂 [Files] Attempting to open file: \(url.lastPathComponent)")
-        
-        // Try to open with the system's default handler
         if UIApplication.shared.canOpenURL(url) {
             UIApplication.shared.open(url, options: [:]) { success in
-                if success {
-                    print("✅ [Files] File opened successfully")
-                } else {
-                    print("⚠️ [Files] Failed to open file, falling back to share")
-                    self.shareCSVFile(url: url)
-                }
+                if !success { self.shareCSVFile(url: url) }
             }
         } else {
-            print("⚠️ [Files] Cannot open URL, using share instead")
             shareCSVFile(url: url)
         }
     }
-    
+
     private func shareCSVFile(url: URL) {
-        print("📤 [Share] Presenting share sheet for: \(url.lastPathComponent)")
         let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-        
+
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first,
               let rootVC = window.rootViewController else {
-            print("❌ [Share] Failed to find window scene or root view controller")
             return
         }
-        
-        // iPad requires popover configuration
+
         if let popover = activityVC.popoverPresentationController {
             popover.sourceView = window
             popover.sourceRect = CGRect(x: window.bounds.midX, y: window.bounds.midY, width: 0, height: 0)
             popover.permittedArrowDirections = []
-            print("📱 [Share] Configured for iPad popover presentation")
         }
-        
-        rootVC.present(activityVC, animated: true) {
-            print("✅ [Share] Activity controller presented successfully")
-        }
+
+        rootVC.present(activityVC, animated: true)
     }
 }

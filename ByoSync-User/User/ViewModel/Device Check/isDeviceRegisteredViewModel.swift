@@ -115,10 +115,6 @@ final class DeviceRegistrationViewModel: ObservableObject {
             }
         }
     }
-    func checkFaceData()->Bool{
-        checkDeviceRegistration()
-        return hasFaceData
-    }
 
     // MARK: - Error Mapping
     private func mapAPIErrorToMessage(_ error: APIError) -> String {

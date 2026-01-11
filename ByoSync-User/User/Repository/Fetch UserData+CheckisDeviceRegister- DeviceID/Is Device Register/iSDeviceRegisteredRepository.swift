@@ -70,7 +70,9 @@ final class DeviceRegistrationRepository {
                       "hasFaceData=\(response.data.hasFaceData)")
                 
                 UserSession.shared.setCurrentUserId(response.data.userId)
+                UserSession.shared.setHasFaceData(response.data.hasFaceData)
                 print("UserID :\(response.data.userId)")
+                print("[DeviceRegistrationRepository] HasFaceData:\(UserSession.shared.hasFaceData)")
                 
                 completion(.success(response))
                 

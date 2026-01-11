@@ -7,16 +7,16 @@ struct DirectionalGuidanceOverlay: View {
     private let IOD_NORM_MAX: Float = 0.31
 
     // If you want different stability thresholds per phase, tune here.
-    private let REG_CENTER_PITCH_THR: Float = 0.27
-    private let REG_CENTER_YAW_THR:   Float = 0.30
+    private let REG_CENTER_PITCH_THR: Float = 0.12
+    private let REG_CENTER_YAW_THR:   Float = 0.12
     private let REG_CENTER_ROLL_THR:  Float = 0.05
 
-    private let MOVE_PITCH_THR: Float = 0.27
-    private let MOVE_YAW_THR:   Float = 0.30
+    private let MOVE_PITCH_THR: Float = 0.12
+    private let MOVE_YAW_THR:   Float = 0.12
     private let MOVE_ROLL_THR:  Float = 0.05
 
-    private let VER_PITCH_THR: Float = 0.27
-    private let VER_YAW_THR:   Float = 0.30
+    private let VER_PITCH_THR: Float = 0.12
+    private let VER_YAW_THR:   Float = 0.12
     private let VER_ROLL_THR:  Float = 0.05
 
     var body: some View {

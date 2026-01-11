@@ -3,6 +3,7 @@
 import SwiftUI
 import FirebaseAuth
 import UIKit
+import SwiftData
 
 @main
 struct ByoSync_UserApp: App {
@@ -13,20 +14,20 @@ struct ByoSync_UserApp: App {
     @StateObject private var scanGate = AppScanGate.shared
     @StateObject private var faceAuthManager = FaceAuthManager.shared
     @StateObject private var enrollmentGate = EnrollmentGate.shared
-
-
+    
+    
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @Environment(\.scenePhase) private var scenePhase
     
     // ✅ guarantees we don't accidentally log twice
-        private static var didLogAppStart = false
-
+    private static var didLogAppStart = false
+    
     init() {
-         if !Self.didLogAppStart {
-             Self.didLogAppStart = true
-           // Logger.shared.info("APP_STARTED bundle=\(Bundle.main.bundleIdentifier ?? "unknown")", type: .success)
-         }
-     }
+        if !Self.didLogAppStart {
+            Self.didLogAppStart = true
+            // Logger.shared.info("APP_STARTED bundle=\(Bundle.main.bundleIdentifier ?? "unknown")", type: .success)
+        }
+    }
     
     var body: some Scene {
         WindowGroup {
@@ -38,9 +39,12 @@ struct ByoSync_UserApp: App {
                     .environmentObject(cryptoManager)
                     .environmentObject(scanGate)
                     .environmentObject(enrollmentGate)
-
+                
                     .environment(\.locale, .init(identifier: languageManager.currentLanguageCode))
                     .preferredColorScheme(.light)
+                    .modelContainer(for: [
+                        FaceIdLocalStore.self  // ✅ Add this
+                    ])
             }
             .onOpenURL { url in
                 Auth.auth().canHandle(url)
@@ -50,11 +54,11 @@ struct ByoSync_UserApp: App {
             }
             .onChange(of: scenePhase) { oldPhase, newPhase in
                 print("🔄 [APP] Scene phase changed: \(oldPhase) -> \(newPhase)")
-
+                
                 // Only enforce re-scan if user is already logged in
                 let isLoggedIn = (userSession.currentUser != nil)
                 let isUserAccount = (UserDefaults.standard.string(forKey: "accountType") == "user")
-
+                
                 // Mark required only when leaving foreground
                 if oldPhase == .active,
                    (newPhase == .inactive || newPhase == .background),
@@ -65,7 +69,7 @@ struct ByoSync_UserApp: App {
                     print("🔐 [APP] Leaving foreground -> require verification scan on return")
                     scanGate.markRequiredDueToInactive()
                 }
-
+                
                 switch newPhase {
                 case .active:
                     socketManager.connectIfNeeded()

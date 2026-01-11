@@ -96,7 +96,24 @@ extension FaceManager {
         }
 
         guard accept else {
-            DispatchQueue.main.async { [weak self] in self?.rejectedFrames += 1 }
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.rejectedFrames += 1
+                
+                // Debug logging for verification mode to understand rejections
+                if self.faceAuthManager.currentMode == .verification {
+                    #if DEBUG
+                    print("❌ [Verification] Frame rejected (#\(self.rejectedFrames))")
+                    print("   • IOD valid: \(self.iodIsValid)")
+                    print("   • IOD normalized: \(String(format: "%.4f", self.iodNormalized)) (max: \(self.IOD_NORM_MAX))")
+                    print("   • Head pose stable: \(self.isHeadPoseStable())")
+                    print("   • Face in oval: \(self.faceisInsideFaceOval)")
+                    print("   • Pitch: \(String(format: "%.2f", self.Pitch))")
+                    print("   • Yaw: \(String(format: "%.2f", self.Yaw))")
+                    print("   • Roll: \(String(format: "%.2f", self.Roll))")
+                    #endif
+                }
+            }
             return
         }
 
@@ -133,7 +150,15 @@ extension FaceManager {
         }
 
         guard allDistances.count == 316 else {
-            DispatchQueue.main.async { [weak self] in self?.rejectedFrames += 1 }
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.rejectedFrames += 1
+                
+                print("❌ [Frame Calculation] Invalid distance count!")
+                print("   • Expected: 316 distances")
+                print("   • Got: \(allDistances.count) distances")
+                print("   • Mode: \(self.faceAuthManager.currentMode)")
+            }
             return
         }
 
@@ -149,10 +174,18 @@ extension FaceManager {
 
             case .verification:
                 self.verificationFrameCollectedDistances.append(fd)
-                #if DEBUG
-                print("Verification Mode Frame Collection : \(self.verificationFrameCollectedDistances.count)")
-                #endif
-                self.totalFramesCollected = self.verificationFrameCollectedDistances.count
+                let currentCount = self.verificationFrameCollectedDistances.count
+                print("✅ [Verification] Frame accepted and stored!")
+                print("   • Frame #\(currentCount)")
+                print("   • Distances count: \(fd.distances.count)")
+                print("   • IOD: \(String(format: "%.4f", fd.iod))")
+                print("   • Progress: \(currentCount)/10 frames")
+                
+                self.totalFramesCollected = currentCount
+                
+                if currentCount >= 10 {
+                    print("🎯 [Verification] Reached 10 frames milestone!")
+                }
             }
 
             self.frameRecordedTrigger.toggle()
@@ -221,31 +254,83 @@ extension FaceManager {
     }
 
     func verificationFrames10() -> [FrameDistance] {
-        let frames = verificationFrameCollectedDistances
-
-        guard frames.count >= 10 else {
-            #if DEBUG
-            print("⚠️ Not enough valid frames. Have \(frames.count), need 10.")
-            #endif
+        let allFrames = verificationFrameCollectedDistances
+        
+        print("📊 [verificationFrames10] Starting validation...")
+        print("   • Total frames collected: \(allFrames.count)")
+        
+        // Filter for VALID frames only (must have exactly 316 distances)
+        let validFrames = allFrames.filter { $0.distances.count == 316 }
+        
+        print("   • Valid frames (316 distances): \(validFrames.count)")
+        print("   • Invalid frames: \(allFrames.count - validFrames.count)")
+        
+        guard validFrames.count >= 10 else {
+            print("❌ [verificationFrames10] Not enough valid frames!")
+            print("   • Need: 10 valid frames")
+            print("   • Have: \(validFrames.count) valid frames")
+            print("   • Total collected: \(allFrames.count) frames")
             return []
         }
 
-        let selectedFrames = frames.suffix(10)
+        // Take the last 10 valid frames
+        let selectedFrames = validFrames.suffix(10)
+        print("   • Selected last 10 valid frames for verification")
 
+        // Scale all distances by IOD
         let iodScaledFrames: [FrameDistance] = selectedFrames.map { frame in
             let scaledDistances = frame.distances.map { $0 / frame.iod }
-
             return FrameDistance(
                 distances: scaledDistances,
                 iod: frame.iod
             )
         }
 
-        #if DEBUG
-        print("✅ Verification frames prepared: \(iodScaledFrames.count) frames, IOD-scaled")
-        #endif
-
+        print("✅ [verificationFrames10] Verification frames prepared successfully")
+        print("   • Frames ready: \(iodScaledFrames.count)")
+        print("   • All frames IOD-scaled ✓")
+        
         return iodScaledFrames
+    }
+    
+    // MARK: - Verification Status Helper
+    
+    /// Returns the count of valid frames (exactly 316 distances) for verification
+    func validVerificationFrameCount() -> Int {
+        verificationFrameCollectedDistances.filter { $0.distances.count == 316 }.count
+    }
+    
+    /// Check if verification has enough valid frames to proceed
+    func isVerificationReady() -> Bool {
+        validVerificationFrameCount() >= 10
+    }
+    
+    /// Get detailed verification status for UI/debugging
+    func verificationStatus() -> (total: Int, valid: Int, ready: Bool, message: String) {
+        let total = verificationFrameCollectedDistances.count
+        let valid = validVerificationFrameCount()
+        let ready = valid >= 10
+        
+        let message: String
+        if ready {
+            message = "✅ Ready to verify (\(valid) valid frames)"
+        } else {
+            message = "⏳ Collecting frames... (\(valid)/10 valid)"
+        }
+        
+        return (total, valid, ready, message)
+    }
+    
+    /// Reset verification state (call this when starting new verification or on error)
+    func resetVerificationState() {
+        print("🔄 [Verification] Resetting verification state...")
+        
+        verificationFrameCollectedDistances.removeAll()
+        totalFramesCollected = 0
+        rejectedFrames = 0
+        
+        print("   • Cleared all verification frames")
+        print("   • Reset counters to 0")
     }
 
 }

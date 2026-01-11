@@ -145,6 +145,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             completionHandler(.noData)
             return
         }
+
         
         print("📬 Remote notification: \(notification)")
 
@@ -155,6 +156,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                 print("Failed to decrypt payment details.")
             }
         }
+        
+        applyHasFaceDataIfPresent(notification, source: "didReceiveRemoteNotification")
         
         completionHandler(.newData)
     }
@@ -177,6 +180,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         let content = notification.request.content
         let userInfo = content.userInfo
 
+        applyHasFaceDataIfPresent(userInfo, source: "willPresent")
         print("📬 Foreground notification: \(userInfo)")
 
         let originalBody = content.body
@@ -198,6 +202,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             content: newContent,
             trigger: nil
         )
+
 
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
@@ -262,4 +267,29 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             print("🤷‍♂️ Unknown type: \(type)")
         }
     }
+    
+    
+//MARK: Helper for FaceData Delete Alert via notification
+    
+    private func extractHasFaceData(_ userInfo: [AnyHashable: Any]) -> Bool? {
+        // Most common on iOS with FCM data payload: String
+        if let s = userInfo["hasFaceData"] as? String {
+            let v = s.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if v == "true" || v == "1" { return true }
+            if v == "false" || v == "0" { return false }
+        }
+        // Sometimes it can come as Bool/NSNumber
+        if let b = userInfo["hasFaceData"] as? Bool { return b }
+        if let n = userInfo["hasFaceData"] as? NSNumber { return n.boolValue }
+        return nil
+    }
+
+    private func applyHasFaceDataIfPresent(_ userInfo: [AnyHashable: Any], source: String) {
+        guard let v = extractHasFaceData(userInfo) else { return }
+        print("🧬 hasFaceData=\(v) from=\(source)")
+
+        // persist + publish
+        UserSession.shared.setHasFaceData(v)
+    }
+
 }

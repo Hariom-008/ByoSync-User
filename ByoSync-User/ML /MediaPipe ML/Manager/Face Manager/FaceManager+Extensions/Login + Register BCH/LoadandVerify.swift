@@ -12,31 +12,33 @@ extension FaceManager {
     
     /// Public wrapper for loading FaceIds and performing verification with custom match requirements
     /// - Parameters:
-    ///   - deviceKey: The device key to fetch FaceIds for
     ///   - framesToVerify: Array of frame distance arrays (typically 10 frames)
     ///   - requiredMatches: Number of required matches (default 4 for testing)
     ///   - fetchViewModel: ViewModel to fetch FaceIds
+    ///   - hasFaceData: Flag indicating if user has enrolled face data
     ///   - completion: Result with verification outcome
     func loadAndVerifyFaceID(
         framesToVerify: [FrameDistance],
         requiredMatches: Int = 4,
         fetchViewModel: FaceIdFetchViewModel,
+        hasFaceData: Bool,
         completion: @escaping (Result<BCHBiometric.VerificationResult, Error>) -> Void
     ) {
-        #if DEBUG
-        print("🔐 [FaceManager+Testing] Starting loadAndVerify flow...")
-       // print("   • Frames to verify: \(framesToVerify.distances.count)")
+        print("🔐 [FaceManager+Testing] Starting loadAndVerify flow")
+        print("   • Frames to verify: \(framesToVerify.count)")
         print("   • Required matches: \(requiredMatches)")
-        #endif
+        print("   • hasFaceData: \(hasFaceData)")
         
-        // IMPORTANT: This must call the wrapper method you add to Enrollment.swift
-        // The method will populate RemoteFaceIdCache which is needed for verification
-        loadRemoteFaceIdsForVerification(fetchViewModel: fetchViewModel) { [weak self] result in
+        // IMPORTANT: This loads from local storage first, then API if needed
+        loadRemoteFaceIdsForVerification(
+            fetchViewModel: fetchViewModel,
+            hasFaceData: hasFaceData
+        ) { [weak self] result in
             guard let self = self else { return }
             
             switch result {
             case .success:
-                print("✅ [FaceManager+Testing] FaceIds loaded into cache, starting verification...")
+                print("✅ [FaceManager+Testing] FaceIds loaded, starting verification...")
                 
                 // Step 2: Verify with custom match requirement
                 self.verifyFaceIDWithCustomMatches(
@@ -62,17 +64,15 @@ extension FaceManager {
         requiredMatches: Int,
         completion: @escaping (Result<BCHBiometric.VerificationResult, Error>) -> Void
     ) {
-        // NOTE: This is a duplicate of verifyFaceIDAgainstBackend but with configurable requiredMatches
-        // We need to access RemoteFaceIdCache which is private in Enrollment.swift
+        print("🎯 [FaceManager+Testing] Custom verification started")
+        print("   • Frames: \(framesToUse.count)")
+        print("   • Required matches: \(requiredMatches)")
         
-        // For now, we'll call the original verification and adjust the result
-        // The original requires 5 matches, but we want 4
-        
+        // Call standard verification
         verifyFaceIDAgainstBackend(framesToUse: framesToUse) { result in
             switch result {
             case .success(var verificationResult):
                 // Extract matched frames count from notes
-                // Format: "Token-only verification: matchedFrames=X/Y, required=5, storedRecords=Z"
                 if let notes = verificationResult.notes,
                    let matchedRange = notes.range(of: "matchedFrames=") {
                     let afterMatched = matchedRange.upperBound
@@ -108,12 +108,13 @@ extension FaceManager {
                 }
 
                 // If we couldn't parse or no adjustment needed, return original
+                print("✅ [FaceManager+Testing] Using original result: \(verificationResult.success)")
                 completion(.success(verificationResult))
                 
             case .failure(let error):
+                print("❌ [FaceManager+Testing] Verification failed: \(error)")
                 completion(.failure(error))
             }
         }
     }
 }
-

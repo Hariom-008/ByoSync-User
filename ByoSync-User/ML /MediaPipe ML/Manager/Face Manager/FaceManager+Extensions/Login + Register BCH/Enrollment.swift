@@ -2,38 +2,16 @@
 //  Enrollment.swift
 //  ML-Testing
 //
-//  Updated for BCH Fuzzy Extractor (helper + secretHash)
+//  Updated for BCH Fuzzy Extractor with SwiftData local storage
 //
 import Foundation
 import Alamofire
 import CryptoKit
 import Security
 
-// MARK: - Remote FaceId cache (for backend verification)
-fileprivate struct RemoteEnrollmentRecord {
-    let helper: String
-    let salt: String        // same for all Collected records for this user
-    let k2: String          // per-frame
-    let token: String       // SHA256(K || R)
-    let timestamp: Date
-}
-
-fileprivate enum RemoteEnrollmentCache {
-    static var salt: String?
-    static var records: [RemoteEnrollmentRecord] = []
-    
-    static var isEmpty: Bool {
-        return salt == nil || records.isEmpty
-    }
-    
-    static func reset() {
-        salt = nil
-        records = []
-    }
-}
-
-// MARK: - Remote FaceId cache (for backend verification)
-fileprivate struct RemoteFaceIdCache {
+// MARK: - Remote FaceId cache (in-memory for verification session)
+// This is now populated from local storage instead of API
+fileprivate enum RemoteFaceIdCache {
     static var salt: String?
     static var faceIds: [FaceId] = []
     
@@ -45,45 +23,51 @@ fileprivate struct RemoteFaceIdCache {
         salt = nil
         faceIds = []
     }
+    
+    // Populate from GetFaceIdData (from local storage or API)
+    static func populate(from data: GetFaceIdData) {
+        salt = data.salt
+        faceIds = data.faceData
+        print("💾 [RemoteFaceIdCache] Populated with \(faceIds.count) records")
+    }
 }
 
+// MARK: - Load FaceIds with Local Storage Support
 fileprivate func loadRemoteFaceIdsIfNeeded(
     fetchViewModel: FaceIdFetchViewModel,
+    hasFaceData: Bool,
     completion: @escaping (Result<Void, Error>) -> Void
 ) {
-    // If we already have salt + records, just reuse them
+    // If cache already populated, reuse it
     if !RemoteFaceIdCache.isEmpty {
-        print("💾 [RemoteFaceIdCache] Using cached FaceId data (salt + \(RemoteFaceIdCache.faceIds.count) records).")
+        print("💾 [RemoteFaceIdCache] Using cached FaceId data (salt + \(RemoteFaceIdCache.faceIds.count) records)")
         completion(.success(()))
         return
     }
     
+    print("🔍 [RemoteFaceIdCache] Cache empty -> checking local storage & backend...")
     
-    print("🌐 [RemoteFaceIdCache] Cache empty → fetching FaceIds from backend...")
-    
-    fetchViewModel.fetchFaceIds() { (result: Result<GetFaceIdData, Error>) in
+    // Use the smart fetch that checks local storage first
+    fetchViewModel.fetchFaceIds(hasFaceData: hasFaceData, forceRefresh: false) { result in
         switch result {
         case .failure(let error):
-            print("❌ [RemoteFaceIdCache] Failed to fetch FaceIds: \(error)")
+            print("❌ [RemoteFaceIdCache] Failed to load FaceIds: \(error)")
             completion(.failure(error))
             
         case .success(let data):
-            let saltHex = data.salt
-            let faceIds = data.faceData
+            print("✅ [RemoteFaceIdCache] Loaded FaceId data")
+            print("   • salt: \(data.salt)")
+            print("   • faceData count: \(data.faceData.count)")
+            print("   • source: \(fetchViewModel.isUsingLocalData ? "local storage" : "API")")
             
-            print("✅ [RemoteFaceIdCache] Fetched \(faceIds.count) FaceId items from backend")
-            print("🔑 [RemoteFaceIdCache] SALT from backend: \(saltHex) (len=\(saltHex.count))")
-            
-            guard !faceIds.isEmpty else {
+            guard !data.faceData.isEmpty else {
                 print("❌ [RemoteFaceIdCache] faceData is empty")
                 completion(.failure(LocalEnrollmentError.noLocalEnrollment))
                 return
             }
             
-            RemoteFaceIdCache.salt = saltHex
-            RemoteFaceIdCache.faceIds = faceIds
-            
-            print("💾 [RemoteFaceIdCache] Cache filled (records=\(faceIds.count))")
+            // Populate in-memory cache
+            RemoteFaceIdCache.populate(from: data)
             completion(.success(()))
         }
     }
@@ -173,9 +157,14 @@ extension FaceManager {
         minRequired: Int = 60,
         completion: ((Result<Void, Error>) -> Void)? = nil
     ) {
+        print("📝 [Enrollment] Starting enrollment process")
+        print("   • Total frames: \(frames.count)")
+        print("   • Min required: \(minRequired)")
+        
         // 1) Validate frames
         let valid = frames.filter { $0.distances.count == 316 }
         guard valid.count >= minRequired else {
+            print("❌ [Enrollment] Insufficient valid frames: \(valid.count)/\(minRequired)")
             DispatchQueue.main.async { completion?(.failure(BCHBiometricError.noDistanceArrays)) }
             return
         }
@@ -183,9 +172,10 @@ extension FaceManager {
         // 2) ONE SALT for all frames (32 bytes)
         let saltBytes = randomBytes(32)
         let saltHex = hexFromData(saltBytes)
+        print("🔑 [Enrollment] Generated salt: \(saltHex.prefix(16))...")
 
         var addFaceIdPayload: [AddFaceIdRequestBody] = []
-       addFaceIdPayload.reserveCapacity(valid.count)
+        addFaceIdPayload.reserveCapacity(valid.count)
 
         var failureCount = 0
 
@@ -208,22 +198,29 @@ extension FaceManager {
                         helper: frameRec.helper,
                         k2: hexFromData(k2Bytes),
                         token: hexFromData(tokenBytes),
-                        iod: String(sample.iod * 100)            // ✅ per-frame iod
+                        iod: String(sample.iod * 100)
                     )
                 )
+                
+                if (index + 1) % 20 == 0 {
+                    print("✅ [Enrollment] Processed \(index + 1)/\(valid.count) frames")
+                }
+                
             } catch {
                 failureCount += 1
-                print("❌ Enrollment frame \(index + 1) failed: \(error)")
+                print("❌ [Enrollment] Frame \(index + 1) failed: \(error)")
             }
         }
 
-        // 3) Don’t require “all frames succeed” anymore — require enough records
         guard addFaceIdPayload.count >= minRequired else {
-            print("❌ Enrollment failed — only \(addFaceIdPayload.count) generated (failures=\(failureCount))")
+            print("❌ [Enrollment] Failed - only \(addFaceIdPayload.count) generated (failures=\(failureCount))")
             DispatchQueue.main.async { completion?(.failure(LocalEnrollmentError.noLocalEnrollment)) }
             return
         }
 
+        print("✅ [Enrollment] Generated \(addFaceIdPayload.count) enrollment records")
+        print("🚀 [Enrollment] Uploading to backend...")
+        
         viewModel.uploadFaceIdList(salt: saltHex, list: addFaceIdPayload)
         DispatchQueue.main.async { completion?(.success(())) }
     }
@@ -261,24 +258,32 @@ extension FaceManager {
         framesToUse: [FrameDistance],
         completion: @escaping (Result<BCHBiometric.VerificationResult, Error>) -> Void
     ) {
+       
+        
         guard
             let saltHex = RemoteFaceIdCache.salt,
             isHex(saltHex), saltHex.count == 64,
             let saltBytes = dataFromHex(saltHex),
             !RemoteFaceIdCache.faceIds.isEmpty
         else {
+            print("❌ [Verification] No enrollment data in cache")
             completion(.failure(LocalEnrollmentError.noLocalEnrollment))
             return
         }
 
+        print("🔑 [Verification] Using salt: \(saltHex.prefix(16))...")
+        print("📦 [Verification] Enrollment records: \(RemoteFaceIdCache.faceIds.count)")
+
         // ✅ 1. Pre-process records (parse hex once)
         let cachedRecords = preprocessRecords(RemoteFaceIdCache.faceIds)
+        print("✅ [Verification] Preprocessed \(cachedRecords.count) records")
         
         // ✅ 2. Select best 3 frames based on IOD closeness to 28.5 (0–100 scale)
         let framesToVerify = selectBestFrames(from: framesToUse, count: 3)
 
         // ✅ Hard gate: do NOT proceed unless we have 3 good frames
         guard framesToVerify.count == 3 else {
+            print("❌ [Verification] Insufficient frames selected: \(framesToVerify.count)/3")
             completion(.failure(
                 FrameSelectionError.insufficientTargetIODFrames(
                     found: framesToVerify.count,
@@ -287,10 +292,11 @@ extension FaceManager {
             ))
             return
         }
-#if DEBUG
-let iodList = framesToVerify.map { String(format: "%.4f", Double($0.iod * 100)) }.joined(separator: ", ")
-print("✅ Selected 3 frames for verification by IOD target: [\(iodList)]")
-#endif
+        
+        #if DEBUG
+        let iodList = framesToVerify.map { String(format: "%.4f", Double($0.iod * 100)) }.joined(separator: ", ")
+        print("✅ [Verification] Selected 3 frames by IOD target: [\(iodList)]")
+        #endif
         
         DispatchQueue.global(qos: .userInitiated).async {
             
@@ -306,7 +312,7 @@ print("✅ Selected 3 frames for verification by IOD target: [\(iodList)]")
                     iodMatches(frame.iod * 100, $0.iod)
                 }
                 
-                print("🎯 Frame \(idx): \(relevantRecords.count)/\(cachedRecords.count) records pass IOD")
+                print("🎯 [Verification] Frame \(idx): \(relevantRecords.count)/\(cachedRecords.count) records pass IOD")
                 
                 var matchCount = 0
                 
@@ -336,6 +342,7 @@ print("✅ Selected 3 frames for verification by IOD target: [\(iodList)]")
                     
                     if tokenCandidate == record.tokenBytes {
                         matchCount += 1
+                        print("✅ [Verification] Frame \(idx) matched!")
                         break // ✅ Early exit after first match
                     }
                 }
@@ -351,6 +358,13 @@ print("✅ Selected 3 frames for verification by IOD target: [\(iodList)]")
             }
             
             let passed = bestResult != nil
+            
+            if passed {
+                print("✅ [Verification] SUCCESS - Best frame: \(bestResult!.frameIdx)")
+            } else {
+                print("❌ [Verification] FAILED - No matching frames")
+            }
+            
             let result = BCHBiometric.VerificationResult(
                 success: passed,
                 matchPercentage: passed ? 100.0 : 0.0,
@@ -392,6 +406,7 @@ print("✅ Selected 3 frames for verification by IOD target: [\(iodList)]")
         let end = min(frames.count, start + count)
         return Array(frames[start..<end])
     }
+    
     struct CachedRecord {
         let k2Bytes: Data
         let tokenBytes: Data
@@ -400,18 +415,25 @@ print("✅ Selected 3 frames for verification by IOD target: [\(iodList)]")
     }
 }
 
-// MARK: - Public Helper for (Load Remote Cache)
+// MARK: - Public Helper for (Load Remote Cache with Local Storage)
 extension FaceManager {
-    /// Public wrapper to load FaceIds into RemoteFaceIdCache for testing
-    /// This must be called before verifyFaceIDAgainstBackend() for testing flows
+    /// Public wrapper to load FaceIds into RemoteFaceIdCache (from local storage or API)
+    /// - Parameters:
+    ///   - fetchViewModel: ViewModel for fetching FaceIds
+    ///   - hasFaceData: Flag indicating if user has enrolled face data
+    ///   - completion: Result callback
     func loadRemoteFaceIdsForVerification(
         fetchViewModel: FaceIdFetchViewModel,
+        hasFaceData: Bool,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
+        print("📥 [FaceManager] Loading FaceIds for verification")
+        print("   • hasFaceData: \(hasFaceData)")
+        
         loadRemoteFaceIdsIfNeeded(
             fetchViewModel: fetchViewModel,
+            hasFaceData: hasFaceData,
             completion: completion
         )
     }
 }
-

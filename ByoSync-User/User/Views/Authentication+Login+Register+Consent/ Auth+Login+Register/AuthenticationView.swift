@@ -88,6 +88,9 @@ struct AuthenticationView: View {
                 )
             }
         }
+        .onAppear{
+            deviceRegistrationVM.checkDeviceRegistration()
+        }
         .onAppear {
             #if DEBUG
             print("AuthenticationView appeared")
@@ -105,9 +108,6 @@ struct AuthenticationView: View {
                     currentFeature = (currentFeature + 1) % features.count
                 }
             }
-
-            // kick off device check (used for both Login gating + Register gating)
-            deviceRegistrationVM.checkDeviceRegistration()
         }
         .sheet(isPresented: $openLoginSheet) {
             LoginView()
@@ -120,9 +120,6 @@ struct AuthenticationView: View {
             #if DEBUG
             CameraPreparationView(onReady: { })
             #endif
-        }
-        .onAppear{
-            deviceRegistrationVM.checkDeviceRegistration()
         }
         .alert(deviceAlertMessage, isPresented: $showDeviceAlert) {
             Button("OK", role: .cancel) {
@@ -307,10 +304,6 @@ struct AuthenticationView: View {
             #endif
             return
         }
-
-        // If your API can change this state after initial onAppear,
-        // you can optionally trigger a refresh here:
-        // deviceRegistrationVM.checkDeviceRegistration()
 
         guard deviceRegistrationVM.isDeviceRegistered else {
             #if DEBUG

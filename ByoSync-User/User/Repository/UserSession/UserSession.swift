@@ -33,6 +33,7 @@ final class UserSession: ObservableObject {
         loadThisDevicePrimary()
         loadWalletBalance()
         loadCurrentUserID()
+        loadHasFaceData()
     }
     
     // MARK: - Profile Picture
@@ -40,10 +41,14 @@ final class UserSession: ObservableObject {
         self.userProfilePicture = urlString
         UserDefaults.standard.set(urlString, forKey: profilePictureKey)
     }
-    func setHasFaceData(_ hasFaceData:Bool){
-        self.hasFaceData = hasFaceData
-        UserDefaults.standard.set(hasFaceData, forKey: hasFaceDataKey)
+    func setHasFaceData(_ hasFaceData: Bool) {
+        DispatchQueue.main.async {
+            self.hasFaceData = hasFaceData
+            UserDefaults.standard.set(hasFaceData, forKey: self.hasFaceDataKey)
+        }
     }
+
+    
     func setCurrentUserId(_ id: String){
         self.currentUserID = id
         UserDefaults.standard.set(id, forKey: currentUserUserIDKey)
@@ -59,9 +64,15 @@ final class UserSession: ObservableObject {
     private func loadProfilePicture() {
         self.userProfilePicture = UserDefaults.standard.string(forKey: profilePictureKey) ?? ""
     }
-    private func loadHasFaceData(){
-        self.hasFaceData = (UserDefaults.standard.string(forKey: hasFaceDataKey) != nil)
+    private func loadHasFaceData() {
+        // if key exists, read the bool; else keep default false
+        if UserDefaults.standard.object(forKey: hasFaceDataKey) != nil {
+            self.hasFaceData = UserDefaults.standard.bool(forKey: hasFaceDataKey)
+        } else {
+            self.hasFaceData = false
+        }
     }
+
     
     private func loadCurrentUserID(){
     self.currentUserID = UserDefaults.standard.string(forKey: currentUserUserIDKey) ?? ""
@@ -155,6 +166,7 @@ final class UserSession: ObservableObject {
         
         print("[UserSession]🚪 User session cleared")
     }
+    
     
     // MARK: - Computed Properties
     var fullName: String {
