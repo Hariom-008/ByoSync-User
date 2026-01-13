@@ -263,7 +263,7 @@ struct CodeDigitField: View {
             
             // Text field
             TextField("", text: $text)
-                .foregroundStyle(.white)
+                .foregroundStyle(isFocused ? .white : .black)
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.center)
                 .font(.title2)
