@@ -186,7 +186,8 @@ struct RootView: View {
             case .notRegistered:
                 print("🆕 [RootView] First-time user -> Registration mode")
                 faceAuthManager.setRegistrationMode()
-                return hasCameraPermission ? .mlScan : .cameraPrep
+               // return hasCameraPermission ? .mlScan : .cameraPrep
+                return .auth
                 
             case .registered:
                 guard let hasFaceData = launchHasFaceData else { return .loading }
@@ -207,11 +208,6 @@ struct RootView: View {
         
         guard userSession.currentUser != nil else { return .auth }
         
-        if enrollmentGate.needsEnrollment {
-            print("🎯 [RootView] Enrollment needed -> Registration mode")
-            faceAuthManager.setRegistrationMode()
-            return hasCameraPermission ? .mlScan : .cameraPrep
-        }
         
         if scanGate.requireScan {
             print("🔐 [RootView] Scan required -> Verification mode")

@@ -225,12 +225,12 @@ struct CodeDigitField: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(isFocused ?
                        LinearGradient(
-                        colors: [logoBlue, logoPurple],
+                        colors: [logoBlue],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                        ):
                         LinearGradient(
-                            colors: [Color.gray.opacity(0.5), Color.gray.opacity(0.5)],
+                            colors: [Color.gray.opacity(0.3), Color.gray.opacity(0.3)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -248,7 +248,7 @@ struct CodeDigitField: View {
                     ) :
                         isFocused ?
                     LinearGradient(
-                        colors: [logoBlue.opacity(0.5), logoPurple.opacity(0.5)],
+                        colors: [logoBlue.opacity(0.5)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ) :
@@ -263,6 +263,7 @@ struct CodeDigitField: View {
             
             // Text field
             TextField("", text: $text)
+                .foregroundStyle(.white)
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.center)
                 .font(.title2)
