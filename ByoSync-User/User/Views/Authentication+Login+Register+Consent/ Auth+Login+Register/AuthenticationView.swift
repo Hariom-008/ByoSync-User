@@ -317,6 +317,9 @@ struct AuthenticationView: View {
         #if DEBUG
         print("Opening MLScan via router")
         #endif
+        FaceAuthManager.shared.currentMode = .verification
+        enrollment.markEnrolled()
+        enrollment.reload()
         router.navigate(to: .mlScan, style: .fullScreenCover)
     }
 }

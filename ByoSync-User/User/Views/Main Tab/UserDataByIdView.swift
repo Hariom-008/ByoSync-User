@@ -277,10 +277,11 @@ struct UserDataByIdView: View {
                         )
 
                     HStack(spacing: 6) {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 12))
-                        Text("Certified Member")
-                            .font(.system(size: 13, weight: .medium))
+                        Text("Token number :")
+                            .font(.system(size: 14, weight: .medium))
+                        Text("\(user.token)")
+                            .font(.system(size: 18, weight: .medium,design: .rounded))
+                            .foregroundStyle(.black)
                     }
                     .foregroundColor(textSecondary)
                     .padding(.horizontal, 16)
@@ -541,7 +542,8 @@ struct UserDataByIdView: View {
             fcmToken: userSession.currentUser?.fcmToken,
             refferalCode: userData.referralCode,
             userId: userData.id,
-            userDeviceId: viewModel.device?.id
+            userDeviceId: viewModel.device?.id,
+            token: userData.token
         )
 
         userSession.saveUser(updatedUser)

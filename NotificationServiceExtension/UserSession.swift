@@ -206,10 +206,11 @@ struct User: Codable,Equatable{
     let refferalCode: String?
     let userId: String?
     let userDeviceId: String?
+    let token: Int
     
     
     // Convenience initializer
-    init(firstName: String, lastName: String, email: String, phoneNumber: String? = nil, deviceKey: String? = nil, deviceName: String? = nil,fcmToken:String? = nil, refferalCode: String? = nil, userId:String? = nil,userDeviceId:String? = nil) {
+    init(firstName: String, lastName: String, email: String, phoneNumber: String? = nil, deviceKey: String? = nil, deviceName: String? = nil,fcmToken:String? = nil, refferalCode: String? = nil, userId:String? = nil,userDeviceId:String? = nil, token:Int) {
         self.firstName = firstName
         self.lastName = lastName
         self.email = email
@@ -220,6 +221,7 @@ struct User: Codable,Equatable{
         self.refferalCode = refferalCode
         self.userId = userId
         self.userDeviceId = userDeviceId
+        self.token = token
     }
 }
 struct Address: Codable {

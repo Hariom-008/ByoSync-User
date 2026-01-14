@@ -425,10 +425,6 @@ struct FaceDetectionView: View {
                     
                     // ✅ Dismiss alert
                     showAlert = false
-                    
-                    print("   • Verification state reset")
-                    print("   • Auto-trigger flag reset")
-                    print("   • Ready for new attempt")
                 }
             } message: {
                 Text(alertMessage)

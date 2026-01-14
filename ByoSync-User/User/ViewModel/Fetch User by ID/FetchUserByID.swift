@@ -91,7 +91,7 @@ final class UserDataByIdViewModel: ObservableObject {
                     self.isPrimaryDevice = res.data.device.isPrimary
 
                     
-                    let user = User(firstName: res.data.user.firstName, lastName: res.data.user.lastName, email: res.data.user.email,phoneNumber:res.data.user.phoneNumber,deviceKey: res.data.device.deviceKey,deviceName: res.data.device.deviceName,userId: res.data.user.id,userDeviceId: res.data.device.id)
+                    let user = User(firstName: res.data.user.firstName, lastName: res.data.user.lastName, email: res.data.user.email,phoneNumber:res.data.user.phoneNumber,deviceKey: res.data.device.deviceKey,deviceName: res.data.device.deviceName,userId: res.data.user.id,userDeviceId: res.data.device.id,token: res.data.user.token)
                     
                     UserSession.shared.saveUser(user)
                     UserDefaults.standard.set("user", forKey: "accountType")

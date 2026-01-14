@@ -156,7 +156,8 @@ final class RegisterUserViewModel: ObservableObject {
                 deviceKey: device.deviceKey,
                 deviceName: device.deviceName,
                 userId: userData.id,
-                userDeviceId: device.id
+                userDeviceId: device.id,
+                token: userData.token
             )
 
             // Persist

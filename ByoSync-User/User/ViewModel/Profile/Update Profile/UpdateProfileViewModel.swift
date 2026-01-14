@@ -85,16 +85,16 @@ final class UpdateProfileViewModel: ObservableObject {
                     self.isSuccess = true
                     
                     // Update user session
-                    self.userSession.saveUser(
-                        User(
-                            firstName: self.firstName,
-                            lastName: self.lastName,
-                            email: self.email,
-                            phoneNumber: self.userSession.currentUser?.phoneNumber,
-                            deviceKey: self.userSession.currentUser?.deviceKey,
-                            deviceName: self.userSession.currentUser?.deviceName
-                        )
-                    )
+//                    self.userSession.saveUser(
+//                        User(
+//                            firstName: self.firstName,
+//                            lastName: self.lastName,
+//                            email: self.email,
+//                            phoneNumber: self.userSession.currentUser?.phoneNumber,
+//                            deviceKey: self.userSession.currentUser?.deviceKey,
+//                            deviceName: self.userSession.currentUser?.deviceName, token:self.token
+//                        )
+//                    )
                     print("✅ [VM] Updated the user on backend and UserSession.")
                     
                 case .failure(let error):

@@ -152,7 +152,8 @@ final class LoginViewModel: ObservableObject {
             deviceName: deviceData.deviceName,
             refferalCode: userData.referralCode,
             userId: userData.id,
-            userDeviceId: deviceData.id
+            userDeviceId: deviceData.id,
+            token: userData.token
         )
 
         #if DEBUG

@@ -39,6 +39,7 @@ struct UserByIdDTO: Decodable, Identifiable, Equatable {
     let createdAt: String
     let updatedAt: String
     let v: Int
+    let token:Int
 
     // New fields from API response
     let deletedAt: String?
@@ -55,6 +56,7 @@ struct UserByIdDTO: Decodable, Identifiable, Equatable {
         case v = "__v"
 
         case deletedAt, isDeleted, todayChaiCount
+        case token
     }
 
     init(from decoder: Decoder) throws {
@@ -95,6 +97,7 @@ struct UserByIdDTO: Decodable, Identifiable, Equatable {
         deletedAt = try c.decodeIfPresent(String.self, forKey: .deletedAt)
         isDeleted = try c.decode(Bool.self, forKey: .isDeleted)
         todayChaiCount = try c.decode(Int.self, forKey: .todayChaiCount)
+        token = try c.decode(Int.self, forKey: .token)
     }
 }
 extension UserByIdDTO {
@@ -128,6 +131,7 @@ extension UserByIdDTO {
         self.deletedAt = nil
         self.isDeleted = false
         self.todayChaiCount = 0
+        self.token = 0
     }
 }
 

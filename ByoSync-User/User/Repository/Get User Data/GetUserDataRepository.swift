@@ -53,7 +53,8 @@ final class GetUserDataRepository: GetUserDataRepositoryProtocol {
                     email: userData.email,
                     phoneNumber: userData.phoneNumber,
                     deviceKey: deviceData.deviceKey,
-                    deviceName: deviceData.deviceName
+                    deviceName: deviceData.deviceName,
+                    token: userData.token
                 )
                 
                 // Save to session
