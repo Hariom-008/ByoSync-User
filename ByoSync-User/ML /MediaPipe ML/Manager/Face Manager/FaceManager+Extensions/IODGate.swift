@@ -54,11 +54,4 @@ extension FaceManager{
             iodGuidance = .ok
         }
     }
-
-//    func resetIODGate() {
-//        iodPixels = 0
-//        iodNormalized = 0
-//        iodIsValid = false
-//        iodGuidance = .noFace
-//    }
 }

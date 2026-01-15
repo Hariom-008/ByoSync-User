@@ -16,6 +16,7 @@ struct FrameDistance {
 extension FaceManager {
 
     private var IOD_NORM_MAX: Float { 0.31 }
+    
 
     // Function to remove extra digits after 4 digits after decimal
     @inline(__always)
@@ -39,7 +40,8 @@ extension FaceManager {
         case .movementCollecting:
             // Phase 2 (movement tracking):
             // isHeadPoseStable && faceInsideOval
-            return isHeadPoseStable()
+            return iodIsValid
+            && isHeadPoseStable()
             && faceisInsideFaceOval
 
         case .done:

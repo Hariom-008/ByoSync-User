@@ -186,19 +186,19 @@ struct RootView: View {
             case .notRegistered:
                 print("🆕 [RootView] First-time user -> Registration mode")
                 faceAuthManager.setRegistrationMode()
-               // return hasCameraPermission ? .mlScan : .cameraPrep
-                return .auth
+                return hasCameraPermission ? .mlScan : .cameraPrep
+               // return .auth
                 
             case .registered:
-               // guard let hasFaceData = launchHasFaceData else { return .loading }
-                let hasFaceData = UserSession.shared.hasFaceData
-                guard hasFaceData else{
-                    return .loading
-                }
+            guard let hasFaceData = launchHasFaceData else { return .loading }
+//                let hasFaceData = UserSession.shared.hasFaceData
+//                guard hasFaceData else{
+//                    return .loading
+//                }
                 if !hasFaceData{
-//                    print("✅ [RootView] Device registered with face data -> Verification mode")
-//                    faceAuthManager.setVerificationMode()
-//                } else {
+                    print("✅ [RootView] Device registered with face data -> Verification mode")
+                    faceAuthManager.setVerificationMode()
+                } else {
                     print("📸 [RootView] Device registered without face data -> Registration mode")
                     faceAuthManager.setRegistrationMode()
                 }

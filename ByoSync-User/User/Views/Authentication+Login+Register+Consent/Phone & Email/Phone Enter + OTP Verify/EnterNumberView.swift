@@ -185,13 +185,15 @@ struct EnterNumberView: View {
 
         .onChange(of: viewModel.otpSent) { _, sent in
             guard sent else { return }
-            router.navigate(
-                to: .otpVerification(
-                    phoneNumber: viewModel.fullPhoneNumber,
-                    viewModel: viewModel
-                ),
-                style: .push
-            )
+//            router.navigate(
+//                to: .otpVerification(
+//                    phoneNumber: viewModel.fullPhoneNumber,
+//                    viewModel: viewModel
+//                ),
+//                style: .push
+//            )
+            
+            router.navigate(to: .registerUser(phoneNumber: viewModel.phoneNumber), style: .push)
         }
     }
 
