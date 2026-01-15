@@ -7,7 +7,6 @@ import FirebaseAuth
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
 
-    // Use a normal property, not @StateObject
     private let cryptoManager = CryptoManager.shared
 
     func application(_ application: UIApplication,
@@ -21,9 +20,33 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         UNUserNotificationCenter.current().delegate = self
         print("✅ Delegates set")
         
+        // ✅ Try to get FCM token immediately if already cached
+        tryGetCachedFCMToken()
+        
         requestNotificationPermissions(application)
         
         return true
+    }
+    
+    // MARK: - Immediate FCM Token Fetch
+    private func tryGetCachedFCMToken() {
+        print("🔍 Checking for cached FCM token...")
+        
+        Messaging.messaging().token { token, error in
+            if let error = error {
+                print("⚠️ No cached FCM token: \(error.localizedDescription)")
+                print("💡 Will wait for APNs registration to complete")
+                return
+            }
+            
+            guard let token = token else {
+                print("⚠️ FCM token is nil, will wait for APNs")
+                return
+            }
+            
+            print("⚡️ Cached FCM Token found immediately: \(token)")
+            self.handleFCMToken(token)
+        }
     }
 
     private func requestNotificationPermissions(_ application: UIApplication) {
@@ -44,6 +67,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                 }
             } else {
                 print("⚠️ User denied notification permission")
+                // Even without permission, try to get token for device registration
+                self.requestFCMToken()
             }
         }
     }
@@ -68,18 +93,37 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                      didFailToRegisterForRemoteNotificationsWithError error: Error) {
         print("❌ Failed to register for remote notifications: \(error.localizedDescription)")
         print("💡 Tip: Make sure you're testing on a real device, not simulator")
+        
+        // Still try to get FCM token even if APNs fails
+        requestFCMToken()
     }
 
     // MARK: - FCM Token Request
     private func requestFCMToken() {
+        print("🔄 Requesting FCM token...")
+        
         Messaging.messaging().token { token, error in
             if let error = error {
                 print("❌ Error getting FCM token: \(error.localizedDescription)")
+                
+                // ✅ Post notification even on failure so UI doesn't hang
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("FCMTokenFailed"),
+                    object: nil,
+                    userInfo: ["error": error.localizedDescription]
+                )
                 return
             }
             
             guard let token = token else {
                 print("⚠️ FCM token is nil")
+                
+                // ✅ Post notification even on failure
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("FCMTokenFailed"),
+                    object: nil,
+                    userInfo: ["error": "Token is nil"]
+                )
                 return
             }
             
@@ -105,11 +149,14 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         FCMTokenManager.shared.setToken(token)
         uploadFCMToken(token)
         
+        // ✅ Post notification with token
         NotificationCenter.default.post(
             name: NSNotification.Name("FCMTokenReceived"),
             object: nil,
             userInfo: ["token": token]
         )
+        
+        print("✅ FCM token ready and notification posted")
     }
 
     func uploadFCMToken(_ token: String) {
@@ -215,7 +262,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         completionHandler([])
     }
 
-    func userNotificationCenter( 
+    func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
@@ -272,20 +319,17 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 //MARK: Helper for FaceData Delete Alert via notification
 
     private func extractHasFaceData(_ userInfo: [AnyHashable: Any]) -> Bool? {
-        // ✅ NEW: Check for type field first
         if let type = userInfo["type"] as? String,
            type == "FACE_DATA_DELETED" {
             print("🎯 [AppDelegate] Detected FACE_DATA_DELETED notification")
             return false
         }
         
-        // Most common on iOS with FCM data payload: String
         if let s = userInfo["hasFaceData"] as? String {
             let v = s.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             if v == "true" || v == "1" { return true }
             if v == "false" || v == "0" { return false }
         }
-        // Sometimes it can come as Bool/NSNumber
         if let b = userInfo["hasFaceData"] as? Bool { return b }
         if let n = userInfo["hasFaceData"] as? NSNumber { return n.boolValue }
         return nil
@@ -298,23 +342,15 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }
         print("🧬 hasFaceData=\(v) from=\(source)")
 
-        // Persist + publish
         UserSession.shared.setHasFaceData(v)
         
-        // ✅ Immediate cleanup
         if !v {
             print("🗑️ [AppDelegate] hasFaceData=false -> Cleaning up local data IMMEDIATELY")
             
-            // Delete local FaceId storage
             FaceIdStorageManager.shared.deleteAllFaceData()
-            
-            // Reset enrollment gate
             EnrollmentGate.shared.markNotEnrolled()
-            
-            // Reset scan gate
             AppScanGate.shared.resetScanRequirement()
             
-            // ✅ NEW: Broadcast change so UI updates immediately
             NotificationCenter.default.post(
                 name: NSNotification.Name("EnrollmentStatusChanged"),
                 object: nil,

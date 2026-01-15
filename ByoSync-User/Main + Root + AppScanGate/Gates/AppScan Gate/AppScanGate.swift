@@ -46,10 +46,4 @@ final class AppScanGate: ObservableObject {
         UserDefaults.standard.set(false, forKey: scanKey)
         print("🔓 [AppScanGate] Scan requirement reset")
     }
-    
-//    func resetScanRequirement() {
-//            requireScan = false
-//            UserDefaults.standard.set(false, forKey: requireScanKey)
-//            print("🔓 [AppScanGate] Scan requirement reset")
-//    }
 }

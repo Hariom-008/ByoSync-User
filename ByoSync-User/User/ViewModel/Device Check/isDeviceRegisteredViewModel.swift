@@ -27,6 +27,10 @@ final class DeviceRegistrationViewModel: ObservableObject {
 
     // MARK: - Public API
     func checkDeviceRegistration() {
+        #if DEBUG
+        print("🔍 [DeviceRegistrationVM] Starting device check...")
+        #endif
+        
         // reset state
         isLoading = true
         errorMessage = nil
@@ -38,6 +42,10 @@ final class DeviceRegistrationViewModel: ObservableObject {
             isLoading = false
             errorMessage = "Device identifier unavailable."
             Logger.shared.e("DEVICE_REG", "DeviceIdentity.resolve() returned empty deviceKey", user: userId)
+            
+            #if DEBUG
+            print("❌ [DeviceRegistrationVM] Empty device key!")
+            #endif
             return
         }
 
@@ -51,8 +59,6 @@ final class DeviceRegistrationViewModel: ObservableObject {
             let elapsedMs = Int64((CFAbsoluteTimeGetCurrent() - startTime) * 1000.0)
 
             Task { @MainActor in
-                self.isLoading = false
-
                 switch result {
                 case .success(let resp):
                     #if DEBUG
@@ -61,12 +67,15 @@ final class DeviceRegistrationViewModel: ObservableObject {
 
                     // Backend can return success=false even on HTTP 200
                     if resp.success {
-                        DispatchQueue.main.async {
-                            self.response = resp
-                            self.isDeviceRegistered = true
-                            self.hasFaceData = resp.data.hasFaceData
-                            self.errorMessage = nil
-                        }
+                        // Update all states TOGETHER, not in DispatchQueue
+                        self.response = resp
+                        self.isDeviceRegistered = true
+                        self.hasFaceData = resp.data.hasFaceData
+                        self.errorMessage = nil
+                        
+                        #if DEBUG
+                        print("✅ [DeviceRegistrationVM] State updated - isRegistered: \(self.isDeviceRegistered), hasFaceData: \(self.hasFaceData)")
+                        #endif
 
                         Logger.shared.i(
                             "DEVICE_REG",
@@ -81,7 +90,7 @@ final class DeviceRegistrationViewModel: ObservableObject {
                         self.errorMessage = resp.message
 
                         #if DEBUG
-                        print("❌ [DeviceRegistrationVM] Backend reported failure: \(resp.message)")
+                        print("⚠️ [DeviceRegistrationVM] Backend reported failure: \(resp.message)")
                         #endif
 
                         Logger.shared.e(
@@ -112,6 +121,13 @@ final class DeviceRegistrationViewModel: ObservableObject {
                         user: userId
                     )
                 }
+                
+                // Set isLoading to false AFTER all state updates
+                self.isLoading = false
+                
+                #if DEBUG
+                print("🏁 [DeviceRegistrationVM] Check complete - isLoading: false, isRegistered: \(self.isDeviceRegistered), hasFaceData: \(self.hasFaceData)")
+                #endif
             }
         }
     }
