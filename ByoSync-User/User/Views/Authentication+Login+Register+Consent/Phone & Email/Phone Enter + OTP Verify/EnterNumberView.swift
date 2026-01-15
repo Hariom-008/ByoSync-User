@@ -121,7 +121,7 @@ struct EnterNumberView: View {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         } else {
-                            Text("Send OTP")
+                            Text("Proceed")
                                 .font(.headline)
                         }
                     }
@@ -130,7 +130,7 @@ struct EnterNumberView: View {
                     .padding(.vertical, 16)
                     .background(
                         viewModel.isValidPhoneNumber && !isBusy
-                        ? Color.black
+                        ? Color(hex: "4B548D")
                         : Color.gray
                     )
                     .cornerRadius(12)
@@ -193,7 +193,6 @@ struct EnterNumberView: View {
 //                style: .push
 //            )
             
-            router.navigate(to: .registerUser(phoneNumber: viewModel.phoneNumber), style: .push)
         }
     }
 
@@ -204,26 +203,27 @@ struct EnterNumberView: View {
         guard viewModel.isValidPhoneNumber else { return }
 
         let phone = viewModel.fullPhoneNumber
-
-        // 1) Check if phone exists in backend
+//
+//        // 1) Check if phone exists in backend
         await findUserByPhoneVM.fetch(phoneNumber: phone)
-
-        // If found => block OTP
+        
         if findUserByPhoneVM.userId != nil {
             phoneExistsMessage = "This phone number is already registered. Please use another number."
             showPhoneExistsAlert = true
             return
         }
-
-        // Any error from lookup now means we can proceed to send OTP
-        if let err = findUserByPhoneVM.errorText, !err.isEmpty {
-            // Proceed despite error
-            viewModel.sendOTP()
-            return
-        }
-
-        // No userId and no error => treat as not found and proceed
-        viewModel.sendOTP()
+//
+//        // Any error from lookup now means we can proceed to send OTP
+//        if let err = findUserByPhoneVM.errorText, !err.isEmpty {
+//            // Proceed despite error
+//            viewModel.sendOTP()
+//            return
+//        }
+//
+//        // No userId and no error => treat as not found and proceed
+//        viewModel.sendOTP()
+        
+        router.navigate(to: .registerUser(phoneNumber: viewModel.phoneNumber), style: .push)
     }
 }
 
