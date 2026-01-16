@@ -94,12 +94,19 @@ struct RegisterUserView: View {
                 
                 // Submit Button
                 Button(action: {
-                    print("🔘 Register button tapped")
+                    print("🔘 [RegisterUser] Register button tapped")
                     UIApplication.shared.sendAction(
                         #selector(UIResponder.resignFirstResponder),
                         to: nil, from: nil, for: nil
                     )
+                    
+                    // ✅ Set registration mode BEFORE calling registerUser
+                    // This ensures FaceAuthManager is in correct mode when scan is triggered
                     faceAuthManager.setRegistrationMode()
+                    
+                    // ✅ Call the registration API
+                    // After successful registration, UserSession will be updated
+                    // and RootView will automatically show MainTabView and trigger face scan
                     viewModel.registerUser()
                 }) {
                     HStack(spacing: 8) {
@@ -131,7 +138,7 @@ struct RegisterUserView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button(action: {
-                    print("⬅️ Back button tapped")
+                    print("⬅️ [RegisterUser] Back button tapped")
                     router.pop()
                 }) {
                     HStack(spacing: 4) {
@@ -146,7 +153,7 @@ struct RegisterUserView: View {
         }
         .alert(L("error"), isPresented: $viewModel.showError) {
             Button("OK", role: .cancel) {
-                print("⚠️ Error alert dismissed")
+                print("⚠️ [RegisterUser] Error alert dismissed")
             }
         } message: {
             if let errorMessage = viewModel.errorMessage {
@@ -154,15 +161,12 @@ struct RegisterUserView: View {
             }
         }
         .onAppear {
-            print("👀 RegisterUserView appeared")
+            print("👀 [RegisterUser] View appeared")
             viewModel.phoneNumber = phoneNumber
         }
-        .onChange(of: viewModel.navigateToMainTab) { _, newValue in
-            if newValue {
-                print("✅ navigateToMainTab = true → routing to MainTab")
-                router.navigate(to: .mainTab, style: .push)
-            }
-        }
+        // ✅ REMOVED: Navigation to MainTab
+        // RootView will automatically handle this when userSession.currentUser becomes non-nil
+        // and will present the face registration scan as needed
     }
 }
 

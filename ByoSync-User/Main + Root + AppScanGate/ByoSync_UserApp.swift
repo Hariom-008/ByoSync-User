@@ -69,6 +69,19 @@ struct ByoSync_UserApp: App {
                     processPendingNotifications()
                 }
             }
+            .onChange(of: userSession.currentUser) { oldValue, newValue in
+                // ✅ When user logs in for the first time
+                if oldValue == nil && newValue != nil {
+                    print("🆕 [APP] New login detected - processing notifications")
+                    processPendingNotifications()
+                }
+                
+                // ✅ When user logs out
+                if oldValue != nil && newValue == nil {
+                    print("👋 [APP] Logout detected - resetting notification state")
+                    hasProcessedPendingNotifications = true
+                }
+            }
             .onChange(of: deviceRegistrationVM.hasFaceData) { _, newValue in
                 print("📊 [APP] Backend hasFaceData changed -> \(newValue)")
                 handleEnrollmentStatusChange(hasFaceData: newValue)
@@ -121,14 +134,21 @@ struct ByoSync_UserApp: App {
     }
 
     private func processPendingNotifications() {
-        print("📦 [APP] Checking for pending notifications...")
+        print("📦 [APP] Processing pending notifications...")
+        print("   - Current user: \(userSession.currentUser?.userId ?? "nil")")
+        print("   - Current hasFaceData: \(userSession.hasFaceData)")
+        
         hasProcessedPendingNotifications = false
 
         UNUserNotificationCenter.current().getDeliveredNotifications { notifications in
+            print("📬 [APP] Found \(notifications.count) delivered notifications")
+            
+            // ✅ Check for FACE_DATA_DELETED notification
             for notification in notifications {
                 let userInfo = notification.request.content.userInfo
 
                 if let type = userInfo["type"] as? String, type == "FACE_DATA_DELETED" {
+                    print("🚨 [APP] Found FACE_DATA_DELETED notification - handling immediately")
                     DispatchQueue.main.async {
                         self.handleEnrollmentStatusChange(hasFaceData: false)
                         self.hasProcessedPendingNotifications = true
@@ -141,6 +161,8 @@ struct ByoSync_UserApp: App {
                 }
             }
 
+            // ✅ No critical notifications found - mark as processed
+            print("✅ [APP] No critical notifications - marking as processed")
             DispatchQueue.main.async {
                 self.hasProcessedPendingNotifications = true
             }
@@ -148,9 +170,12 @@ struct ByoSync_UserApp: App {
     }
 
     private func handleEnrollmentStatusChange(hasFaceData: Bool) {
+        print("🎯 [APP] handleEnrollmentStatusChange called with hasFaceData: \(hasFaceData)")
+        
         userSession.setHasFaceData(hasFaceData)
 
         if !hasFaceData {
+            print("🗑️ [APP] Cleaning up local data due to hasFaceData=false")
             FaceIdStorageManager.shared.deleteAllFaceData()
             enrollmentGate.markNotEnrolled()
             scanGate.resetScanRequirement()
@@ -161,8 +186,15 @@ struct ByoSync_UserApp: App {
                 userInfo: ["hasFaceData": false]
             )
         } else {
+            print("✅ [APP] Marking user as enrolled")
             enrollmentGate.markEnrolled()
+            
+            // ✅ For new users who just got hasFaceData=true, ensure notifications are marked as processed
+            // This prevents them from getting stuck on empty screen
+            if hasProcessedPendingNotifications == false {
+                print("✅ [APP] New user - setting hasProcessedPendingNotifications=true")
+                hasProcessedPendingNotifications = true
+            }
         }
     }
 }
-

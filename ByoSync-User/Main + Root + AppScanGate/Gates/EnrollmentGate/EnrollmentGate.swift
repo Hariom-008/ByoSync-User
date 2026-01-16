@@ -22,21 +22,25 @@ final class EnrollmentGate: ObservableObject {
     func reload() {
         let raw = UserDefaults.standard.integer(forKey: key)
         state = EnrollmentState(rawValue: raw) ?? .unknown
+        print("🔄 [EnrollmentGate] Reloaded state: \(state)")
     }
 
     func markNotEnrolled() {
         state = .notEnrolled
         UserDefaults.standard.set(EnrollmentState.notEnrolled.rawValue, forKey: key)
+        print("❌ [EnrollmentGate] Marked as NOT enrolled")
     }
 
     func markEnrolled() {
         state = .enrolled
         UserDefaults.standard.set(EnrollmentState.enrolled.rawValue, forKey: key)
+        print("✅ [EnrollmentGate] Marked as enrolled")
     }
 
     func resetToUnknown() {
         state = .unknown
         UserDefaults.standard.set(EnrollmentState.unknown.rawValue, forKey: key)
+        print("❓ [EnrollmentGate] Reset to unknown")
     }
 
     var isEnrolled: Bool { state == .enrolled }

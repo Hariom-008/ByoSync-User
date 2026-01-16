@@ -22,28 +22,33 @@ final class AppScanGate: ObservableObject {
     /// Re-read from storage (useful on app start)
     func reloadFromStorage() {
         requireScan = UserDefaults.standard.bool(forKey: scanKey)
+        print("🔄 [AppScanGate] Reloaded from storage - requireScan: \(requireScan)")
     }
 
     /// Call after a successful scan
     func markScanCompleted() {
         requireScan = false
         UserDefaults.standard.set(false, forKey: scanKey)
+        print("✅ [AppScanGate] Scan marked as completed - requireScan: false")
     }
 
     /// Call when app is going inactive (lock screen, phone call, etc.)
     func markRequiredDueToInactive() {
         requireScan = true
         UserDefaults.standard.set(true, forKey: scanKey)
+        print("🔒 [AppScanGate] App going inactive - requireScan: true")
     }
 
     /// Call when app is about to terminate
     func markRequiredOnTerminate() {
         requireScan = true
         UserDefaults.standard.set(true, forKey: scanKey)
+        print("💀 [AppScanGate] App terminating - requireScan: true")
     }
+    
     func resetScanRequirement() {
         requireScan = false
         UserDefaults.standard.set(false, forKey: scanKey)
-        print("🔓 [AppScanGate] Scan requirement reset")
+        print("🔓 [AppScanGate] Scan requirement reset - requireScan: false")
     }
 }

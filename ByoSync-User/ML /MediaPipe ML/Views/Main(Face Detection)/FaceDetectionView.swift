@@ -269,34 +269,34 @@ struct FaceDetectionView: View {
                     Spacer()
 
                     // Export button at bottom
-                    if faceManager.totalFramesCollected > 0 {
-                        Button(action: exportFramesToCSV) {
-                            HStack(spacing: 8) {
-                                if isExporting {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                } else {
-                                    Image(systemName: "arrow.down.doc.fill")
-                                        .font(.system(size: 14))
-                                }
-
-                                Text(isExporting ? "Exporting..." : "Export Frames to CSV")
-                                    .font(.system(size: 14, weight: .semibold))
-
-                                Text("(\(faceManager.totalFramesCollected))")
-                                    .font(.system(size: 12, weight: .medium))
-                                    .opacity(0.7)
-                            }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(RoundedRectangle(cornerRadius: 12).fill(Color.blue.opacity(0.8)))
-                        }
-                        .disabled(isExporting)
-                        .padding(.bottom, 40)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
+//                    if faceManager.totalFramesCollected > 0 {
+//                        Button(action: exportFramesToCSV) {
+//                            HStack(spacing: 8) {
+//                                if isExporting {
+//                                    ProgressView()
+//                                        .scaleEffect(0.8)
+//                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+//                                } else {
+//                                    Image(systemName: "arrow.down.doc.fill")
+//                                        .font(.system(size: 14))
+//                                }
+//
+//                                Text(isExporting ? "Exporting..." : "Export Frames to CSV")
+//                                    .font(.system(size: 14, weight: .semibold))
+//
+//                                Text("(\(faceManager.totalFramesCollected))")
+//                                    .font(.system(size: 12, weight: .medium))
+//                                    .opacity(0.7)
+//                            }
+//                            .foregroundColor(.white)
+//                            .padding(.horizontal, 20)
+//                            .padding(.vertical, 12)
+//                            .background(RoundedRectangle(cornerRadius: 12).fill(Color.blue.opacity(0.8)))
+//                        }
+//                        .disabled(isExporting)
+//                        .padding(.bottom, 40)
+//                        .transition(.move(edge: .bottom).combined(with: .opacity))
+//                    }
                 }
             }
             .onReceive(

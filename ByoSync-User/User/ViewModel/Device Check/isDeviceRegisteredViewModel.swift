@@ -14,6 +14,7 @@ final class DeviceRegistrationViewModel: ObservableObject {
     /// Convenience flags
     @Published var isDeviceRegistered: Bool = false
     @Published var hasFaceData: Bool = false
+    @Published var userId:String = ""
 
     /// Error message to show in UI.
     @Published var errorMessage: String?
@@ -35,7 +36,7 @@ final class DeviceRegistrationViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
 
-        let userId = UserSession.shared.currentUserID // optional
+       // let userId = UserSession.shared.currentUserID // optional
         let deviceKey = DeviceIdentity.resolve()
 
         guard !deviceKey.isEmpty else {
@@ -71,6 +72,7 @@ final class DeviceRegistrationViewModel: ObservableObject {
                         self.response = resp
                         self.isDeviceRegistered = true
                         self.hasFaceData = resp.data.hasFaceData
+                        self.userId = resp.data.userId
                         self.errorMessage = nil
                         
                         #if DEBUG
@@ -81,9 +83,9 @@ final class DeviceRegistrationViewModel: ObservableObject {
                             "DEVICE_REG",
                             "Check success | registered=true | hasFaceData=\(resp.data.hasFaceData) | msg=\(resp.message)",
                             timeTakenMs: elapsedMs,
-                            user: userId
+                            user: self.userId
                         )
-                    } else {
+                    } else{
                         self.response = nil
                         self.isDeviceRegistered = false
                         self.hasFaceData = false
@@ -97,7 +99,7 @@ final class DeviceRegistrationViewModel: ObservableObject {
                             "DEVICE_REG",
                             "Backend failure | registered=false | msg=\(resp.message)",
                             timeTakenMs: elapsedMs,
-                            user: userId
+                            user: self.userId
                         )
                     }
 
@@ -118,7 +120,7 @@ final class DeviceRegistrationViewModel: ObservableObject {
                         "API failure | \(msg)",
                         error: error,
                         timeTakenMs: elapsedMs,
-                        user: userId
+                        user: self.userId
                     )
                 }
                 

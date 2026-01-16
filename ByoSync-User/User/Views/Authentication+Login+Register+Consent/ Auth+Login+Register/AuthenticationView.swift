@@ -469,12 +469,19 @@ struct AuthenticationView: View {
         }
         
         #if DEBUG
-        print("✅ [AuthView] Login allowed, navigating to face scan")
+        print("✅ [AuthView] Login allowed, preparing for face verification")
         #endif
         
+        // ✅ Set up for verification scan - RootView will handle presenting the modal
         FaceAuthManager.shared.setVerificationMode()
         enrollment.markEnrolled()
         enrollment.reload()
-        router.navigate(to: .mlScan, style: .fullScreenCover)
+        
+        // ✅ Trigger scan requirement - RootView will detect this and present MLScan
+        AppScanGate.shared.markRequiredDueToInactive() // This sets requireScan = true
+        
+        #if DEBUG
+        print("🎯 [AuthView] Scan requirement set, RootView will present verification modal")
+        #endif
     }
 }

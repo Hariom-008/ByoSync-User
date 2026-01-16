@@ -7,10 +7,13 @@ struct RootView: View {
     @EnvironmentObject var faceAuthManager: FaceAuthManager
     @EnvironmentObject var enrollmentGate: EnrollmentGate
     @EnvironmentObject var deviceRegistrationVM: DeviceRegistrationViewModel
+    
+    @StateObject var userDatabyIDVM: UserDataByIdViewModel = UserDataByIdViewModel()
 
     @Environment(\.hasProcessedPendingNotifications) private var hasProcessedPendingNotifications: Bool
 
     @State private var presentScan: Bool = false
+    @State private var isUpdatingScanState: Bool = false
 
     // ✅ cached keys
     private let isDeviceRegisteredKey = "isDeviceRegisteredKey"
@@ -59,17 +62,28 @@ struct RootView: View {
             ScanModal(
                 mode: faceAuthManager.currentMode,
                 onDone: {
+                    print("✅ [RootView] Scan completed in mode: \(faceAuthManager.currentMode)")
+                    
                     // ✅ If we just completed REGISTRATION successfully, persist that fact locally
                     if faceAuthManager.currentMode == .registration {
+                        print("📝 [RootView] Registration scan completed - updating local state")
                         userSession.setHasFaceData(true) // writes UserDefaults "hasFaceDataKey" too
                         enrollmentGate.markEnrolled()
                     }
 
-                    // ✅ Verification/Registration both should clear scan requirement
+                    // ✅ Clear scan requirement after any successful scan
+                    print("🔓 [RootView] Clearing scan requirement")
                     scanGate.markScanCompleted()
                     enrollmentGate.reload()
-
+                    
+                    userDatabyIDVM.fetch(userId: deviceRegistrationVM.userId, deviceKeyHash: HMACGenerator.generateHMAC(jsonString:  DeviceIdentity.resolve()))
+                    
+                    // ✅ Dismiss scan modal
+                    print("❌ [RootView] Dismissing scan modal")
                     presentScan = false
+                    
+                    // ✅ Reset debounce flag to allow future updates
+                    isUpdatingScanState = false
                 }
             )
         }
@@ -86,36 +100,75 @@ struct RootView: View {
     }
 
     private func updateScanPresentation() {
-        // 1) If logged in, wait for pending notifications processing to finish
-        if userSession.currentUser != nil && !hasProcessedPendingNotifications {
+        // ✅ Prevent multiple simultaneous updates
+        guard !isUpdatingScanState else {
+            print("⏭️ [RootView] Skipping scan update - already in progress")
+            return
+        }
+        
+        isUpdatingScanState = true
+        defer {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                isUpdatingScanState = false
+            }
+        }
+        
+        print("🔍 [RootView] Evaluating scan presentation...")
+        print("   - currentUser: \(userSession.currentUser?.userId ?? "nil")")
+        print("   - hasFaceData: \(userSession.hasFaceData)")
+        print("   - requireScan: \(scanGate.requireScan)")
+        print("   - hasProcessedNotifications: \(hasProcessedPendingNotifications)")
+        print("   - enrollmentState: \(enrollmentGate.state)")
+        print("   - cachedIsDeviceRegistered: \(cachedIsDeviceRegistered ?? false)")
+        print("   - cachedHasFaceData: \(cachedHasFaceData ?? false)")
+        
+        // 1) Not logged in - check login flow (device registered + has face data + scan required)
+        if userSession.currentUser == nil {
+            // ✅ LOGIN FLOW: Device registered with face data, user tapped login
+            if cachedIsDeviceRegistered == true && cachedHasFaceData == true && scanGate.requireScan {
+                print("✅ [RootView] Not logged in but scan required (LOGIN) -> Verification scan")
+                faceAuthManager.setVerificationMode()
+                presentScan = true
+                return
+            }
+            
+            // ✅ REGISTRATION FLOW: Device registered but needs face enrollment
+            if cachedIsDeviceRegistered == true && cachedHasFaceData == false {
+                print("✅ [RootView] Not logged in but device registered + no face data -> Registration scan")
+                faceAuthManager.setRegistrationMode()
+                presentScan = true
+                return
+            }
+            
+            print("❌ [RootView] Not logged in - no scan needed")
             presentScan = false
             return
         }
-
-        // 2) If logged in and hasFaceData=false -> force registration scan
-        if userSession.currentUser != nil && userSession.hasFaceData == false {
+        
+        // 2) Logged in - FOR NEW USERS: Skip notification wait, go straight to registration
+        if userSession.hasFaceData == false {
+            print("✅ [RootView] Logged in + no face data -> Registration scan (NEW USER)")
             faceAuthManager.setRegistrationMode()
             presentScan = true
             return
         }
-
-        // 3) If logged in and scan required -> verification scan
-        if userSession.currentUser != nil && userSession.hasFaceData == true && scanGate.requireScan {
+        
+        // 3) Logged in - FOR EXISTING USERS: Wait for notification processing before showing verification scan
+        if !hasProcessedPendingNotifications {
+            print("⏳ [RootView] Logged in - waiting for notification processing")
+            presentScan = false
+            return
+        }
+        
+        // 4) Logged in + has face data + scan required -> verification scan
+        if scanGate.requireScan {
+            print("✅ [RootView] Logged in + has face data + scan required -> Verification scan")
             faceAuthManager.setVerificationMode()
             presentScan = true
             return
         }
-
-        // 4) Not logged in:
-        //    If device registered but hasFaceData=false -> open scan in registration mode
-        if userSession.currentUser == nil,
-           cachedIsDeviceRegistered == true,
-           cachedHasFaceData == false {
-            faceAuthManager.setRegistrationMode()
-            presentScan = true
-            return
-        }
-
+        
+        print("❌ [RootView] No scan needed")
         presentScan = false
     }
 }
