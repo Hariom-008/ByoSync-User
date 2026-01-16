@@ -264,8 +264,8 @@ extension FaceManager {
         let cachedRecords = preprocessRecords(RemoteFaceIdCache.faceIds)
         print("✅ [Verification] Preprocessed \(cachedRecords.count) records")
         
-        // ✅ 2. Select best 5 frames based on IOD closeness
-        let framesToVerify = selectBestFrames(from: framesToUse, count: 5)
+        // ✅ 2. Select best 8 frames based on IOD closeness
+        let framesToVerify = selectBestFrames(from: framesToUse, count: 8)
 
         #if DEBUG
         let iodList = framesToVerify.map { String(format: "%.4f", Double($0.iod * 100)) }.joined(separator: ", ")
@@ -374,10 +374,10 @@ extension FaceManager {
 
     private func selectBestFrames(from frames: [FrameDistance], count: Int) -> [FrameDistance] {
         // Strategy: Pick center frames (most stable poses)
-        let center = frames.count / 2
-        let halfRange = count / 2
-        let start = max(0, center - halfRange)
-        let end = min(frames.count, start + count)
+        let center = frames.count / 2 // 5
+        let halfRange = count / 2     // 4
+        let start = max(0, center - halfRange) // 1
+        let end = min(frames.count, start + count) // (10,1+5)
         return Array(frames[start..<end])
     }
     

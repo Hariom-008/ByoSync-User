@@ -42,6 +42,9 @@ struct RootView: View {
             scanGate.reloadFromStorage()
             updateScanPresentation()
         }
+        .onChange(of: presentScan){ _, _  in
+          updateScanPresentation()
+        }
         .onChange(of: hasProcessedPendingNotifications) { _, _ in
             updateScanPresentation()
         }
@@ -56,6 +59,12 @@ struct RootView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("EnrollmentStatusChanged"))) { _ in
             enrollmentGate.reload()
+            updateScanPresentation()
+        }
+        .onChange(of: deviceRegistrationVM.isDeviceRegistered) { _, _ in
+            updateScanPresentation()
+        }
+        .onChange(of: deviceRegistrationVM.hasFaceData) { _, _ in
             updateScanPresentation()
         }
         .fullScreenCover(isPresented: $presentScan) {
@@ -95,10 +104,9 @@ struct RootView: View {
         if userSession.currentUser != nil {
             MainTabView()
         } else {
-                AuthenticationView()
-            }
+              AuthenticationView()
+        }
     }
-
     private func updateScanPresentation() {
         // ✅ Prevent multiple simultaneous updates
         guard !isUpdatingScanState else {
@@ -119,28 +127,28 @@ struct RootView: View {
         print("   - requireScan: \(scanGate.requireScan)")
         print("   - hasProcessedNotifications: \(hasProcessedPendingNotifications)")
         print("   - enrollmentState: \(enrollmentGate.state)")
-        print("   - cachedIsDeviceRegistered: \(cachedIsDeviceRegistered ?? false)")
-        print("   - cachedHasFaceData: \(cachedHasFaceData ?? false)")
+        print("   - deviceVM.isDeviceRegistered: \(deviceRegistrationVM.isDeviceRegistered)")
+        print("   - deviceVM.hasFaceData: \(deviceRegistrationVM.hasFaceData)")
         
-        // 1) Not logged in - check login flow (device registered + has face data + scan required)
+        // 1) Not logged in - check login flow
         if userSession.currentUser == nil {
-            // ✅ LOGIN FLOW: Device registered with face data, user tapped login
-            if cachedIsDeviceRegistered == true && cachedHasFaceData == true && scanGate.requireScan {
-                print("✅ [RootView] Not logged in but scan required (LOGIN) -> Verification scan")
+            // ✅ RETURNING USER: Use live deviceRegistrationVM values (works on reinstall)
+            if deviceRegistrationVM.isDeviceRegistered && deviceRegistrationVM.hasFaceData {
+                print("✅ [RootView] Returning user detected (device registered + has face) -> Auto-verification scan")
                 faceAuthManager.setVerificationMode()
                 presentScan = true
                 return
             }
             
             // ✅ REGISTRATION FLOW: Device registered but needs face enrollment
-            if cachedIsDeviceRegistered == true && cachedHasFaceData == false {
+            if deviceRegistrationVM.isDeviceRegistered && !deviceRegistrationVM.hasFaceData {
                 print("✅ [RootView] Not logged in but device registered + no face data -> Registration scan")
                 faceAuthManager.setRegistrationMode()
                 presentScan = true
                 return
             }
             
-            print("❌ [RootView] Not logged in - no scan needed")
+            print("❌ [RootView] Not logged in - no scan needed (new device or loading)")
             presentScan = false
             return
         }

@@ -411,24 +411,24 @@ struct FaceDetectionView: View {
             }
 
             // ✅ FIXED: Alert with proper reset action
-            .alert(alertTitle, isPresented: $showAlert) {
-                Button("OK") {
-                    print("🔄 [Alert] User tapped OK, resetting state...")
-                    
-                    // ✅ Reset verification state if in verification mode
-                    if faceAuthManager.currentMode == .verification {
-                        faceManager.resetVerificationState()
-                    }
-                    
-                    // ✅ Reset auto-trigger flag
-                    hasAutoTriggered = false
-                    
-                    // ✅ Dismiss alert
-                    showAlert = false
-                }
-            } message: {
-                Text(alertMessage)
-            }
+//            .alert(alertTitle, isPresented: $showAlert) {
+//                Button("OK") {
+//                    print("🔄 [Alert] User tapped OK, resetting state...")
+//                    
+//                    // ✅ Reset verification state if in verification mode
+//                    if faceAuthManager.currentMode == .verification {
+//                        faceManager.resetVerificationState()
+//                    }
+//                    
+//                    // ✅ Reset auto-trigger flag
+//                    hasAutoTriggered = false
+//                    
+//                    // ✅ Dismiss alert
+//                    showAlert = false
+//                }
+//            } message: {
+//                Text(alertMessage)
+//            }
 
             .alert("📥 Export Successful", isPresented: $showExportSuccess) {
                 Button("OK") { showExportSuccess = false }
