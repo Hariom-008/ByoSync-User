@@ -23,7 +23,7 @@ extension FaceManager: FaceLandmarkerLiveStreamDelegate {
             // 🔒 Increase thresholds to be stricter about “face detected”
             options.minFaceDetectionConfidence = 0.80
             options.minFacePresenceConfidence = 0.80
-            options.minTrackingConfidence = 0.90
+            options.minTrackingConfidence = 0.80
             
             faceLandmarker = try FaceLandmarker(options: options)
             print("✅ MediaPipe Face Landmarker initialized")

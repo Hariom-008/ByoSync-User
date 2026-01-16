@@ -4,7 +4,7 @@ struct DirectionalGuidanceOverlay: View {
     @ObservedObject var faceManager: FaceManager
 
     // MARK: - Thresholds
-    private let IOD_NORM_MAX: Float = 0.31
+    private let IOD_NORM_MAX: Float = 0.22
 
     // If you want different stability thresholds per phase, tune here.
     private let REG_CENTER_PITCH_THR: Float = 0.12
