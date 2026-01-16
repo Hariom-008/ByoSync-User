@@ -15,7 +15,7 @@ extension EnvironmentValues {
         set { self[HasProcessedPendingNotificationsKey.self] = newValue }
     }
 }
-    
+
 @main
 struct ByoSync_UserApp: App {
     @StateObject private var cryptoManager = CryptoManager()
