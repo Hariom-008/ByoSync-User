@@ -563,7 +563,7 @@ struct FaceDetectionView: View {
     // MARK: - Login Handler
 
     private func handleLogin() {
-        print("🔐 [Verification] Starting verification process...")
+      //  print("🔐 [Verification] Starting verification process...")
         isProcessing = true
 
         // If we did not fetch (hasFaceData false), block immediately.

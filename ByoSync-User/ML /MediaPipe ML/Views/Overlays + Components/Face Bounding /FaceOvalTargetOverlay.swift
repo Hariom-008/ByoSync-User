@@ -58,17 +58,17 @@ struct TargetFaceOvalOverlay: View {
                     // Face not detected or distance very wrong
                     borderColor = Color.red.opacity(0.8)
                     shouldGlow = false
-                    print("🔴 [Oval] No valid face detected")
+                  //  print("🔴 [Oval] No valid face detected")
                 } else if isAligned {
                     // Perfect alignment - green with glow
                     borderColor = Color.green
                     shouldGlow = true
-                    print("🟢 [Oval] Face aligned perfectly")
+                  //  print("🟢 [Oval] Face aligned perfectly")
                 } else {
                     // Detected but needs adjustment - yellow
                     borderColor = Color.yellow.opacity(0.9)
                     shouldGlow = false
-                    print("🟡 [Oval] Face detected, needs alignment")
+                  //  print("🟡 [Oval] Face detected, needs alignment")
                 }
                 
                 // --- 3) Draw main border ---

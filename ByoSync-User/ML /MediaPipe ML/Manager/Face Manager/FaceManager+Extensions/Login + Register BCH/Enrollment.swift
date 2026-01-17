@@ -244,8 +244,6 @@ extension FaceManager {
         framesToUse: [FrameDistance],
         completion: @escaping (Result<BCHBiometric.VerificationResult, Error>) -> Void
     ) {
-       
-        
         guard
             let saltHex = RemoteFaceIdCache.salt,
             isHex(saltHex), saltHex.count == 64,
@@ -264,21 +262,35 @@ extension FaceManager {
         let cachedRecords = preprocessRecords(RemoteFaceIdCache.faceIds)
         print("✅ [Verification] Preprocessed \(cachedRecords.count) records")
         
-        // ✅ 2. Select best 8 frames based on IOD closeness
-        let framesToVerify = selectBestFrames(from: framesToUse, count: 8)
+        // ✅ 2. Use all frames directly (no filtering)
+        let framesToVerify = framesToUse
+        print("✅ [Verification] Using \(framesToVerify.count) frames for verification")
 
         #if DEBUG
         let iodList = framesToVerify.map { String(format: "%.4f", Double($0.iod * 100)) }.joined(separator: ", ")
-        print("✅ [Verification] Selected 3 frames by IOD target: [\(iodList)]")
+        print("📊 [Verification] Frame IODs: [\(iodList)]")
         #endif
         
         DispatchQueue.global(qos: .userInitiated).async {
             
-            var bestResult: (matches: Int, frameIdx: Int)? = nil
-            let resultLock = NSLock()
+            // ✅ Early exit flag - stops processing once match is found
+            var matchFound = false
+            let matchLock = NSLock()
+            var successFrameIdx: Int? = nil
             
-            // ✅ 3. Parallel frame processing
+            // ✅ 3. Parallel frame processing with early exit
             DispatchQueue.concurrentPerform(iterations: framesToVerify.count) { idx in
+                
+                // ✅ Check if match already found - skip processing
+                matchLock.lock()
+                let shouldSkip = matchFound
+                matchLock.unlock()
+                
+                if shouldSkip {
+                    print("⏭️ [Verification] Frame \(idx) skipped - match already found")
+                    return
+                }
+                
                 let frame = framesToVerify[idx]
                 
                 // ✅ 4. IOD pre-filter
@@ -288,9 +300,17 @@ extension FaceManager {
                 
                 print("🎯 [Verification] Frame \(idx): \(relevantRecords.count)/\(cachedRecords.count) records pass IOD")
                 
-                var matchCount = 0
-                
                 for record in relevantRecords {
+                    // ✅ Double-check if match found during iteration
+                    matchLock.lock()
+                    let alreadyMatched = matchFound
+                    matchLock.unlock()
+                    
+                    if alreadyMatched {
+                        print("⏭️ [Verification] Frame \(idx) stopping mid-process - match found")
+                        return
+                    }
+                    
                     // Scale distances
                     let scaledDistances = frame.distances.map {
                         Double($0 * (record.iod / 100))
@@ -315,28 +335,26 @@ extension FaceManager {
                     let tokenCandidate = sha256(kRecovered + v.rBytes32)
                     
                     if tokenCandidate == record.tokenBytes {
-                        matchCount += 1
-                        print("✅ [Verification] Frame \(idx) matched!")
-                        break // ✅ Early exit after first match
+                        print("✅ [Verification] Frame \(idx) MATCHED! Stopping all processing...")
+                        
+                        // ✅ Set match flag to stop other iterations
+                        matchLock.lock()
+                        matchFound = true
+                        successFrameIdx = idx
+                        matchLock.unlock()
+                        
+                        return // ✅ Exit this frame's processing immediately
                     }
-                }
-                
-                // ✅ Thread-safe result update
-                if matchCount > 0 {
-                    resultLock.lock()
-                    if bestResult == nil || matchCount > bestResult!.matches {
-                        bestResult = (matchCount, idx)
-                    }
-                    resultLock.unlock()
                 }
             }
             
-            let passed = bestResult != nil
+            // ✅ All frames processed or early exit occurred
+            let passed = matchFound
             
             if passed {
-                print("✅ [Verification] SUCCESS - Best frame: \(bestResult!.frameIdx)")
+                print("✅ [Verification] SUCCESS - Matched on frame: \(successFrameIdx!)")
             } else {
-                print("❌ [Verification] FAILED - No matching frames")
+                print("❌ [Verification] FAILED - No matching frames found")
             }
             
             let result = BCHBiometric.VerificationResult(
@@ -348,7 +366,7 @@ extension FaceManager {
                 recoveredHashPreview: "",
                 numErrorsDetected: 0,
                 totalBitsCompared: 0,
-                notes: "Verified \(framesToVerify.count) frames, best=\(bestResult?.frameIdx ?? -1)"
+                notes: "Verified \(framesToVerify.count) frames, matched=\(successFrameIdx ?? -1)"
             )
             
             DispatchQueue.main.async { completion(.success(result)) }
@@ -370,15 +388,6 @@ extension FaceManager {
                 helper: record.helper
             )
         }
-    }
-
-    private func selectBestFrames(from frames: [FrameDistance], count: Int) -> [FrameDistance] {
-        // Strategy: Pick center frames (most stable poses)
-        let center = frames.count / 2 // 5
-        let halfRange = count / 2     // 4
-        let start = max(0, center - halfRange) // 1
-        let end = min(frames.count, start + count) // (10,1+5)
-        return Array(frames[start..<end])
     }
     
     struct CachedRecord {

@@ -65,7 +65,7 @@ extension FaceManager {
         let frac = CGFloat(insideCount) / CGFloat(total)
         faceisInsideFaceOval = (frac >= requiredInsideFraction)
         
-        print("🎯 Face inside static oval: \(faceisInsideFaceOval) (\(insideCount)/\(total) points, \(Int(frac*100))%)")
+       // print("🎯 Face inside static oval: \(faceisInsideFaceOval) (\(insideCount)/\(total) points, \(Int(frac*100))%)")
     }
 
     /// Builds static geometric oval and checks if face is inside
@@ -127,6 +127,6 @@ extension FaceManager {
             requiredInsideFraction: 1.0  // Use 0.9 for more tolerance
         )
         
-        print("📐 Static oval: center(\(ovalCenter.x), \(ovalCenter.y)), size(\(ovalWidth) x \(ovalHeight))")
+       // print("📐 Static oval: center(\(ovalCenter.x), \(ovalCenter.y)), size(\(ovalWidth) x \(ovalHeight))")
     }
 }
