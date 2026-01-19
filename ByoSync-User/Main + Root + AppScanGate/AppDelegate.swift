@@ -342,6 +342,18 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }
         print("🧬 hasFaceData=\(v) from=\(source)")
 
+        // ✅ SAFETY CHECK: Don't wipe data if registration just happened
+        if !v {
+            let lastRegistrationTime = UserDefaults.standard.double(forKey: "lastRegistrationTimestamp")
+            let timeSinceRegistration = Date().timeIntervalSince1970 - lastRegistrationTime
+            
+            // If registration happened in last 5 seconds, ignore notification saying false
+            if timeSinceRegistration < 5.0 {
+                print("⚠️ [AppDelegate] Ignoring hasFaceData=false notification - registration just completed \(timeSinceRegistration)s ago")
+                return
+            }
+        }
+
         UserSession.shared.setHasFaceData(v)
         
         if !v {

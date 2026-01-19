@@ -25,7 +25,7 @@ struct TargetFaceOvalOverlay: View {
 
                 context.fill(
                     cutout,
-                    with: .color(.black.opacity(0.65)),
+                    with: .color(.black.opacity(0.95)),
                     style: FillStyle(eoFill: true) // even-odd => punches a hole for the oval
                 )
             }

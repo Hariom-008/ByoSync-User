@@ -76,8 +76,19 @@ struct RootView: View {
                     // ✅ If we just completed REGISTRATION successfully, persist that fact locally
                     if faceAuthManager.currentMode == .registration {
                         print("📝 [RootView] Registration scan completed - updating local state")
-                        userSession.setHasFaceData(true) // writes UserDefaults "hasFaceDataKey" too
+                        
+                        // ✅ Record timestamp for safety check
+                        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "lastRegistrationTimestamp")
+                        
+                        userSession.setHasFaceData(true)
                         enrollmentGate.markEnrolled()
+                        
+                        // ✅ CRITICAL: Update deviceRegistrationVM immediately
+                        deviceRegistrationVM.hasFaceData = true
+                        print("✅ [RootView] Updated deviceRegistrationVM.hasFaceData = true")
+                        
+                        // ✅ Persist to UserDefaults as backup
+                        UserDefaults.standard.set(true, forKey: "hasFaceDataKey")
                     }
 
                     // ✅ Clear scan requirement after any successful scan
@@ -85,7 +96,15 @@ struct RootView: View {
                     scanGate.markScanCompleted()
                     enrollmentGate.reload()
                     
-                    userDatabyIDVM.fetch(userId: deviceRegistrationVM.userId, deviceKeyHash: HMACGenerator.generateHMAC(jsonString:  DeviceIdentity.resolve()))
+                    // ✅ IMPORTANT: Delay backend fetch to give server time to process
+                    // This prevents race condition where backend returns old hasFaceData=false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        print("🔄 [RootView] Fetching updated user data from backend...")
+                        userDatabyIDVM.fetch(
+                            userId: deviceRegistrationVM.userId,
+                            deviceKeyHash: HMACGenerator.generateHMAC(jsonString: DeviceIdentity.resolve())
+                        )
+                    }
                     
                     // ✅ Dismiss scan modal
                     print("❌ [RootView] Dismissing scan modal")
@@ -130,8 +149,17 @@ struct RootView: View {
         print("   - deviceVM.isDeviceRegistered: \(deviceRegistrationVM.isDeviceRegistered)")
         print("   - deviceVM.hasFaceData: \(deviceRegistrationVM.hasFaceData)")
         
+        // ✅ Debug: Check registration timestamp
+        let lastRegTime = UserDefaults.standard.double(forKey: "lastRegistrationTimestamp")
+        let timeSinceReg = Date().timeIntervalSince1970 - lastRegTime
+        if lastRegTime > 0 {
+            print("   - lastRegistration: \(timeSinceReg)s ago")
+        }
+        
         // 1) Not logged in - check login flow
         if userSession.currentUser == nil {
+            print("📍 [RootView] Decision path: Not logged in")
+            
             // ✅ RETURNING USER: Use live deviceRegistrationVM values (works on reinstall)
             if deviceRegistrationVM.isDeviceRegistered && deviceRegistrationVM.hasFaceData {
                 print("✅ [RootView] Returning user detected (device registered + has face) -> Auto-verification scan")
@@ -155,6 +183,7 @@ struct RootView: View {
         
         // 2) Logged in - FOR NEW USERS: Skip notification wait, go straight to registration
         if userSession.hasFaceData == false {
+            print("📍 [RootView] Decision path: Logged in + no face data")
             print("✅ [RootView] Logged in + no face data -> Registration scan (NEW USER)")
             faceAuthManager.setRegistrationMode()
             presentScan = true
@@ -163,6 +192,7 @@ struct RootView: View {
         
         // 3) Logged in - FOR EXISTING USERS: Wait for notification processing before showing verification scan
         if !hasProcessedPendingNotifications {
+            print("📍 [RootView] Decision path: Logged in + has face + waiting for notifications")
             print("⏳ [RootView] Logged in - waiting for notification processing")
             presentScan = false
             return
@@ -170,12 +200,14 @@ struct RootView: View {
         
         // 4) Logged in + has face data + scan required -> verification scan
         if scanGate.requireScan {
+            print("📍 [RootView] Decision path: Logged in + has face + scan required")
             print("✅ [RootView] Logged in + has face data + scan required -> Verification scan")
             faceAuthManager.setVerificationMode()
             presentScan = true
             return
         }
         
+        print("📍 [RootView] Decision path: Default - no scan needed")
         print("❌ [RootView] No scan needed")
         presentScan = false
     }

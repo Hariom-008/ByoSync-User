@@ -172,6 +172,19 @@ struct ByoSync_UserApp: App {
     private func handleEnrollmentStatusChange(hasFaceData: Bool) {
         print("🎯 [APP] handleEnrollmentStatusChange called with hasFaceData: \(hasFaceData)")
         
+        // ✅ SAFETY CHECK: Don't downgrade from true to false if we just completed registration
+        let currentHasFaceData = userSession.hasFaceData
+        if currentHasFaceData == true && hasFaceData == false {
+            let lastRegistrationTime = UserDefaults.standard.double(forKey: "lastRegistrationTimestamp")
+            let timeSinceRegistration = Date().timeIntervalSince1970 - lastRegistrationTime
+            
+            // If registration happened in last 5 seconds, ignore backend saying false
+            if timeSinceRegistration < 5.0 {
+                print("⚠️ [APP] Ignoring hasFaceData=false - registration just completed \(timeSinceRegistration)s ago")
+                return
+            }
+        }
+        
         userSession.setHasFaceData(hasFaceData)
 
         if !hasFaceData {
