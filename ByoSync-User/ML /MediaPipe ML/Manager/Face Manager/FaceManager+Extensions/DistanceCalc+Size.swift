@@ -103,18 +103,18 @@ extension FaceManager {
                 self.rejectedFrames += 1
                 
                 // Debug logging for verification mode to understand rejections
-                if self.faceAuthManager.currentMode == .verification {
-                    #if DEBUG
-                    print("❌ [Verification] Frame rejected (#\(self.rejectedFrames))")
-                    print("   • IOD valid: \(self.iodIsValid)")
-                    print("   • IOD normalized: \(String(format: "%.4f", self.iodNormalized)) (max: \(self.IOD_NORM_MAX))")
-                    print("   • Head pose stable: \(self.isHeadPoseStable())")
-                    print("   • Face in oval: \(self.faceisInsideFaceOval)")
-                    print("   • Pitch: \(String(format: "%.2f", self.Pitch))")
-                    print("   • Yaw: \(String(format: "%.2f", self.Yaw))")
-                    print("   • Roll: \(String(format: "%.2f", self.Roll))")
-                    #endif
-                }
+//                if self.faceAuthManager.currentMode == .verification {
+//                    #if DEBUG
+//                    print("❌ [Verification] Frame rejected (#\(self.rejectedFrames))")
+//                    print("   • IOD valid: \(self.iodIsValid)")
+//                    print("   • IOD normalized: \(String(format: "%.4f", self.iodNormalized)) (max: \(self.IOD_NORM_MAX))")
+//                    print("   • Head pose stable: \(self.isHeadPoseStable())")
+//                    print("   • Face in oval: \(self.faceisInsideFaceOval)")
+//                    print("   • Pitch: \(String(format: "%.2f", self.Pitch))")
+//                    print("   • Yaw: \(String(format: "%.2f", self.Yaw))")
+//                    print("   • Roll: \(String(format: "%.2f", self.Roll))")
+//                    #endif
+//                }
             }
             return
         }
