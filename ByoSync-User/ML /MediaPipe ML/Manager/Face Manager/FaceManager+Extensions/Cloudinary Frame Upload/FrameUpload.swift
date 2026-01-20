@@ -60,9 +60,11 @@ extension FaceManager {
             do {
                 print("☁️ [Upload] Frame \(frameIndex) - Uploading to Cloudinary...")
 
-                let device = DeviceIdentity.resolve()
+                let deviceID = await DeviceIdentity.resolve().suffix(10)
                 let unix = Int(Date().timeIntervalSince1970)
-                let fileName = "\(device)_\(unix)_\(frameIndex).jpg"
+                let decryptedPhone = await CryptoManager.shared.decrypt(encryptedData: UserSession.shared.currentUser?.phoneNumber ?? "")
+                let identifier = decryptedPhone?.suffix(5)
+                let fileName = "\(deviceID)_\(identifier ?? "nil")_\(unix)_\(frameIndex).jpg"
 
                 let url = try await CloudinaryManager.shared.uploadImageAsFile(
                     image,
