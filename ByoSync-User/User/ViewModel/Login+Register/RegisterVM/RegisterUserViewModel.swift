@@ -106,12 +106,12 @@ final class RegisterUserViewModel: ObservableObject {
         )
 
         let startTime = CFAbsoluteTimeGetCurrent()
-
+        let e164Phone = normalizeToE164India(trimmedPhone)
         repository.registerUser(
             firstName: trimmedFirstName,
             lastName: trimmedLastName,
             email: trimmedEmail,
-            phoneNumber: trimmedPhone,
+            phoneNumber: e164Phone,
             deviceId: deviceId,
             deviceName: deviceName
         ) { [weak self] result in
@@ -147,12 +147,13 @@ final class RegisterUserViewModel: ObservableObject {
                 )
                 return
             }
-
+            let e164Phone = normalizeToE164India(trimmedPhone)
+            
             let user = User(
                 firstName: trimmedFirstName,
                 lastName: trimmedLastName,
                 email: trimmedEmail,
-                phoneNumber: trimmedPhone,
+                phoneNumber: e164Phone,
                 deviceKey: device.deviceKey,
                 deviceName: device.deviceName,
                 userId: userData.id,
@@ -203,4 +204,30 @@ final class RegisterUserViewModel: ObservableObject {
         errorMessage = message
         showError = true
     }
+    
+    private func normalizeToE164India(_ raw: String) -> String {
+        // Keep digits only
+        let digits = raw.filter(\.isNumber)
+
+        // If user already typed country code like 91XXXXXXXXXX
+        if digits.count == 12, digits.hasPrefix("91") {
+            return "+" + digits
+        }
+
+        // If user typed 10-digit Indian mobile number
+        if digits.count == 10 {
+            return "+91" + digits
+        }
+
+        // Fallback: if user typed +<cc>... in the UI, keep it (strip spaces/dashes)
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("+") {
+            let afterPlusDigits = trimmed.dropFirst().filter(\.isNumber)
+            return "+" + afterPlusDigits
+        }
+
+        // Otherwise return digits (or throw/validate)
+        return digits
+    }
+
 }
