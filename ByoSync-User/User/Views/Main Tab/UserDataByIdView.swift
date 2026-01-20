@@ -26,6 +26,11 @@ struct UserDataByIdView: View {
     @StateObject private var viewModel: UserDataByIdViewModel
     @StateObject private var userSession: UserSession = UserSession.shared
     @Environment(\.dismiss) private var dismiss
+    
+    @State private var initialDelayDone: Bool = false
+    @State private var hasTriggeredInitialFetch: Bool = false
+
+    
     let cryptoManager = CryptoManager.shared
 
     @MainActor
@@ -48,7 +53,7 @@ struct UserDataByIdView: View {
             .ignoresSafeArea()
 
             // ✅ Prevent "No data" flash: show loading before first attempt
-            if viewModel.isLoading {
+            if viewModel.isLoading || !initialDelayDone {
                 loadingView
             } else if let error = viewModel.errorText {
                 errorView(error)
@@ -94,20 +99,34 @@ struct UserDataByIdView: View {
         .onAppear {
             print("👁️ UserDataByIdView appeared")
 
+            // Avoid double-triggers if view re-appears due to nav/scene updates
+            guard !hasTriggeredInitialFetch else { return }
+            hasTriggeredInitialFetch = true
+
+            // Show loader immediately (prevents "empty" flash)
+            viewModel.beginLoading(clearOldData: true)
+
+            Task { @MainActor in
+                // 2s delay with progress visible
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                initialDelayDone = true
+
                 switch mode {
                 case .live:
                     fetchUserData()
-                    
-#if DEBUG
+
+        #if DEBUG
                 case .mockContent:
                     viewModel.loadMock()
                 case .mockLoading:
                     viewModel.loadMockLoading()
                 case .mockError:
                     viewModel.loadMockError()
-#endif
+        #endif
                 }
+            }
         }
+
         // ✅ When data arrives, update session (no async needed)
         .onChange(of: viewModel.user) { newUser in
             guard let user = newUser else { return }
