@@ -25,7 +25,6 @@ enum BCHBiometricError: Error, LocalizedError {
     }
 }
 
-
 @_silgen_name("init_bch")
 func c_init_bch(_ m: Int32, _ t: Int32, _ primPoly: UInt32) -> OpaquePointer?
 
@@ -45,9 +44,9 @@ func c_correctbits_bch(_ ctl: OpaquePointer?, _ databits: UnsafeMutablePointer<U
 func c_free_bch(_ ctl: OpaquePointer?)
 
 
-final class BCHBiometric {
 
-    // Keep in sync with Android/JS
+final class BCHBiometric {
+    
     static let NUM_DISTANCES = 316
     static let BITS_PER_DISTANCE = 8
     static let TOTAL_DATA_BITS = NUM_DISTANCES * BITS_PER_DISTANCE
@@ -57,7 +56,6 @@ final class BCHBiometric {
 
     typealias BitArray = [UInt8]
 
-    // ---- Public types you already used elsewhere ----
     struct VerificationResult: Codable {
         let success: Bool
         let matchPercentage: Double
@@ -70,7 +68,6 @@ final class BCHBiometric {
         let notes: String?
     }
 
-    // ---- Android-equivalent frame primitives ----
     struct FrameRecord {
         let helper: String         // length n, "0/1" string
         let rBytesFull: Data       // packed R (K bits -> bytes)
@@ -110,7 +107,6 @@ final class BCHBiometric {
         initialized = true
     }
 
-    // MARK: - Public: register/verify frame (Android-aligned)
     func registerFrame(distances: [Double]) throws -> FrameRecord {
         try ensureInit()
 
@@ -211,13 +207,12 @@ final class BCHBiometric {
         return dataBuf + eccBuf
     }
 
-    // MARK: - Distances -> bits (Android-style normalization)
+    // MARK: - Distances -> bits
     private func distancesToBits(_ distances: [Double]) throws -> BitArray {
         guard distances.count == Self.NUM_DISTANCES else {
             throw NSError(domain: "BCH", code: 3, userInfo: [NSLocalizedDescriptionKey: "Expected \(Self.NUM_DISTANCES) distances, got \(distances.count)"])
         }
 
-        // Guard NaN/Inf like Android validateDistances()
         for d in distances {
             if d.isNaN || d.isInfinite {
                 throw NSError(domain: "BCH", code: 4, userInfo: [NSLocalizedDescriptionKey: "Distance contained NaN/Inf"])
@@ -234,8 +229,9 @@ final class BCHBiometric {
             normalized = Array(repeating: 128, count: distances.count)
         } else {
             normalized = distances.map { d in
+                
                 let x = (d - minVal) / range
-                // Fixed (Correct - Round Half Up, matches Android)
+
                 let v = Int((x * 255.0).rounded(.toNearestOrAwayFromZero))
                 
                 return min(255, max(0, v))
@@ -268,7 +264,6 @@ final class BCHBiometric {
         return out
     }
 
-    // Matches Android bitsToBytes: MSB-first packing + pad last byte
     private func bitsToBytes(_ bits: BitArray) -> Data {
         let outCount = (bits.count + 7) / 8
         var out = [UInt8](repeating: 0, count: outCount)
@@ -312,7 +307,7 @@ final class BCHBiometric {
     private func bitStringToArray(_ s: String) -> BitArray {
         var out = BitArray()
         out.reserveCapacity(s.count)
-        for ch in s.utf8 { out.append(ch == 49 ? 1 : 0) } // '1' = 49
+        for ch in s.utf8 { out.append(ch == 49 ? 1 : 0) }
         return out
     }
 

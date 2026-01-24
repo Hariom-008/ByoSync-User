@@ -7,8 +7,7 @@ struct EnterNumberView: View {
     @EnvironmentObject var router: Router
     @FocusState private var isPhoneFieldFocused: Bool
     @Environment(\.dismiss) var dismiss
-
-    // ✅ New alerts
+    
     @State private var showPhoneExistsAlert: Bool = false
     @State private var phoneExistsMessage: String = ""
 
@@ -24,7 +23,6 @@ struct EnterNumberView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                // Header
                 VStack(spacing: 8) {
                     Text("Enter your phone number")
                         .font(.title2)
@@ -37,7 +35,6 @@ struct EnterNumberView: View {
                 .padding(.top, 60)
                 .padding(.bottom, 40)
 
-                // Phone Number Input
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Phone Number")
                         .font(.subheadline)
@@ -45,7 +42,6 @@ struct EnterNumberView: View {
                         .foregroundColor(.secondary)
 
                     HStack(spacing: 12) {
-                        // Country Code Picker
                         Menu {
                             ForEach(countryCodes, id: \.self) { code in
                                 Button {
@@ -73,8 +69,7 @@ struct EnterNumberView: View {
                             .background(Color(.systemGray6))
                             .cornerRadius(10)
                         }
-
-                        // Phone Number Field
+                        
                         TextField("6234567890", text: $viewModel.phoneNumber)
                             .keyboardType(.phonePad)
                             .focused($isPhoneFieldFocused)
@@ -108,8 +103,7 @@ struct EnterNumberView: View {
                 .padding(.horizontal, 24)
 
                 Spacer()
-
-                // Continue Button
+                
                 Button {
                     isPhoneFieldFocused = false
                     Task {
@@ -157,26 +151,16 @@ struct EnterNumberView: View {
                 }
             }
         }
-
-        // Existing OTP error
         .alert("Error", isPresented: $viewModel.showError) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(viewModel.errorMessage ?? "Something went wrong.")
         }
-
-        // ✅ New: phone already exists
         .alert("Phone number already exists", isPresented: $showPhoneExistsAlert) {
-            Button("OK", role: .cancel) {
-                // optional: clear + refocus
-                // viewModel.phoneNumber = ""
-                // isPhoneFieldFocused = true
-            }
+            Button("OK", role: .cancel) {}
         } message: {
             Text(phoneExistsMessage)
         }
-
-        // ✅ New: lookup error (network/server)
         .alert("Error", isPresented: $showLookupErrorAlert) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -195,16 +179,13 @@ struct EnterNumberView: View {
             
         }
     }
-
-    // MARK: - Logic
-
+    
     @MainActor
     private func handleContinueTapped() async {
         guard viewModel.isValidPhoneNumber else { return }
 
         let phone = viewModel.fullPhoneNumber
-//
-//        // 1) Check if phone exists in backend
+        // Check if phone exists in backend
         await findUserByPhoneVM.fetch(phoneNumber: phone)
         
         if findUserByPhoneVM.userId != nil {
@@ -212,15 +193,12 @@ struct EnterNumberView: View {
             showPhoneExistsAlert = true
             return
         }
-//
-//        // Any error from lookup now means we can proceed to send OTP
+
 //        if let err = findUserByPhoneVM.errorText, !err.isEmpty {
 //            // Proceed despite error
 //            viewModel.sendOTP()
 //            return
 //        }
-//
-//        // No userId and no error => treat as not found and proceed
 //        viewModel.sendOTP()
         
         router.navigate(to: .registerUser(phoneNumber: viewModel.phoneNumber), style: .push)

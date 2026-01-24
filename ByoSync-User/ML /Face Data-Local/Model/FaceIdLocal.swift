@@ -4,9 +4,10 @@ import SwiftData
 // MARK: - SwiftData Model for FaceId Storage
 @Model
 final class FaceIdLocalStore {
-    @Attribute(.unique) var id: String = "singleton" // Only one record
+    @Attribute(.unique) var id: String = "singleton"
+    
     var salt: String
-    var faceDataJSON: Data // Store array as JSON
+    var faceDataJSON: Data
     var lastUpdated: Date
     var deviceKey: String
     

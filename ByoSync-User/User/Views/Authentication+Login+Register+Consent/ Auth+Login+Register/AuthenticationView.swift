@@ -122,7 +122,7 @@ struct AuthenticationView: View {
             NotificationCenter.default.removeObserver(self, name: NSNotification.Name("FCMTokenReceived"), object: nil)
             NotificationCenter.default.removeObserver(self, name: NSNotification.Name("FCMTokenFailed"), object: nil)
         }
-        .onChange(of: hasFCMToken) { hasToken in
+        .onChange(of: hasFCMToken) { hasToken,_ in
             #if DEBUG
             print("🔄 [AuthView] hasFCMToken changed to: \(hasToken)")
             #endif
@@ -138,7 +138,7 @@ struct AuthenticationView: View {
                 deviceRegistrationVM.checkDeviceRegistration()
             }
         }
-        .onChange(of: deviceRegistrationVM.isLoading) { isLoading in
+        .onChange(of: deviceRegistrationVM.isLoading) { isLoading,_ in
             #if DEBUG
             print("🔄 [AuthView] isLoading changed to: \(isLoading)")
             #endif

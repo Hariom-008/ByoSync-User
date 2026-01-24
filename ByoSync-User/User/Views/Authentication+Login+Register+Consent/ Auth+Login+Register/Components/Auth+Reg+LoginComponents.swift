@@ -1,7 +1,6 @@
 import SwiftUI
 
 // MARK: - Animated Background Blobs
-
 struct AnimatedBackgroundBlobs: View {
     let visible: Bool
     let logoBlue: Color

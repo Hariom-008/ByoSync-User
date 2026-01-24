@@ -100,7 +100,6 @@ struct OTPVerificationView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 20)
             
-            // Back to edit number
             Button(action: { router.pop() }) {
                 Text("Change phone number")
                     .font(.subheadline)
