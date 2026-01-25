@@ -228,7 +228,7 @@ struct UserDataByIdView: View {
     }
 
     // MARK: - User Content View
-    private func userContentView(user: UserByIdDTO) -> some View {
+    private func userContentView(user: UserById) -> some View {
         ScrollView {
             VStack(spacing: 16) {
                 profileHeaderView(user: user)
@@ -243,7 +243,7 @@ struct UserDataByIdView: View {
     }
 
     // MARK: - Profile Header
-    private func profileHeaderView(user: UserByIdDTO) -> some View {
+    private func profileHeaderView(user: UserById) -> some View {
         ModernCard {
             VStack(spacing: 16) {
                 ZStack {
@@ -391,7 +391,7 @@ struct UserDataByIdView: View {
     }
 
     // MARK: - User Details Card
-    private func userDetailsCard(user: UserByIdDTO) -> some View {
+    private func userDetailsCard(user: UserById) -> some View {
         ModernCard {
             VStack(spacing: 20) {
                 HStack {
@@ -536,7 +536,7 @@ struct UserDataByIdView: View {
     }
 
     // MARK: - Update UserSession
-    private func updateUserSession(with userData: UserByIdDTO) {
+    private func updateUserSession(with userData: UserById) {
         print("💾 Updating UserSession with fetched data...")
 
         userSession.setUserWallet(userData.wallet)

@@ -60,8 +60,8 @@ struct DirectionalGuidanceOverlay: View {
         let inside = faceManager.faceisInsideFaceOval
         let allOk = iodOk && iodNormOk && stable && inside
         
-        print("📊 [Center] IOD:\(iodOk) Norm:\(iodNormOk) Stable:\(stable) Inside:\(inside)")
-        print("   • Pitch: \(String(format: "%.3f", faceManager.Pitch)) Yaw: \(String(format: "%.3f", faceManager.Yaw)) Roll: \(String(format: "%.3f", faceManager.Roll))")
+//        print("📊 [Center] IOD:\(iodOk) Norm:\(iodNormOk) Stable:\(stable) Inside:\(inside)")
+//        print("   • Pitch: \(String(format: "%.3f", faceManager.Pitch)) Yaw: \(String(format: "%.3f", faceManager.Yaw)) Roll: \(String(format: "%.3f", faceManager.Roll))")
         
         return ZStack {
             // Show directional guidance arrows

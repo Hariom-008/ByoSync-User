@@ -7,8 +7,8 @@ final class UserDataByIdViewModel: ObservableObject {
 
     // MARK: - UI State
     @Published private(set) var isLoading: Bool = false
-    @Published private(set) var user: UserByIdDTO? = nil
-    @Published private(set) var device: DeviceByIdDTO? = nil
+    @Published private(set) var user: UserById? = nil
+    @Published private(set) var device: DeviceById? = nil
     @Published private(set) var message: String? = nil
     @Published private(set) var errorText: String? = nil
 
@@ -111,7 +111,7 @@ final class UserDataByIdViewModel: ObservableObject {
             return
         }
         DispatchQueue.main.async {
-            let user = UserByIdDTO(fromCached: user)
+            let user = UserById(fromCached: user)
             self.user = user
         }
     }

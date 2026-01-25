@@ -1,0 +1,21 @@
+//
+//  APIResponse.swift
+//  ByoSync
+//
+//  Created by Hari's Mac on 28.10.2025.
+//
+
+import Foundation
+
+struct APIResponse<T: Codable>: Codable {
+    let statusCode: Int
+    let data: T?
+    let message: String
+    let success: Bool?
+    
+    var isSuccess: Bool {
+            return statusCode == 200
+    }
+}
+
+struct EmptyData: Codable {}
