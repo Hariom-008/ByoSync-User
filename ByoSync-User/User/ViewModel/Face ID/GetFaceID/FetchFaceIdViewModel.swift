@@ -3,7 +3,7 @@ import Combine
 
 final class FaceIdFetchViewModel: ObservableObject {
     
-        static let shared = FaceIdFetchViewModel()
+    static let shared = FaceIdFetchViewModel()
     
     // MARK: - Published State (for UI)
     
@@ -55,9 +55,33 @@ final class FaceIdFetchViewModel: ObservableObject {
         print("   • forceRefresh: \(forceRefresh)")
         print("   • deviceKey length: \(deviceKey.count)")
         
-        // CASE 1: hasFaceData is FALSE -> Delete local data and return
+        // ✅ FIX: Check local storage FIRST before trusting backend flag
+        // This prevents deletion of just-enrolled data during backend sync delay
+        if let localData = storageManager.loadFaceData(for: deviceKey) {
+            print("✅ [FaceIdFetchViewModel] Found local enrollment data - using it")
+            print("   • salt: \(localData.salt)")
+            print("   • faceData count: \(localData.faceData.count)")
+            
+            DispatchQueue.main.async { [weak self] in
+                self?.faceIdData = localData
+                self?.faceIds = localData.faceData
+                self?.isUsingLocalData = true
+                self?.hasLoadedOnce = true
+            }
+            
+            // ✅ If hasFaceData is false but we have local data, sync with backend
+            if !hasFaceData && !forceRefresh {
+                print("⚠️ [FaceIdFetchViewModel] Backend says no face data, but local exists")
+                print("   → Keeping local data, backend will sync eventually")
+            }
+            
+            return
+        }
+        
+        // ✅ No local data - now check backend flag
         if !hasFaceData {
-            print("⚠️ [FaceIdFetchViewModel] hasFaceData=false -> Deleting local storage")
+            print("⚠️ [FaceIdFetchViewModel] No local data AND hasFaceData=false")
+            print("   → User needs enrollment")
             storageManager.deleteAllFaceData()
             resetState()
             return
@@ -69,28 +93,13 @@ final class FaceIdFetchViewModel: ObservableObject {
             return
         }
         
-        // CASE 2: hasFaceData is TRUE -> Check local storage first
-        if !forceRefresh {
-            if let localData = storageManager.loadFaceData(for: deviceKey) {
-                print("✅ [FaceIdFetchViewModel] Using local FaceId data (skipping API call)")
-                print("   • salt: \(localData.salt)")
-                print("   • faceData count: \(localData.faceData.count)")
-                
-                DispatchQueue.main.async { [weak self] in
-                    self?.faceIdData = localData
-                    self?.faceIds = localData.faceData
-                    self?.isUsingLocalData = true
-                    self?.hasLoadedOnce = true
-                }
-                return
-            } else {
-                print("📭 [FaceIdFetchViewModel] No local data found -> Fetching from API")
-            }
-        } else {
+        // CASE 3: hasFaceData is TRUE but no local data -> Fetch from API
+        if forceRefresh {
             print("🔄 [FaceIdFetchViewModel] Force refresh requested -> Fetching from API")
+        } else {
+            print("📭 [FaceIdFetchViewModel] No local data but backend has face data -> Fetching from API")
         }
         
-        // CASE 3: Fetch from API
         fetchFromAPI(deviceKey: deviceKey)
     }
     
@@ -119,9 +128,33 @@ final class FaceIdFetchViewModel: ObservableObject {
         print("   • forceRefresh: \(forceRefresh)")
         print("   • deviceKey length: \(deviceKey.count)")
         
-        // CASE 1: hasFaceData is FALSE -> Delete local data and fail
+        // ✅ FIX: Check local storage FIRST before trusting backend flag
+        if let localData = storageManager.loadFaceData(for: deviceKey) {
+            print("✅ [FaceIdFetchViewModel] Found local enrollment data - using it")
+            print("   • salt: \(localData.salt)")
+            print("   • faceData count: \(localData.faceData.count)")
+            
+            DispatchQueue.main.async { [weak self] in
+                self?.faceIdData = localData
+                self?.faceIds = localData.faceData
+                self?.isUsingLocalData = true
+                self?.hasLoadedOnce = true
+            }
+            
+            // ✅ If hasFaceData is false but we have local data, keep local and warn
+            if !hasFaceData {
+                print("⚠️ [FaceIdFetchViewModel] Backend says no face data, but local exists")
+                print("   → Using local data, backend will sync eventually")
+            }
+            
+            completion(.success(localData))
+            return
+        }
+        
+        // ✅ No local data - now check backend flag
         if !hasFaceData {
-            print("⚠️ [FaceIdFetchViewModel] hasFaceData=false -> Deleting local storage")
+            print("⚠️ [FaceIdFetchViewModel] No local data AND hasFaceData=false")
+            print("   → User needs enrollment")
             storageManager.deleteAllFaceData()
             resetState()
             
@@ -151,30 +184,13 @@ final class FaceIdFetchViewModel: ObservableObject {
             return
         }
         
-        // CASE 2: hasFaceData is TRUE -> Check local storage first
-        if !forceRefresh {
-            if let localData = storageManager.loadFaceData(for: deviceKey) {
-                print("✅ [FaceIdFetchViewModel] Using local FaceId data (skipping API call)")
-                print("   • salt: \(localData.salt)")
-                print("   • faceData count: \(localData.faceData.count)")
-                
-                DispatchQueue.main.async { [weak self] in
-                    self?.faceIdData = localData
-                    self?.faceIds = localData.faceData
-                    self?.isUsingLocalData = true
-                    self?.hasLoadedOnce = true
-                }
-                
-                completion(.success(localData))
-                return
-            } else {
-                print("📭 [FaceIdFetchViewModel] No local data found -> Fetching from API")
-            }
-        } else {
+        // CASE 3: Fetch from API
+        if forceRefresh {
             print("🔄 [FaceIdFetchViewModel] Force refresh requested -> Fetching from API")
+        } else {
+            print("📭 [FaceIdFetchViewModel] No local data but backend has face data -> Fetching from API")
         }
         
-        // CASE 3: Fetch from API
         fetchFromAPI(deviceKey: deviceKey, completion: completion)
     }
     
@@ -209,6 +225,7 @@ final class FaceIdFetchViewModel: ObservableObject {
                     
                     // Save to local storage
                     self.storageManager.saveFaceData(data, deviceKey: deviceKey)
+                    print("💾 [FaceIdFetchViewModel] Saved to local storage")
                     
                     completion?(.success(data))
                     
@@ -229,7 +246,9 @@ final class FaceIdFetchViewModel: ObservableObject {
     /// Check if local data exists without loading it
     func hasLocalData(for deviceKey: String? = nil) -> Bool {
         let key = deviceKey ?? DeviceIdentity.resolve()
-        return storageManager.hasLocalData(for: key)
+        let hasData = storageManager.hasLocalData(for: key)
+        print("🔍 [FaceIdFetchViewModel] hasLocalData: \(hasData)")
+        return hasData
     }
     
     /// Delete local storage (e.g., on logout or re-enrollment)

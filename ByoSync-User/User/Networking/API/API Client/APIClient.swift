@@ -423,6 +423,7 @@ final class APIClient: NSObject {
                 print("📥 [APIClient] Raw Response:\n\(raw)")
             }
             
+            // ✅ Handle network errors
             if let error = error {
                 print("❌ [APIClient] Network Error:", error.localizedDescription)
                 let apiError = APIError.map(from: status != -1 ? status : nil, error: error, data: data)
@@ -436,7 +437,15 @@ final class APIClient: NSObject {
                 return
             }
             
-            // Try to decode
+            // ✅ CHECK STATUS CODE FIRST - if it's an error, extract server message
+            guard (200..<300).contains(status) else {
+                print("❌ [APIClient] Error Status Code: \(status)")
+                let apiError = APIError.map(from: status, error: nil, data: data)
+                completion(.failure(apiError))
+                return
+            }
+            
+            // ✅ Only try to decode if status is success (200-299)
             do {
                 let decoder = JSONDecoder()
                 decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -445,12 +454,6 @@ final class APIClient: NSObject {
                 completion(.success(decoded))
             } catch {
                 print("❌ [APIClient] JSON decode error:", error)
-                
-                // Try to decode backend error
-                if let backendError = try? JSONDecoder().decode(BackendError.self, from: data) {
-                    print("⚠️ Backend Error:", backendError.message ?? "Unknown")
-                }
-                
                 completion(.failure(.decodingError(error.localizedDescription)))
             }
         }

@@ -188,10 +188,14 @@ final class RegisterUserViewModel: ObservableObject {
             }
 
         case .failure(let error):
-            showErrorMessage(error.localizedDescription)
+            // ✅ Extract actual server message - custom errors show message as-is
+            let errorMessage = extractErrorMessage(from: error)
+            print("❌ [RegisterUser] API Error: \(errorMessage)")
+            
+            showErrorMessage(errorMessage)
             Logger.shared.e(
                 "REGISTER VM",
-                "Register failed | msg=\(error.localizedDescription)",
+                "Register failed | msg=\(errorMessage)",
                 error: error,
                 timeTakenMs: timeTakenMs,
                 user: UserSession.shared.currentUser?.userId
@@ -199,6 +203,37 @@ final class RegisterUserViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Error Message Extraction
+    /// Extracts the clean error message from APIError
+    /// For .custom errors, returns the message directly from the server
+    /// For other errors, returns the full localized description
+    private func extractErrorMessage(from error: APIError) -> String {
+        switch error {
+        case .custom(let message):
+            // Server sent a custom message - show it directly without any prefix
+            return message
+            
+        case .badRequest(let message):
+            // Show bad request message directly
+            return message
+            
+        case .serverError(_, let message):
+            // Show server error message directly
+            return message
+            
+        case .networkError(let message):
+            // Show network error message directly
+            return message
+            
+        case .decodingError(let message):
+            // Show decoding error message directly
+            return message
+            
+        default:
+            // For other cases (unauthorized, forbidden, etc.), use localizedDescription
+            return error.localizedDescription
+        }
+    }
     // MARK: - Helpers
     private func showErrorMessage(_ message: String) {
         errorMessage = message

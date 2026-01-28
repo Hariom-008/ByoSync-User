@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 
+@MainActor
 final class UserSession: ObservableObject {
     static let shared = UserSession()
     
@@ -38,11 +39,13 @@ final class UserSession: ObservableObject {
     
     // MARK: - Profile Picture
     func setProfilePicture(_ urlString: String) {
-        self.userProfilePicture = urlString
-        UserDefaults.standard.set(urlString, forKey: profilePictureKey)
+        Task { @MainActor in
+            self.userProfilePicture = urlString
+            UserDefaults.standard.set(urlString, forKey: profilePictureKey)
+        }
     }
     func setHasFaceData(_ hasFaceData: Bool) {
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.hasFaceData = hasFaceData
             UserDefaults.standard.set(hasFaceData, forKey: self.hasFaceDataKey)
         }
@@ -50,12 +53,16 @@ final class UserSession: ObservableObject {
 
     
     func setCurrentUserId(_ id: String){
-        self.currentUserID = id
-        UserDefaults.standard.set(id, forKey: currentUserUserIDKey)
+        Task { @MainActor in
+            self.currentUserID = id
+            UserDefaults.standard.set(id, forKey: currentUserUserIDKey)
+        }
     }
     func setUserWallet(_ balance: Double){
-        self.wallet = balance
-        UserDefaults.standard.set(balance, forKey: walletKey)
+        Task { @MainActor in
+            self.wallet = balance
+            UserDefaults.standard.set(balance, forKey: walletKey)
+        }
     }
     private func loadWalletBalance(){
         self.wallet = UserDefaults.standard.double(forKey: walletKey)
@@ -75,11 +82,11 @@ final class UserSession: ObservableObject {
 
     
     private func loadCurrentUserID(){
-    self.currentUserID = UserDefaults.standard.string(forKey: currentUserUserIDKey) ?? ""
-}
+        self.currentUserID = UserDefaults.standard.string(forKey: currentUserUserIDKey) ?? ""
+    }
     // MARK: - Save and Load User
     func saveUser(_ user: User) {
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.currentUser = user
             if let userId = user.userId{
                 self.currentUserID = userId
@@ -113,8 +120,10 @@ final class UserSession: ObservableObject {
     
     // MARK: - Email Verification Status
     func setEmailVerified(_ verified: Bool) {
-        self.isEmailVerified = verified
-        UserDefaults.standard.set(verified, forKey: emailVerifiedKey)
+        Task { @MainActor in
+            self.isEmailVerified = verified
+            UserDefaults.standard.set(verified, forKey: emailVerifiedKey)
+        }
     }
     
     private func loadEmailVerificationStatus() {
@@ -123,8 +132,10 @@ final class UserSession: ObservableObject {
     
     // MARK: - Current Device ID
     func setCurrentDeviceID(_ deviceID: String) {
-        self.currentUserDeviceID = deviceID
-        UserDefaults.standard.set(deviceID, forKey: currentUserDeviceIDKey)
+        Task { @MainActor in
+            self.currentUserDeviceID = deviceID
+            UserDefaults.standard.set(deviceID, forKey: currentUserDeviceIDKey)
+        }
     }
     
     private func loadCurrentDeviceID() {
@@ -138,8 +149,10 @@ final class UserSession: ObservableObject {
 
     // MARK: - This Device Primary
     func setThisDevicePrimary(_ isPrimary: Bool) {
-        self.thisDeviceIsPrimary = isPrimary
-        UserDefaults.standard.set(isPrimary, forKey: thisDevicePrimaryKey)
+        Task { @MainActor in
+            self.thisDeviceIsPrimary = isPrimary
+            UserDefaults.standard.set(isPrimary, forKey: thisDevicePrimaryKey)
+        }
     }
     
     private func loadThisDevicePrimary() {
@@ -148,23 +161,25 @@ final class UserSession: ObservableObject {
 
     // MARK: - Clear User Session
     func clearUser() {
-        self.currentUser = nil
-        self.isEmailVerified = false
-        self.userProfilePicture = ""
-        self.currentUserDeviceID = ""
-        self.thisDeviceIsPrimary = false
-        self.currentUserID = ""
-        
-        UserDefaults.standard.removeObject(forKey: userDefaultsKey)
-        UserDefaults.standard.removeObject(forKey: emailVerifiedKey)
-        UserDefaults.standard.removeObject(forKey: profilePictureKey)
-        UserDefaults.standard.removeObject(forKey: currentUserDeviceIDKey)
-        UserDefaults.standard.removeObject(forKey: thisDevicePrimaryKey)
-        UserDefaults.standard.removeObject(forKey: "token")
-        UserDefaults.standard.removeObject(forKey: "accountType")
-        UserDefaults.standard.removeObject(forKey: currentUserUserIDKey)
-        
-        print("[UserSession]🚪 User session cleared")
+        Task { @MainActor in
+            self.currentUser = nil
+            self.isEmailVerified = false
+            self.userProfilePicture = ""
+            self.currentUserDeviceID = ""
+            self.thisDeviceIsPrimary = false
+            self.currentUserID = ""
+            
+            UserDefaults.standard.removeObject(forKey: userDefaultsKey)
+            UserDefaults.standard.removeObject(forKey: emailVerifiedKey)
+            UserDefaults.standard.removeObject(forKey: profilePictureKey)
+            UserDefaults.standard.removeObject(forKey: currentUserDeviceIDKey)
+            UserDefaults.standard.removeObject(forKey: thisDevicePrimaryKey)
+            UserDefaults.standard.removeObject(forKey: "token")
+            UserDefaults.standard.removeObject(forKey: "accountType")
+            UserDefaults.standard.removeObject(forKey: currentUserUserIDKey)
+            
+            print("[UserSession]🚪 User session cleared")
+        }
     }
     
     

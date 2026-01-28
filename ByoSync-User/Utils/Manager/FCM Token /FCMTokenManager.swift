@@ -15,30 +15,24 @@ final class FCMTokenManager {
     
     /// Get cached token (returns nil if not yet received)
     func getToken() -> String? {
-        #if DEBUG
         if let token = cachedToken {
             print("📦 [FCMTokenManager] Returning cached token: \(token)")
         } else {
             print("⚠️ [FCMTokenManager] No cached token available")
         }
-        #endif
         return cachedToken
     }
     
     /// Store token when received from Firebase
     func setToken(_ token: String) {
-        #if DEBUG
         print("💾 [FCMTokenManager] Caching FCM token: \(token)")
-        #endif
         cachedToken = token
         
         // Also persist to UserDefaults as backup
         UserDefaults.standard.set(token, forKey: "FCMToken")
         UserDefaults.standard.synchronize()
         
-        #if DEBUG
         print("✅ [FCMTokenManager] Token cached and persisted")
-        #endif
     }
     
     // MARK: - Async Token Retrieval
@@ -48,7 +42,7 @@ final class FCMTokenManager {
         print("🔍 [FCMTokenManager] Getting FCM token...")
         
         // Return cached if available
-        if let cached = cachedToken {
+        if let cached = cachedToken, !cached.isEmpty {
             print("✅ [FCMTokenManager] Returning cached token")
             completion(cached)
             return
@@ -64,8 +58,11 @@ final class FCMTokenManager {
         
         // Check if ready for remote notifications
         guard UIApplication.shared.isRegisteredForRemoteNotifications else {
-            print("⚠️ [FCMTokenManager] Not registered for remote notifications")
-            completion(nil)
+            print("⚠️ [FCMTokenManager] Not registered for remote notifications - waiting...")
+            // Retry after delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                self.getFCMToken(completion: completion)
+            }
             return
         }
         
@@ -132,9 +129,7 @@ final class FCMTokenManager {
     /// Check if we have a valid token
     var hasToken: Bool {
         let hasIt = cachedToken != nil && !(cachedToken?.isEmpty ?? true)
-        #if DEBUG
         print("🔍 [FCMTokenManager] hasToken: \(hasIt)")
-        #endif
         return hasIt
     }
 }

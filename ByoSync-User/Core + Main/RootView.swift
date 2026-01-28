@@ -17,7 +17,7 @@ struct RootView: View {
 
     // ✅ cached keys
     private let isDeviceRegisteredKey = "isDeviceRegisteredKey"
-    private let hasFaceDataKey = "hasFaceDataKey" // same key used by UserSession
+    private let hasFaceDataKey = "hasFaceDataKey"
 
     private var cachedIsDeviceRegistered: Bool? {
         guard UserDefaults.standard.object(forKey: isDeviceRegisteredKey) != nil else { return nil }
@@ -38,6 +38,7 @@ struct RootView: View {
             baseScreen
         }
         .onAppear {
+            print("📱 [RootView] View appeared")
             enrollmentGate.reload()
             scanGate.reloadFromStorage()
             updateScanPresentation()
@@ -46,25 +47,32 @@ struct RootView: View {
           updateScanPresentation()
         }
         .onChange(of: hasProcessedPendingNotifications) { _, _ in
+            print("🔔 [RootView] hasProcessedPendingNotifications changed")
             updateScanPresentation()
         }
-        .onChange(of: userSession.currentUser) { _, _ in
+        .onChange(of: userSession.currentUser) { _, newValue in
+            print("👤 [RootView] currentUser changed: \(newValue?.userId ?? "nil")")
             updateScanPresentation()
         }
-        .onChange(of: userSession.hasFaceData) { _, _ in
+        .onChange(of: userSession.hasFaceData) { _, newValue in
+            print("😊 [RootView] hasFaceData changed: \(newValue)")
             updateScanPresentation()
         }
-        .onChange(of: scanGate.requireScan) { _, _ in
+        .onChange(of: scanGate.requireScan) { _, newValue in
+            print("🔓 [RootView] requireScan changed: \(newValue)")
             updateScanPresentation()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("EnrollmentStatusChanged"))) { _ in
+            print("📢 [RootView] EnrollmentStatusChanged notification received")
             enrollmentGate.reload()
             updateScanPresentation()
         }
-        .onChange(of: deviceRegistrationVM.isDeviceRegistered) { _, _ in
+        .onChange(of: deviceRegistrationVM.isDeviceRegistered) { _, newValue in
+            print("📱 [RootView] deviceVM.isDeviceRegistered changed: \(newValue)")
             updateScanPresentation()
         }
-        .onChange(of: deviceRegistrationVM.hasFaceData) { _, _ in
+        .onChange(of: deviceRegistrationVM.hasFaceData) { _, newValue in
+            print("😊 [RootView] deviceVM.hasFaceData changed: \(newValue)")
             updateScanPresentation()
         }
         .fullScreenCover(isPresented: $presentScan) {
@@ -123,9 +131,10 @@ struct RootView: View {
         if userSession.currentUser != nil {
             MainTabView()
         } else {
-              AuthenticationView()
+            AuthenticationView()
         }
     }
+    
     private func updateScanPresentation() {
         // ✅ Prevent multiple simultaneous updates
         guard !isUpdatingScanState else {
@@ -140,80 +149,99 @@ struct RootView: View {
             }
         }
         
-        print("🔍 [RootView] Evaluating scan presentation...")
-        print("   - currentUser: \(userSession.currentUser?.userId ?? "nil")")
-        print("   - hasFaceData: \(userSession.hasFaceData)")
-        print("   - requireScan: \(scanGate.requireScan)")
-        print("   - hasProcessedNotifications: \(hasProcessedPendingNotifications)")
-        print("   - enrollmentState: \(enrollmentGate.state)")
-        print("   - deviceVM.isDeviceRegistered: \(deviceRegistrationVM.isDeviceRegistered)")
-        print("   - deviceVM.hasFaceData: \(deviceRegistrationVM.hasFaceData)")
+        print("🔍 [RootView] ===== EVALUATING SCAN PRESENTATION =====")
+        print("   📊 State Snapshot:")
+        print("      - currentUser: \(userSession.currentUser?.userId ?? "nil")")
+        print("      - userSession.hasFaceData: \(userSession.hasFaceData)")
+        print("      - requireScan: \(scanGate.requireScan)")
+        print("      - hasProcessedNotifications: \(hasProcessedPendingNotifications)")
+        print("      - enrollmentState: \(enrollmentGate.state)")
+        print("      - deviceVM.isDeviceRegistered: \(deviceRegistrationVM.isDeviceRegistered)")
+        print("      - deviceVM.hasFaceData: \(deviceRegistrationVM.hasFaceData)")
         
         // ✅ Debug: Check registration timestamp
         let lastRegTime = UserDefaults.standard.double(forKey: "lastRegistrationTimestamp")
         let timeSinceReg = Date().timeIntervalSince1970 - lastRegTime
         if lastRegTime > 0 {
-            print("   - lastRegistration: \(timeSinceReg)s ago")
+            print("      - lastRegistration: \(String(format: "%.1f", timeSinceReg))s ago")
         }
         
-        // 1) Not logged in - check login flow
+        // ========================================
+        // DECISION PATH 1: Not Logged In
+        // ========================================
         if userSession.currentUser == nil {
-            print("📍 [RootView] Decision path: Not logged in")
+            print("📍 [RootView] Path 1: User not logged in")
             
-            // ✅ RETURNING USER: Use live deviceRegistrationVM values (works on reinstall)
+            // ✅ RETURNING USER: Device registered + has face data → Auto-verification
             if deviceRegistrationVM.isDeviceRegistered && deviceRegistrationVM.hasFaceData {
-                print("✅ [RootView] Returning user detected (device registered + has face) -> Auto-verification scan")
+                print("   ✅ Returning user detected (device + face) → Verification scan")
                 faceAuthManager.setVerificationMode()
                 presentScan = true
+                print("🔍 [RootView] ===== DECISION: SHOW VERIFICATION SCAN =====\n")
                 return
             }
             
-            // ✅ REGISTRATION FLOW: Device registered but needs face enrollment
+            // ✅ REGISTRATION FLOW: Device registered but needs enrollment
             if deviceRegistrationVM.isDeviceRegistered && !deviceRegistrationVM.hasFaceData {
-                print("✅ [RootView] Not logged in but device registered + no face data -> Registration scan")
+                print("   ✅ Device registered, no face → Registration scan")
                 faceAuthManager.setRegistrationMode()
                 presentScan = true
+                print("🔍 [RootView] ===== DECISION: SHOW REGISTRATION SCAN =====\n")
                 return
             }
             
-            print("❌ [RootView] Not logged in - no scan needed (new device or loading)")
+            print("   ❌ New device or loading → Show auth screen")
             presentScan = false
+            print("🔍 [RootView] ===== DECISION: SHOW AUTH SCREEN =====\n")
             return
         }
         
-        // 2) Logged in - FOR NEW USERS: Skip notification wait, go straight to registration
+        // ========================================
+        // DECISION PATH 2: Logged In + No Face Data
+        // ========================================
         if userSession.hasFaceData == false {
-            print("📍 [RootView] Decision path: Logged in + no face data")
-            print("✅ [RootView] Logged in + no face data -> Registration scan (NEW USER)")
+            print("📍 [RootView] Path 2: Logged in + no face data")
+            print("   ✅ New user needs enrollment → Registration scan")
             faceAuthManager.setRegistrationMode()
             presentScan = true
+            print("🔍 [RootView] ===== DECISION: SHOW REGISTRATION SCAN =====\n")
             return
         }
         
-        // 3) Logged in - FOR EXISTING USERS: Wait for notification processing before showing verification scan
+        // ========================================
+        // DECISION PATH 3: Logged In + Has Face + Waiting for Notifications
+        // ========================================
         if !hasProcessedPendingNotifications {
-            print("📍 [RootView] Decision path: Logged in + has face + waiting for notifications")
-            print("⏳ [RootView] Logged in - waiting for notification processing")
+            print("📍 [RootView] Path 3: Logged in + has face + waiting for notifications")
+            print("   ⏳ Waiting for notification processing...")
             presentScan = false
+            print("🔍 [RootView] ===== DECISION: WAIT FOR NOTIFICATIONS =====\n")
             return
         }
         
-        // 4) Logged in + has face data + scan required -> verification scan
+        // ========================================
+        // DECISION PATH 4: Logged In + Has Face + Scan Required
+        // ========================================
         if scanGate.requireScan {
-            print("📍 [RootView] Decision path: Logged in + has face + scan required")
-            print("✅ [RootView] Logged in + has face data + scan required -> Verification scan")
+            print("📍 [RootView] Path 4: Logged in + has face + scan required")
+            print("   ✅ Scan required → Verification scan")
             faceAuthManager.setVerificationMode()
             presentScan = true
+            print("🔍 [RootView] ===== DECISION: SHOW VERIFICATION SCAN =====\n")
             return
         }
         
-        print("📍 [RootView] Decision path: Default - no scan needed")
-        print("❌ [RootView] No scan needed")
+        // ========================================
+        // DECISION PATH 5: Default (No Scan Needed)
+        // ========================================
+        print("📍 [RootView] Path 5: Default - all conditions satisfied")
+        print("   ❌ No scan needed → Show main app")
         presentScan = false
+        print("🔍 [RootView] ===== DECISION: SHOW MAIN APP =====\n")
     }
 }
 
-// MARK: - Scan Modal Wrapper (CameraPrep -> MLScan)
+// MARK: - Scan Modal Wrapper (CameraPrep → MLScan)
 private struct ScanModal: View {
     let mode: FaceAuthMode
     let onDone: () -> Void
@@ -230,11 +258,13 @@ private struct ScanModal: View {
                 MLScanView(onDone: onDone)
             } else {
                 CameraPreparationView(onReady: {
+                    print("📸 [ScanModal] Camera ready - showing MLScanView")
                     cameraReady = true
                 })
             }
         }
         .onAppear {
+            print("📱 [ScanModal] ScanModal appeared for mode: \(mode)")
             cameraReady = hasCameraPermission
         }
     }

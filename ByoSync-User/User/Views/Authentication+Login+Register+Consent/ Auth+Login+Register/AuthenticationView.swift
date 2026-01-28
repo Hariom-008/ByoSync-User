@@ -18,13 +18,12 @@ struct AuthenticationView: View {
     
     // ✅ FCM Token state
     @State private var hasFCMToken: Bool = false
-    @State private var fcmTokenCheckStarted: Bool = false
+    @State private var hasCompletedInitialDeviceCheck: Bool = false
     
     // Animation states
     @State private var showContent = false
     @State private var currentFeature = 0
 
-    // Colors from the logo gradient
     private let logoBlue = Color(red: 0.0, green: 0.0, blue: 1.0)
     private let logoPurple = Color(red: 0.478, green: 0.0, blue: 1.0)
 
@@ -71,8 +70,8 @@ struct AuthenticationView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 32)
 
-            // ✅ Loading overlay - shows while waiting for FCM token OR device check
-            if !hasFCMToken || deviceRegistrationVM.isLoading {
+            // ✅ Loading overlay - shows until we have both FCM token AND device check is done
+            if !hasFCMToken || !hasCompletedInitialDeviceCheck {
                 Color.black.opacity(0.15)
                     .ignoresSafeArea()
 
@@ -92,88 +91,69 @@ struct AuthenticationView: View {
             }
         }
         .onAppear {
-            #if DEBUG
             print("🎬 [AuthView] View appeared")
             print("📱 [AuthView] DeviceKey: \(DeviceIdentity.resolve())")
-            #endif
             
-            // ✅ Check if we already have FCM token
+            // ✅ Step 1: Check if we already have FCM token
             checkForExistingFCMToken()
             
-            // Start animations
+            // ✅ Step 2: Start animations
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 withAnimation(.easeInOut(duration: 1.0)) {
                     showContent = true
                 }
             }
 
-            // Feature rotation timer
+            // ✅ Step 3: Feature rotation timer
             Timer.scheduledTimer(withTimeInterval: 3.5, repeats: true) { _ in
                 withAnimation(.spring(response: 0.8, dampingFraction: 0.85)) {
                     currentFeature = (currentFeature + 1) % features.count
                 }
             }
             
-            // ✅ Listen for FCM token
+            // ✅ Step 4: Listen for FCM token updates
             setupFCMTokenListener()
         }
         .onDisappear {
-            // ✅ Remove observer when view disappears
             NotificationCenter.default.removeObserver(self, name: NSNotification.Name("FCMTokenReceived"), object: nil)
             NotificationCenter.default.removeObserver(self, name: NSNotification.Name("FCMTokenFailed"), object: nil)
         }
-        .onChange(of: hasFCMToken) { hasToken,_ in
-            #if DEBUG
+        .onChange(of: hasFCMToken) { _, hasToken in
             print("🔄 [AuthView] hasFCMToken changed to: \(hasToken)")
-            #endif
             
-            // ✅ Once we have FCM token, call device registration
-            if hasToken && !fcmTokenCheckStarted {
-                fcmTokenCheckStarted = true
-                
-                #if DEBUG
-                print("✅ [AuthView] FCM token ready, calling device registration check")
-                #endif
-                
-                deviceRegistrationVM.checkDeviceRegistration()
+            // ✅ Once we have FCM token, trigger device registration check
+            if hasToken && !hasCompletedInitialDeviceCheck {
+                print("🔍 [AuthView] FCM token ready - starting device registration check")
+                performDeviceRegistrationCheck()
             }
         }
-        .onChange(of: deviceRegistrationVM.isLoading) { isLoading,_ in
-            #if DEBUG
-            print("🔄 [AuthView] isLoading changed to: \(isLoading)")
-            #endif
+        .onChange(of: deviceRegistrationVM.isLoading) { _, isLoading in
+            print("🔄 [AuthView] deviceRegistrationVM.isLoading changed to: \(isLoading)")
             
-            // When loading completes
-            guard !isLoading else { return }
-            
-            #if DEBUG
-            print("✅ [AuthView] Device check completed")
-            print("📊 [AuthView] Results - isRegistered: \(deviceRegistrationVM.isDeviceRegistered), hasFaceData: \(deviceRegistrationVM.hasFaceData)")
-            #endif
-            
-            // Update UserSession with the hasFaceData value from backend
-            if deviceRegistrationVM.isDeviceRegistered {
-                UserSession.shared.hasFaceData = deviceRegistrationVM.hasFaceData
-                #if DEBUG
-                print("💾 [AuthView] Updated UserSession.hasFaceData to: \(deviceRegistrationVM.hasFaceData)")
-                #endif
+            // ✅ When loading completes, mark as done
+            if !isLoading && !hasCompletedInitialDeviceCheck {
+                print("✅ [AuthView] Device check completed")
+                print("📊 [AuthView] Results - isRegistered: \(deviceRegistrationVM.isDeviceRegistered), hasFaceData: \(deviceRegistrationVM.hasFaceData)")
+                
+                hasCompletedInitialDeviceCheck = true
+                
+                // ✅ Update UserSession with backend data
+                if deviceRegistrationVM.isDeviceRegistered {
+                    UserSession.shared.hasFaceData = deviceRegistrationVM.hasFaceData
+                    print("💾 [AuthView] Updated UserSession.hasFaceData to: \(deviceRegistrationVM.hasFaceData)")
+                }
             }
             
-            // Handle register button flow
-            if didTapRegister {
+            // ✅ Handle register button flow
+            if didTapRegister && !isLoading {
                 didTapRegister = false
                 
                 if deviceRegistrationVM.isDeviceRegistered {
                     deviceAlertMessage = "This device is already registered with an existing ByoSync account. You can't register a new account from this device."
                     showDeviceAlert = true
-                    
-                    #if DEBUG
                     print("🚫 [AuthView] Register blocked: device already registered")
-                    #endif
                 } else {
-                    #if DEBUG
                     print("✅ [AuthView] Register allowed: opening EnterNumberView")
-                    #endif
                     openEnterNumber = true
                 }
             }
@@ -192,9 +172,7 @@ struct AuthenticationView: View {
         }
         .alert(deviceAlertMessage, isPresented: $showDeviceAlert) {
             Button("OK", role: .cancel) {
-                #if DEBUG
                 print("❌ [AuthView] Device alert dismissed")
-                #endif
             }
         }
     }
@@ -204,7 +182,7 @@ struct AuthenticationView: View {
     private var loadingMessage: String {
         if !hasFCMToken {
             return "Initializing app…"
-        } else if deviceRegistrationVM.isLoading {
+        } else if !hasCompletedInitialDeviceCheck {
             return "Checking device…"
         }
         return "Loading…"
@@ -212,35 +190,23 @@ struct AuthenticationView: View {
 
     // MARK: - FCM Token Helpers
     
-    // In AuthenticationView, update checkForExistingFCMToken:
-
     private func checkForExistingFCMToken() {
-        // First try synchronous cached token
+        // ✅ Try synchronous cached token first
         if let existingToken = FCMTokenManager.shared.getToken(), !existingToken.isEmpty {
-            #if DEBUG
             print("⚡️ [AuthView] FCM token already cached: \(existingToken)")
-            #endif
-            
             hasFCMToken = true
             return
         }
         
-        // If no cached token, try async fetch (checks UserDefaults + Firebase)
-        #if DEBUG
+        // ✅ If no cached token, try async fetch
         print("🔄 [AuthView] No cached token, attempting fetch...")
-        #endif
         
         FCMTokenManager.shared.getFCMToken { token in
             if let token = token {
-                #if DEBUG
                 print("✅ [AuthView] FCM token fetched: \(token)")
-                #endif
-                
                 self.hasFCMToken = true
             } else {
-                #if DEBUG
                 print("⚠️ [AuthView] No FCM token yet, will wait for notification")
-                #endif
             }
         }
     }
@@ -253,32 +219,39 @@ struct AuthenticationView: View {
             queue: .main
         ) { notification in
             if let token = notification.userInfo?["token"] as? String {
-                #if DEBUG
                 print("🔔 [AuthView] Received FCM token notification: \(token)")
-                #endif
-                
                 hasFCMToken = true
             }
         }
         
-        // ✅ Listen for token failure (so we don't hang forever)
+        // ✅ Listen for token failure
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("FCMTokenFailed"),
             object: nil,
             queue: .main
         ) { notification in
             let error = notification.userInfo?["error"] as? String ?? "Unknown error"
-            
-            #if DEBUG
             print("⚠️ [AuthView] FCM token failed: \(error)")
             print("💡 [AuthView] Proceeding anyway to avoid blocking user")
-            #endif
             
-            // Proceed anyway after a short delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 hasFCMToken = true
             }
         }
+    }
+    
+    // ✅ NEW: Single place to call device registration check
+    private func performDeviceRegistrationCheck() {
+        print("🔍 [AuthView] Performing device registration check...")
+        
+        // ✅ Check if we have a cached value we can use while loading
+        if let cachedValue = UserDefaults.standard.object(forKey: "isDeviceRegisteredKey") as? Bool {
+            print("📦 [AuthView] Using cached isDeviceRegistered: \(cachedValue)")
+            deviceRegistrationVM.isDeviceRegistered = cachedValue
+        }
+        
+        // ✅ Now fetch fresh data from backend
+        deviceRegistrationVM.checkDeviceRegistration()
     }
 
     // MARK: - Logo Section
@@ -349,8 +322,8 @@ struct AuthenticationView: View {
             ) {
                 handleLoginTap()
             }
-            .disabled(!hasFCMToken || deviceRegistrationVM.isLoading || !deviceRegistrationVM.hasFaceData || !deviceRegistrationVM.isDeviceRegistered)
-            .opacity((!hasFCMToken || deviceRegistrationVM.isLoading || !deviceRegistrationVM.hasFaceData || !deviceRegistrationVM.isDeviceRegistered) ? 0.6 : 1.0)
+            .disabled(!hasCompletedInitialDeviceCheck || !deviceRegistrationVM.isDeviceRegistered || !deviceRegistrationVM.hasFaceData)
+            .opacity((!hasCompletedInitialDeviceCheck || !deviceRegistrationVM.isDeviceRegistered || !deviceRegistrationVM.hasFaceData) ? 0.6 : 1.0)
             
 
             GlassButton(
@@ -362,8 +335,8 @@ struct AuthenticationView: View {
             ) {
                 handleRegisterTap()
             }
-            .disabled(!hasFCMToken || deviceRegistrationVM.isLoading)
-            .opacity((!hasFCMToken || deviceRegistrationVM.isLoading) ? 0.6 : 1.0)
+            .disabled(!hasCompletedInitialDeviceCheck)
+            .opacity(!hasCompletedInitialDeviceCheck ? 0.6 : 1.0)
 
             HStack {
                 Text("Your data is encrypted and secure")
@@ -389,9 +362,7 @@ struct AuthenticationView: View {
                     .padding(.vertical, 4)
                 }
                 .onTapGesture {
-                    #if DEBUG
                     print("📄 [AuthView] Opening policy")
-                    #endif
                 }
             }
 
@@ -409,37 +380,60 @@ struct AuthenticationView: View {
     // MARK: - Actions
     
     private func handleRegisterTap() {
-        #if DEBUG
         print("🔘 [AuthView] Register button tapped")
-        print("📊 [AuthView] Current state - hasFCMToken: \(hasFCMToken), isLoading: \(deviceRegistrationVM.isLoading), isRegistered: \(deviceRegistrationVM.isDeviceRegistered)")
-        #endif
+        print("📊 [AuthView] Current state - hasCompleted: \(hasCompletedInitialDeviceCheck), isRegistered: \(deviceRegistrationVM.isDeviceRegistered)")
         
-        // If still waiting for FCM or loading, ignore tap
-        guard hasFCMToken, !deviceRegistrationVM.isLoading else {
-            #if DEBUG
-            print("⏳ [AuthView] Still initializing, ignoring tap")
-            #endif
+        // ✅ If device check not complete yet, ignore
+        guard hasCompletedInitialDeviceCheck else {
+            print("⏳ [AuthView] Device check not complete, ignoring tap")
             return
         }
         
-        // If already registered, show alert immediately
+        // ✅ If already registered, show alert immediately
         if deviceRegistrationVM.isDeviceRegistered {
             deviceAlertMessage = "This device is already registered with an existing ByoSync account. You can't register a new account from this device."
             showDeviceAlert = true
-            
-            #if DEBUG
             print("🚫 [AuthView] Device already registered, showing alert")
-            #endif
             return
         }
         
-        // Device not registered, proceed to registration
-        #if DEBUG
+        // ✅ Device not registered, proceed to registration
         print("✅ [AuthView] Device not registered, opening EnterNumberView")
-        #endif
         openEnterNumber = true
     }
 
+//    private func handleLoginTap() {
+//        print("🔘 [AuthView] Login button tapped")
+//        print("📊 [AuthView] Current state - hasCompleted: \(hasCompletedInitialDeviceCheck), isRegistered: \(deviceRegistrationVM.isDeviceRegistered), hasFaceData: \(deviceRegistrationVM.hasFaceData)")
+//        
+//        // ✅ Login only allowed if device check is complete, device is registered AND has face data
+//        guard hasCompletedInitialDeviceCheck else {
+//            print("🚫 [AuthView] Login blocked: device check not complete")
+//            return
+//        }
+//        
+//        guard deviceRegistrationVM.isDeviceRegistered else {
+//            print("🚫 [AuthView] Login blocked: device not registered")
+//            return
+//        }
+//        
+//        guard deviceRegistrationVM.hasFaceData else {
+//            print("🚫 [AuthView] Login blocked: no face data on device")
+//            return
+//        }
+//        
+//        print("✅ [AuthView] Login allowed, preparing for face verification")
+//        
+//        // ✅ Set up for verification scan - RootView will handle presenting the modal
+//        FaceAuthManager.shared.setVerificationMode()
+//        enrollment.markEnrolled()
+//        enrollment.reload()
+//        
+//        // ✅ Trigger scan requirement - RootView will detect this and present MLScan
+//        AppScanGate.shared.markRequiredDueToInactive()
+//        
+//        print("🎯 [AuthView] Scan requirement set, RootView will present verification modal")
+//    }
     private func handleLoginTap() {
         #if DEBUG
         print("🔘 [AuthView] Login button tapped")
@@ -479,7 +473,7 @@ struct AuthenticationView: View {
         
         // ✅ Trigger scan requirement - RootView will detect this and present MLScan
         AppScanGate.shared.markRequiredDueToInactive() // This sets requireScan = true
-        
+        AppScanGate.shared.markRequiredOnTerminate()
         #if DEBUG
         print("🎯 [AuthView] Scan requirement set, RootView will present verification modal")
         #endif

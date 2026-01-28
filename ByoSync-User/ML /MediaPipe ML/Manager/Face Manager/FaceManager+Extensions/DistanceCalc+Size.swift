@@ -192,9 +192,9 @@ extension FaceManager {
 
             self.frameRecordedTrigger.toggle()
 
-            if let pb {
-                self.enqueueAcceptedFrameUpload(frameIndex: self.totalFramesCollected, pixelBuffer: pb)
-            }
+//            if let pb {
+//                self.enqueueAcceptedFrameUpload(frameIndex: self.totalFramesCollected, pixelBuffer: pb)
+//            }
         }
     }
 }

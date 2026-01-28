@@ -25,7 +25,7 @@ struct TargetFaceOvalOverlay: View {
 
                 context.fill(
                     cutout,
-                    with: .color(.black.opacity(0.95)),
+                    with: .color(.black.opacity(0.85)),
                     style: FillStyle(eoFill: true) // even-odd => punches a hole for the oval
                 )
             }
@@ -39,7 +39,7 @@ struct TargetFaceOvalOverlay: View {
             } else if isAligned {
                 strokeColor = .green.opacity(0.85)
             } else {
-                strokeColor = .yellow.opacity(0.85)
+                strokeColor = .yellow.opacity(0.85) 
             }
 
             context.stroke(

@@ -32,8 +32,12 @@ struct ByoSync_UserApp: App {
     // ✅ Single instance for entire app
     @StateObject private var deviceRegistrationVM = DeviceRegistrationViewModel()
 
-    // ✅ UPDATED: Start as true for new users, only set to false when we need to wait
     @State var hasProcessedPendingNotifications = true
+    
+    // ✅ NEW: Track app initialization state
+    @State private var isInitializing = true
+    @State private var fcmToken: String?
+    @State private var deviceCheckCompleted = false
 
     // ✅ Persisted keys
     private let didInitialDeviceCheckKey = "didInitialDeviceCheckKey"
@@ -42,32 +46,30 @@ struct ByoSync_UserApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                RouterView { RootView() }
-                    .environmentObject(userSession)
-                    .environmentObject(languageManager)
-                    .environmentObject(faceAuthManager)
-                    .environmentObject(cryptoManager)
-                    .environmentObject(scanGate)
-                    .environmentObject(enrollmentGate)
-                    .environmentObject(deviceRegistrationVM) // ✅ inject
-                    .environment(\.locale, .init(identifier: languageManager.currentLanguageCode))
-                    .preferredColorScheme(.light)
-                    .modelContainer(for: [FaceIdLocalStore.self])
-                    .environment(\.hasProcessedPendingNotifications, hasProcessedPendingNotifications)
+                // ✅ Show splash screen while initializing
+                if isInitializing || !deviceCheckCompleted {
+                    SplashScreenView()
+                } else {
+                    RouterView { RootView() }
+                        .environmentObject(userSession)
+                        .environmentObject(languageManager)
+                        .environmentObject(faceAuthManager)
+                        .environmentObject(cryptoManager)
+                        .environmentObject(scanGate)
+                        .environmentObject(enrollmentGate)
+                        .environmentObject(deviceRegistrationVM)
+                        .environment(\.locale, .init(identifier: languageManager.currentLanguageCode))
+                        .preferredColorScheme(.light)
+                        .modelContainer(for: [FaceIdLocalStore.self])
+                        .environment(\.hasProcessedPendingNotifications, hasProcessedPendingNotifications)
+                }
             }
             .onOpenURL { url in
                 Auth.auth().canHandle(url)
             }
             .onAppear {
-                socketManager.connect()
-
-                // ✅ 1) Do the device check only once ever (first install / first open)
-                bootstrapDeviceRegistrationOnce()
-
-                // ✅ 2) Only process pending notifications if user is already logged in
-                if userSession.currentUser != nil {
-                    processPendingNotifications()
-                }
+                print("🚀 [APP] App launched - starting initialization")
+                initializeApp()
             }
             .onChange(of: userSession.currentUser) { oldValue, newValue in
                 // ✅ When user logs in for the first time
@@ -87,8 +89,14 @@ struct ByoSync_UserApp: App {
                 handleEnrollmentStatusChange(hasFaceData: newValue)
             }
             .onChange(of: deviceRegistrationVM.isDeviceRegistered) { _, newValue in
-                // ✅ cache isDeviceRegistered
+                print("📱 [APP] Device registration status changed -> \(newValue)")
                 UserDefaults.standard.set(newValue, forKey: isDeviceRegisteredKey)
+                
+                // ✅ Mark device check as completed when we get a response
+                if !deviceCheckCompleted {
+                    print("✅ [APP] Device check completed with status: \(newValue)")
+                    deviceCheckCompleted = true
+                }
             }
             .onChange(of: scenePhase) { oldPhase, newPhase in
                 let isLoggedIn = (userSession.currentUser != nil)
@@ -97,7 +105,6 @@ struct ByoSync_UserApp: App {
                 if newPhase == .active {
                     if isLoggedIn && isUserAccount {
                         processPendingNotifications()
-                        // IMPORTANT: do NOT re-run deviceRegistrationVM.check here anymore
                         enrollmentGate.reload()
                     }
                 }
@@ -122,15 +129,114 @@ struct ByoSync_UserApp: App {
         }
     }
 
-    private func bootstrapDeviceRegistrationOnce() {
-        // If already done once ever, do nothing.
-        if UserDefaults.standard.bool(forKey: didInitialDeviceCheckKey) {
+    // ✅ NEW: Initialize app with proper sequence
+    private func initializeApp() {
+        print("🔧 [APP] Step 1: Waiting for FCM token...")
+        
+        // ✅ Wait for FCM token first
+        waitForFCMToken { token in
+            guard let token = token else {
+                print("❌ [APP] Failed to get FCM token - retrying...")
+                // Retry after delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    self.initializeApp()
+                }
+                return
+            }
+            
+            print("✅ [APP] FCM Token received: \(token)")
+            self.fcmToken = token
+            
+            // ✅ Now perform device registration check
+            print("🔧 [APP] Step 2: Checking device registration...")
+            self.performDeviceCheck()
+        }
+    }
+    
+    // ✅ NEW: Wait for FCM token with timeout
+    private func waitForFCMToken(completion: @escaping (String?) -> Void) {
+        // Check if token is already available
+        if let existingToken = FCMTokenManager.shared.getToken(), !existingToken.isEmpty {
+            print("✅ [APP] FCM token already available")
+            completion(existingToken)
             return
         }
-        UserDefaults.standard.set(true, forKey: didInitialDeviceCheckKey)
-
-        print("🔍 [APP] Initial device registration check (one-time)")
+        
+        // Request token
+        FCMTokenManager.shared.getFCMToken { token in
+            if let token = token, !token.isEmpty {
+                print("✅ [APP] FCM token retrieved: \(token)")
+                completion(token)
+            } else {
+                print("⚠️ [APP] FCM token not available yet, waiting...")
+                // Retry after a short delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    self.waitForFCMToken(completion: completion)
+                }
+            }
+        }
+    }
+    
+    // ✅ NEW: Perform device registration check
+    private func performDeviceCheck() {
+        print("📡 [APP] Calling device registration check...")
+        
+        // Call the device registration check
         deviceRegistrationVM.checkDeviceRegistration()
+        
+        // ✅ Wait for response with timeout
+        var attempts = 0
+        let maxAttempts = 30 // 15 seconds timeout (500ms * 30)
+        
+        func checkForResponse() {
+            attempts += 1
+            
+            // Check if we got a response
+            let hasResponse = UserDefaults.standard.object(forKey: isDeviceRegisteredKey) != nil
+            
+            if hasResponse || deviceCheckCompleted {
+                print("✅ [APP] Device check response received")
+                print("   - isDeviceRegistered: \(deviceRegistrationVM.isDeviceRegistered)")
+                print("   - hasFaceData: \(deviceRegistrationVM.hasFaceData)")
+                
+                // ✅ Mark initialization as complete
+                DispatchQueue.main.async {
+                    self.isInitializing = false
+                    self.deviceCheckCompleted = true
+                    
+                    // ✅ Connect socket after initialization
+                    self.socketManager.connect()
+                    
+                    // ✅ Only process pending notifications if user is already logged in
+                    if self.userSession.currentUser != nil {
+                        self.processPendingNotifications()
+                    }
+                    
+                    print("✅ [APP] Initialization complete - ready to show UI")
+                }
+                return
+            }
+            
+            // ✅ Check timeout
+            if attempts >= maxAttempts {
+                print("⚠️ [APP] Device check timeout - proceeding anyway")
+                DispatchQueue.main.async {
+                    self.isInitializing = false
+                    self.deviceCheckCompleted = true
+                }
+                return
+            }
+            
+            // ✅ Retry after delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                checkForResponse()
+            }
+        }
+        
+        // Start checking for response
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            checkForResponse()
+        }
     }
 
     private func processPendingNotifications() {

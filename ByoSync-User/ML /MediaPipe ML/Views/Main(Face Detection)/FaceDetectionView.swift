@@ -60,11 +60,6 @@ struct FaceDetectionView: View {
     // ✅ Auto-trigger tracking (prevent multiple triggers)
     @State private var hasAutoTriggered: Bool = false
 
-    // Export state
-    @State private var showExportSuccess: Bool = false
-    @State private var exportedFileURL: URL?
-    @State private var isExporting: Bool = false
-
     // MARK: - Init
     init(
         authToken: String,
@@ -267,36 +262,6 @@ struct FaceDetectionView: View {
                     }
 
                     Spacer()
-
-                    // Export button at bottom
-//                    if faceManager.totalFramesCollected > 0 {
-//                        Button(action: exportFramesToCSV) {
-//                            HStack(spacing: 8) {
-//                                if isExporting {
-//                                    ProgressView()
-//                                        .scaleEffect(0.8)
-//                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-//                                } else {
-//                                    Image(systemName: "arrow.down.doc.fill")
-//                                        .font(.system(size: 14))
-//                                }
-//
-//                                Text(isExporting ? "Exporting..." : "Export Frames to CSV")
-//                                    .font(.system(size: 14, weight: .semibold))
-//
-//                                Text("(\(faceManager.totalFramesCollected))")
-//                                    .font(.system(size: 12, weight: .medium))
-//                                    .opacity(0.7)
-//                            }
-//                            .foregroundColor(.white)
-//                            .padding(.horizontal, 20)
-//                            .padding(.vertical, 12)
-//                            .background(RoundedRectangle(cornerRadius: 12).fill(Color.blue.opacity(0.8)))
-//                        }
-//                        .disabled(isExporting)
-//                        .padding(.bottom, 40)
-//                        .transition(.move(edge: .bottom).combined(with: .opacity))
-//                    }
                 }
             }
             .onReceive(
@@ -373,6 +338,7 @@ struct FaceDetectionView: View {
 
                 // ✅ NEW: Persist "hasFaceData" so we don't need status-fetch next time
                 UserSession.shared.setHasFaceData(true)
+                
                 enrollmentGate.markEnrolled()
 
                 faceManager.capturedFrames = []
@@ -386,6 +352,7 @@ struct FaceDetectionView: View {
                 DispatchQueue.main.async { onComplete() }
                 faceIdUploadViewModel.resetState()
             }
+            
 
             .onChange(of: faceManager.registrationComplete) { _, done in
                 guard done, !hasAutoTriggered, !faceManager.isBusy else { return }
@@ -411,35 +378,23 @@ struct FaceDetectionView: View {
             }
 
             // ✅ FIXED: Alert with proper reset action
-//            .alert(alertTitle, isPresented: $showAlert) {
-//                Button("OK") {
-//                    print("🔄 [Alert] User tapped OK, resetting state...")
-//                    
-//                    // ✅ Reset verification state if in verification mode
-//                    if faceAuthManager.currentMode == .verification {
-//                        faceManager.resetVerificationState()
-//                    }
-//                    
-//                    // ✅ Reset auto-trigger flag
-//                    hasAutoTriggered = false
-//                    
-//                    // ✅ Dismiss alert
-//                    showAlert = false
-//                }
-//            } message: {
-//                Text(alertMessage)
-//            }
-
-            .alert("📥 Export Successful", isPresented: $showExportSuccess) {
-                Button("OK") { showExportSuccess = false }
-                if let url = exportedFileURL {
-                    Button("Open in Files") { openFileInFilesApp(url: url) }
-                    Button("Share") { shareCSVFile(url: url) }
+            .alert(alertTitle, isPresented: $showAlert) {
+                Button("OK") {
+                    print("🔄 [Alert] User tapped OK, resetting state...")
+                    
+                    // ✅ Reset verification state if in verification mode
+                    if faceAuthManager.currentMode == .verification {
+                        faceManager.resetVerificationState()
+                    }
+                    
+                    // ✅ Reset auto-trigger flag
+                    hasAutoTriggered = false
+                    
+                    // ✅ Dismiss alert
+                    showAlert = false
                 }
             } message: {
-                if let url = exportedFileURL {
-                    Text("CSV file saved to Documents:\n\n\(url.lastPathComponent)\n\nYou can find it in Files app under 'On My iPhone' > [Your App Name] > Documents")
-                }
+                Text(alertMessage)
             }
         }
         .onAppear {
@@ -462,11 +417,13 @@ struct FaceDetectionView: View {
 
             case .verification:
                 if UserSession.shared.hasFaceData {
-                    // Still need payload for verification, so fetch only in verification mode when boolean says it's present.
                     enrollmentGate.markEnrolled()
+                    
+                    // ✅ FIXED: Use forceRefresh: false (default)
+                    // This will check local storage first, only fetch from backend if empty
+                    print("🔄 [Verification] Loading face data (local storage first)...")
                     faceIdFetchViewModel.fetchFaceIds(hasFaceData: true)
                 } else {
-                    // no backend call; we already know there's no face data
                     enrollmentGate.markNotEnrolled()
                     alertTitle = "No usable face data"
                     alertMessage = "Please register first."
@@ -660,61 +617,5 @@ struct FaceDetectionView: View {
                 }
             }
         }
-    }
-
-    // MARK: - Export to CSV
-
-    private func exportFramesToCSV() {
-        print("📥 [Export] Starting CSV export for mode: \(faceAuthManager.currentMode)")
-        isExporting = true
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            do {
-                let mode: FrameCollectionMode = (faceAuthManager.currentMode == .registration) ? .registration : .verification
-                let url = try faceManager.exportCollectedFramesCSV(mode: mode)
-
-                DispatchQueue.main.async {
-                    self.isExporting = false
-                    self.exportedFileURL = url
-                    self.showExportSuccess = true
-                    print("✅ [Export] CSV exported successfully to: \(url.path)")
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    self.isExporting = false
-                    self.alertTitle = "❌ Export Failed"
-                    self.alertMessage = "Failed to export frames: \(error.localizedDescription)"
-                    self.showAlert = true
-                }
-            }
-        }
-    }
-
-    private func openFileInFilesApp(url: URL) {
-        if UIApplication.shared.canOpenURL(url) {
-            UIApplication.shared.open(url, options: [:]) { success in
-                if !success { self.shareCSVFile(url: url) }
-            }
-        } else {
-            shareCSVFile(url: url)
-        }
-    }
-
-    private func shareCSVFile(url: URL) {
-        let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first,
-              let rootVC = window.rootViewController else {
-            return
-        }
-
-        if let popover = activityVC.popoverPresentationController {
-            popover.sourceView = window
-            popover.sourceRect = CGRect(x: window.bounds.midX, y: window.bounds.midY, width: 0, height: 0)
-            popover.permittedArrowDirections = []
-        }
-
-        rootVC.present(activityVC, animated: true)
     }
 }
